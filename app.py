@@ -41,8 +41,8 @@ EMAIL_DESTINO   = "alopez.uci@gmail.com"
 # 1. Agrega el número +34 644 66 83 41 a tus contactos como "CallMeBot"
 # 2. Envía: "I allow callmebot to send me messages"
 # 3. Recibirás tu API key por WhatsApp
-WHATSAPP_NUMERO = ""    # ← tu número con código país, ej: "521234567890"
-WHATSAPP_APIKEY = ""    # ← API key que te envía CallMeBot
+WHATSAPP_NUMERO = "5215566906269"    # ← tu número con código país, ej: "521234567890"
+WHATSAPP_APIKEY = "8582956"    # ← API key que te envía CallMeBot
 
 # ── Email SMTP (Gmail) ──────────────────────────────────────
 # Usa una contraseña de aplicación Gmail (no tu contraseña normal):
