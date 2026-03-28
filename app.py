@@ -41,8 +41,8 @@ EMAIL_DESTINO   = "alopez.uci@gmail.com"
 # 1. Agrega el número +34 644 66 83 41 a tus contactos como "CallMeBot"
 # 2. Envía: "I allow callmebot to send me messages"
 # 3. Recibirás tu API key por WhatsApp
-WHATSAPP_NUMERO = "5215566906269"    # ← tu número con código país, ej: "521234567890"
-WHATSAPP_APIKEY = "8582956"    # ← API key que te envía CallMeBot
+WHATSAPP_NUMERO = ""    # ← tu número con código país, ej: "521234567890"
+WHATSAPP_APIKEY = ""    # ← API key que te envía CallMeBot
 
 # ── Email SMTP (Gmail) ──────────────────────────────────────
 # Usa una contraseña de aplicación Gmail (no tu contraseña normal):
@@ -138,9 +138,22 @@ mercado_seleccionado = st.sidebar.selectbox("📊 Mercado", list(mercado_opcione
 
 # Opciones de análisis
 st.sidebar.markdown("### 🔧 Análisis")
-fundamentales_check = st.sidebar.checkbox("📊 Análisis fundamental", value=False)
+fundamentales_check  = st.sidebar.checkbox("📊 Análisis fundamental", value=False)
 filtro_fundamentales = st.sidebar.checkbox("📊 Solo fundamentales sólidos", value=False) if fundamentales_check else False
-backtesting_check   = st.sidebar.checkbox("🧪 Backtesting (últimos 6 meses)", value=False)
+backtesting_check    = st.sidebar.checkbox("🧪 Backtesting (últimos 6 meses)", value=False)
+market_regime_check  = st.sidebar.checkbox("🌡️ Filtrar por Market Regime", value=True,
+                           help="Si el S&P 500 está en tendencia bajista (bajo su EMA200), oculta señales de compra arriesgadas.")
+
+# Position sizing
+st.sidebar.markdown("### 💼 Gestión de capital")
+capital_total = st.sidebar.number_input(
+    "Capital disponible (MXN)", min_value=1000.0, value=100_000.0, step=1000.0,
+    help="Total que destinas a trading activo (no incluyas tu parte de ETFs)."
+)
+riesgo_pct = st.sidebar.slider(
+    "Riesgo máximo por operación (%)", min_value=0.5, max_value=3.0, value=1.0, step=0.25,
+    help="Porcentaje de tu capital que estás dispuesto a perder en una sola operación. 1% es conservador, 2% moderado."
+)
 
 # Alertas
 st.sidebar.markdown("### 🔔 Alertas")
@@ -489,8 +502,106 @@ def obtener_tipo_cambio() -> tuple[float, float]:
     except:
         return 20.0, 21.5
 
+# ============================================================
+# MARKET REGIME — contexto del mercado general
+# ============================================================
+@st.cache_data(ttl=3600)
+def obtener_market_regime() -> dict:
+    """
+    Evalúa el estado del mercado usando el S&P 500 como referencia.
+    Retorna régimen: ALCISTA / LATERAL / BAJISTA y métricas clave.
+    """
+    try:
+        sp = yf.Ticker("^GSPC").history(period="1y")
+        if sp.empty or len(sp) < 200:
+            return {'regime': 'DESCONOCIDO', 'color': 'gray', 'descripcion': 'Sin datos suficientes'}
+
+        precio_actual = sp['Close'].iloc[-1]
+        ema50         = sp['Close'].ewm(span=50).mean().iloc[-1]
+        ema200        = sp['Close'].ewm(span=200).mean().iloc[-1]
+        rsi_sp        = 100 - (100 / (1 + (
+            sp['Close'].diff().where(lambda x: x > 0, 0).rolling(14).mean() /
+            (-sp['Close'].diff().where(lambda x: x < 0, 0)).rolling(14).mean()
+        ))).iloc[-1]
+
+        # Rendimiento últimos 20 días (1 mes)
+        ret_1m = (precio_actual / sp['Close'].iloc[-20] - 1) * 100 if len(sp) >= 20 else 0
+
+        sobre_ema200 = precio_actual > ema200
+        sobre_ema50  = precio_actual > ema50
+        ema50_sobre_200 = ema50 > ema200   # Golden/Death cross de índice
+
+        if sobre_ema200 and sobre_ema50 and ema50_sobre_200:
+            regime      = 'ALCISTA'
+            color       = 'green'
+            descripcion = 'S&P 500 sobre EMA50 y EMA200 — condiciones favorables para compras'
+            score_bonus = 0    # sin penalización
+        elif sobre_ema200 and not sobre_ema50:
+            regime      = 'LATERAL'
+            color       = 'orange'
+            descripcion = 'S&P 500 por debajo de EMA50 pero sobre EMA200 — ser selectivo'
+            score_bonus = -1   # reducir score mínimo requerido
+        else:
+            regime      = 'BAJISTA'
+            color       = 'red'
+            descripcion = 'S&P 500 bajo su EMA200 — evitar nuevas compras, proteger posiciones'
+            score_bonus = -3   # penalización severa al score
+
+        return {
+            'regime':       regime,
+            'color':        color,
+            'descripcion':  descripcion,
+            'score_bonus':  score_bonus,
+            'precio_sp500': round(precio_actual, 2),
+            'ema50_sp500':  round(ema50, 2),
+            'ema200_sp500': round(ema200, 2),
+            'rsi_sp500':    round(rsi_sp, 1),
+            'ret_1m':       round(ret_1m, 2),
+        }
+    except Exception as e:
+        return {'regime': 'DESCONOCIDO', 'color': 'gray', 'descripcion': f'Error: {e}',
+                'score_bonus': 0, 'precio_sp500': 0, 'ema50_sp500': 0,
+                'ema200_sp500': 0, 'rsi_sp500': 0, 'ret_1m': 0}
+
+# ============================================================
+# POSITION SIZING — cuánto invertir por operación
+# ============================================================
+def calcular_position_size(precio: float, atr: float, capital: float, riesgo_pct: float) -> dict:
+    """
+    Position sizing basado en ATR (volatilidad real).
+
+    Lógica:
+      riesgo_mxn   = capital × riesgo_pct / 100     (lo que puedes perder)
+      stop_distancia = 2 × ATR                       (dónde va el stop loss)
+      unidades     = riesgo_mxn / stop_distancia     (cuántas acciones comprar)
+      inversion    = unidades × precio               (capital a invertir)
+    """
+    try:
+        riesgo_mxn     = capital * (riesgo_pct / 100)
+        stop_distancia = 2 * atr
+        if stop_distancia <= 0:
+            return {'unidades': 0, 'inversion_mxn': 0, 'pct_capital': 0}
+
+        unidades     = riesgo_mxn / stop_distancia
+        inversion    = unidades * precio
+        pct_capital  = (inversion / capital) * 100
+
+        # Cap: nunca más del 20% del capital en una sola posición
+        if pct_capital > 20:
+            inversion   = capital * 0.20
+            unidades    = inversion / precio
+            pct_capital = 20.0
+
+        return {
+            'unidades':      round(unidades, 2),
+            'inversion_mxn': round(inversion, 2),
+            'pct_capital':   round(pct_capital, 1),
+        }
+    except:
+        return {'unidades': 0, 'inversion_mxn': 0, 'pct_capital': 0}
+
 def analizar_accion(args: tuple) -> dict | None:
-    simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt = args
+    simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt, regime_bonus, capital, riesgo_pct = args
     try:
         periodo = "6mo" if incluir_bt else "3mo"
         hist    = yf.Ticker(simbolo).history(period=periodo)
@@ -526,16 +637,22 @@ def analizar_accion(args: tuple) -> dict | None:
         atr        = ultimo['ATR']
         dist_ema50 = (precio / ema50 - 1) * 100
 
-        # Score de compra
-        score, señales_compra = calcular_score(ultimo, penultimo)
+        # Score de compra + ajuste por régimen de mercado
+        score_base, señales_compra = calcular_score(ultimo, penultimo)
+        score = max(0, score_base + regime_bonus)
+        if regime_bonus < 0:
+            señales_compra.append(f"Mercado {'lateral' if regime_bonus == -1 else 'bajista'} ({regime_bonus:+d})")
 
         # Señales de venta
-        p_compra    = precio_compra_dict.get(simbolo)
+        p_compra      = precio_compra_dict.get(simbolo)
         señales_venta = detectar_venta(ultimo, penultimo, p_compra, usd_mxn)
 
         # Stop Loss / Take Profit dinámico
         sl = round(precio - 2 * atr, 2) if p_compra is None else round(p_compra - 2 * atr, 2)
         tp = round(precio + 3 * atr, 2) if p_compra is None else round(p_compra + 3 * atr, 2)
+
+        # Position sizing
+        ps = calcular_position_size(precio, atr, capital, riesgo_pct)
 
         # Recomendación
         if señales_venta:
@@ -555,17 +672,20 @@ def analizar_accion(args: tuple) -> dict | None:
             motivo        = f"Score {score}/14"
 
         resultado = {
-            'Símbolo':        simbolo,
-            'Precio (MXN)':   round(precio, 2),
-            'Score':          score,
-            'RSI':            round(rsi, 1),
-            'ATR':            round(atr, 2),
-            'Stop Loss':      sl,
-            'Take Profit':    tp,
-            'Dist EMA50':     f"{dist_ema50:.1f}%",
-            'Recomendación':  recomendacion,
-            'Motivo':         motivo,
-            'Señales':        " | ".join(señales_compra) if señales_compra else "—",
+            'Símbolo':          simbolo,
+            'Precio (MXN)':     round(precio, 2),
+            'Score':            score,
+            'RSI':              round(rsi, 1),
+            'ATR':              round(atr, 2),
+            'Stop Loss':        sl,
+            'Take Profit':      tp,
+            'Dist EMA50':       f"{dist_ema50:.1f}%",
+            'Unidades':         ps['unidades'],
+            'Inversión (MXN)':  ps['inversion_mxn'],
+            '% Capital':        f"{ps['pct_capital']}%",
+            'Recomendación':    recomendacion,
+            'Motivo':           motivo,
+            'Señales':          " | ".join(señales_compra) if señales_compra else "—",
         }
 
         # Fundamentales (opcional)
@@ -675,6 +795,40 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.sidebar.metric("USD/MXN", f"{usd_mxn:.2f}")
     st.sidebar.metric("EUR/MXN", f"{eur_mxn:.2f}")
 
+    # ── Market Regime ───────────────────────────────────────
+    regime_data  = obtener_market_regime()
+    regime_bonus = regime_data['score_bonus'] if market_regime_check else 0
+
+    color_map = {'ALCISTA': '🟢', 'LATERAL': '🟡', 'BAJISTA': '🔴', 'DESCONOCIDO': '⚪'}
+    icono = color_map.get(regime_data['regime'], '⚪')
+
+    with st.expander(f"{icono} Market Regime: **{regime_data['regime']}** — {regime_data['descripcion']}", expanded=True):
+        r1, r2, r3, r4 = st.columns(4)
+        r1.metric("S&P 500",    f"{regime_data['precio_sp500']:,.0f}")
+        r2.metric("EMA 200",    f"{regime_data['ema200_sp500']:,.0f}",
+                  delta=f"{((regime_data['precio_sp500']/regime_data['ema200_sp500'])-1)*100:+.1f}%" if regime_data['ema200_sp500'] else None)
+        r3.metric("RSI S&P",    f"{regime_data['rsi_sp500']}")
+        r4.metric("Ret. 1 mes", f"{regime_data['ret_1m']:+.1f}%")
+
+        if market_regime_check and regime_data['regime'] == 'BAJISTA':
+            st.warning("⚠️ Mercado bajista detectado. Las señales de compra están penalizadas. Considera proteger posiciones existentes.")
+        elif market_regime_check and regime_data['regime'] == 'LATERAL':
+            st.info("ℹ️ Mercado lateral. Solo compras con score muy alto (≥8) son recomendables.")
+
+    # ── Estrategia Core + Satélite ──────────────────────────
+    with st.expander("💼 Estrategia recomendada: Core + Satélite"):
+        etf_capital   = round(capital_total * 0.65, 2)
+        trade_capital = round(capital_total * 0.25, 2)
+        conv_capital  = round(capital_total * 0.10, 2)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("🏛️ Core — ETFs (65%)",    f"${etf_capital:,.0f} MXN",
+                  help="VOO, QQQ, IVV — comprar y mantener, no tocar")
+        c2.metric("⚡ Satélite — Trading (25%)", f"${trade_capital:,.0f} MXN",
+                  help="Tu sistema activo con este scanner")
+        c3.metric("🎯 Alta convicción (10%)", f"${conv_capital:,.0f} MXN",
+                  help="1-2 ideas con investigación fundamental profunda")
+        st.caption(f"Position sizing activo sobre ${trade_capital:,.0f} MXN · Riesgo por operación: {riesgo_pct}% = ${trade_capital*riesgo_pct/100:,.0f} MXN máx. por trade")
+
     # ── Análisis en paralelo ────────────────────────────────
     lista_acciones = mercado_opciones[mercado_seleccionado]
     total          = len(lista_acciones)
@@ -686,7 +840,8 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     completados  = 0
 
     args_list = [
-        (sim, PRECIO_COMPRA, usd_mxn, eur_mxn, fundamentales_check, backtesting_check)
+        (sim, PRECIO_COMPRA, usd_mxn, eur_mxn, fundamentales_check, backtesting_check,
+         regime_bonus, capital_total * 0.25, riesgo_pct)
         for sim in lista_acciones
     ]
 
@@ -716,6 +871,8 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.session_state['eur_mxn']       = eur_mxn
     st.session_state['fund_check']    = fundamentales_check
     st.session_state['bt_check']      = backtesting_check
+    st.session_state['regime']        = regime_data
+    st.session_state['capital']       = capital_total
 
     # Añadir puntaje fundamental si aplica
     if fundamentales_check and 'ROE (%)' in df.columns:
@@ -781,6 +938,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
     # Columnas a mostrar
     cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit',
+                 'Unidades','Inversión (MXN)','% Capital',
                  'Dist EMA50','Recomendación','Motivo','Señales']
     cols_fund = [c for c in df.columns if c not in cols_base]
 
@@ -873,6 +1031,31 @@ if 'df' in st.session_state:
     _df      = st.session_state['df']
     _usd_mxn = st.session_state['usd_mxn']
     _eur_mxn = st.session_state['eur_mxn']
+    _capital = st.session_state.get('capital', 100_000)
+
+    # Resumen de capital comprometido en compras activas
+    pc = st.session_state.get('PRECIO_COMPRA', {})
+    if pc:
+        st.divider()
+        st.subheader("💼 Resumen de tu portafolio activo")
+        rows = []
+        for sim, precio_compra in pc.items():
+            fila_df = _df[_df['Símbolo'] == sim]
+            if not fila_df.empty:
+                f = fila_df.iloc[0]
+                precio_actual = float(str(f['Precio (MXN)']).replace(',',''))
+                ganancia_pct  = (precio_actual / precio_compra - 1) * 100
+                rows.append({
+                    'Símbolo':        sim,
+                    'Comprado a':     precio_compra,
+                    'Precio actual':  precio_actual,
+                    'Ganancia %':     f"{ganancia_pct:+.2f}%",
+                    'Score':          f['Score'],
+                    'Recomendación':  f['Recomendación'],
+                    'Inversión (MXN)':f.get('Inversión (MXN)', '—'),
+                })
+        if rows:
+            st.dataframe(pd.DataFrame(rows), use_container_width=True)
 
     st.divider()
     st.subheader("🔎 Explorar cualquier acción analizada")
