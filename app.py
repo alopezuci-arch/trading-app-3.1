@@ -41,8 +41,8 @@ EMAIL_DESTINO   = "alopez.uci@gmail.com"
 # 1. Agrega el número +34 644 66 83 41 a tus contactos como "CallMeBot"
 # 2. Envía: "I allow callmebot to send me messages"
 # 3. Recibirás tu API key por WhatsApp
-WHATSAPP_NUMERO = "525566906269"    # ← tu número con código país, ej: "521234567890"
-WHATSAPP_APIKEY = "8582956"    # ← API key que te envía CallMeBot
+WHATSAPP_NUMERO = ""    # ← tu número con código país, ej: "521234567890"
+WHATSAPP_APIKEY = ""    # ← API key que te envía CallMeBot
 
 # ── Email SMTP (Gmail) ──────────────────────────────────────
 # Usa una contraseña de aplicación Gmail (no tu contraseña normal):
@@ -839,19 +839,31 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
             st.dataframe(bt_df.reset_index(drop=True), use_container_width=True)
 
     # ── Exportar Excel ──────────────────────────────────────
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        compras.to_excel(writer, index=False, sheet_name='Compras')
-        ventas.to_excel(writer,  index=False, sheet_name='Ventas')
-        observar.to_excel(writer,index=False, sheet_name='Observar')
-        df.to_excel(writer,      index=False, sheet_name='Todos')
+    try:
+        import openpyxl  # noqa: F401
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            compras.to_excel(writer,  index=False, sheet_name='Compras')
+            ventas.to_excel(writer,   index=False, sheet_name='Ventas')
+            observar.to_excel(writer, index=False, sheet_name='Observar')
+            df.to_excel(writer,       index=False, sheet_name='Todos')
 
-    st.download_button(
-        label="📥 Descargar informe Excel (todas las hojas)",
-        data=output.getvalue(),
-        file_name=f"trading_v2_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+        st.download_button(
+            label="📥 Descargar informe Excel (todas las hojas)",
+            data=output.getvalue(),
+            file_name=f"trading_v2_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except ImportError:
+        st.warning("⚠️ openpyxl no está instalado. Agrega 'openpyxl' a tu requirements.txt para habilitar la descarga Excel.")
+        # Fallback: descargar como CSV
+        csv_data = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Descargar como CSV (alternativa)",
+            data=csv_data,
+            file_name=f"trading_v2_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            mime="text/csv"
+        )
 
 # ============================================================
 # SELECTOR DE GRÁFICO — fuera del bloque del botón para que
