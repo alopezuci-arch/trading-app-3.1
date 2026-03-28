@@ -87,54 +87,184 @@ def cargar_listas():
         'VTR','VLO','VTRS','VRSN','VZ','VRTX','VFC','VNO','VMC','WAB','WBA','WMT','WDC','WU',
         'WRK','WY','WHR','WMB','WEC','WFC','WST','WYNN','XEL','XYL','YUM','ZBRA','ZBH','ZION','ZTS'
     ]
-    sp100    = ['AAPL','MSFT','AMZN','NVDA','META','GOOGL','GOOG','JPM','V','JNJ','WMT','PG',
-                'UNH','HD','DIS','MA','BAC','XOM','CVX','KO','PEP','ADBE','CRM','NFLX','TMO',
-                'ABT','ACN','AMD','INTC','CMCSA','TXN','QCOM','COST','NKE','MRK','ABBV','LLY',
-                'PFE','BMY','CVS','HON','UPS','BA','CAT','GE','IBM','GS','SPGI','MS','PLD',
-                'LMT','MDT','ISRG','BLK','AMGN','GILD','FISV','SYK','ZTS','T','VZ','NEE','DUK',
-                'SO','MO','PM','MDLZ','SBUX','MCD','LOW','TGT','TJX','ORCL','NOW','INTU','BKNG',
-                'UBER','TSLA','AVGO']
+    sp100     = ['AAPL','MSFT','AMZN','NVDA','META','GOOGL','GOOG','JPM','V','JNJ','WMT','PG',
+                 'UNH','HD','DIS','MA','BAC','XOM','CVX','KO','PEP','ADBE','CRM','NFLX','TMO',
+                 'ABT','ACN','AMD','INTC','CMCSA','TXN','QCOM','COST','NKE','MRK','ABBV','LLY',
+                 'PFE','BMY','CVS','HON','UPS','BA','CAT','GE','IBM','GS','SPGI','MS','PLD',
+                 'LMT','MDT','ISRG','BLK','AMGN','GILD','FISV','SYK','ZTS','T','VZ','NEE','DUK',
+                 'SO','MO','PM','MDLZ','SBUX','MCD','LOW','TGT','TJX','ORCL','NOW','INTU','BKNG',
+                 'UBER','TSLA','AVGO']
     nasdaq100 = ['ADBE','AMD','AMGN','AMZN','ASML','AVGO','BIIB','BKNG','CDNS','CHTR','CMCSA',
                  'COST','CSCO','CSX','CTAS','DXCM','EA','EBAY','EXC','FANG','FAST','FTNT','GILD',
                  'GOOGL','GOOG','HON','IDXX','ILMN','INTC','INTU','ISRG','KLAC','LRCX','LULU',
                  'MAR','MELI','META','MNST','MSFT','MU','NFLX','NVDA','NXPI','ODFL','ORLY','PANW',
                  'PAYX','PCAR','PEP','QCOM','REGN','ROST','SBUX','SNPS','TMUS','TSLA','TXN','VRTX',
                  'WBA','WDAY','XEL','ZM','ZS']
-    ibex35   = ['SAN.MC','BBVA.MC','TEF.MC','ITX.MC','IBE.MC','FER.MC','ENG.MC','ACS.MC','REP.MC',
-                'AENA.MC','CLNX.MC','GRF.MC','MTS.MC','MAP.MC','MEL.MC','CABK.MC','ELE.MC','IAG.MC',
-                'ANA.MC','VIS.MC','CIE.MC','LOG.MC','ACX.MC']
-    bmv      = ['WALMEX.MX','GMEXICOB.MX','CEMEXCPO.MX','FEMSAUBD.MX','AMXL.MX','KOFUBL.MX',
-                'GFNORTEO.MX','BBAJIOO.MX','ALFA.MX','ALPEKA.MX','ASURB.MX','GAPB.MX','OMAB.MX',
-                'AC.MX','GCC.MX','LALA.MX','MEGA.MX','PINFRA.MX','TLEVISACPO.MX','VESTA.MX',
-                'GRUMA.MX','HERDEZ.MX','CUERVO.MX','ORBIA.MX']
+    ibex35    = ['SAN.MC','BBVA.MC','TEF.MC','ITX.MC','IBE.MC','FER.MC','ENG.MC','ACS.MC','REP.MC',
+                 'AENA.MC','CLNX.MC','GRF.MC','MTS.MC','MAP.MC','MEL.MC','CABK.MC','ELE.MC','IAG.MC',
+                 'ANA.MC','VIS.MC','CIE.MC','LOG.MC','ACX.MC']
+    bmv       = ['WALMEX.MX','GMEXICOB.MX','CEMEXCPO.MX','FEMSAUBD.MX','AMXL.MX','KOFUBL.MX',
+                 'GFNORTEO.MX','BBAJIOO.MX','ALFA.MX','ALPEKA.MX','ASURB.MX','GAPB.MX','OMAB.MX',
+                 'AC.MX','GCC.MX','LALA.MX','MEGA.MX','PINFRA.MX','TLEVISACPO.MX','VESTA.MX',
+                 'GRUMA.MX','HERDEZ.MX','CUERVO.MX','ORBIA.MX']
     ia_stocks      = ['NVDA','AMD','INTC','AI','PLTR','IBM','MSFT','GOOGL','META','SNOW','CRM',
                       'ADBE','NOW','ORCL','BIDU','BABA','SAP']
     commodity_etfs = ['GLD','SLV','USO','UNG','DBC']
     mining_oil     = ['NEM','GOLD','FCX','XOM','CVX','COP','EOG','SLB']
 
-    return sp100, nasdaq100, ibex35, bmv, sp500, ia_stocks, commodity_etfs, mining_oil
+    # ── ETFs sectoriales SPDR (11 sectores del S&P 500) ─────
+    # Ventaja: analizas un sector completo con un solo ticker,
+    # evitas el ruido de acciones individuales dentro del sector
+    etfs_sectoriales = [
+        'XLK',   # Tecnología
+        'XLV',   # Salud
+        'XLF',   # Financiero
+        'XLE',   # Energía
+        'XLI',   # Industrial
+        'XLY',   # Consumo discrecional (lujo, autos, retail)
+        'XLP',   # Consumo básico (alimentos, bebidas)
+        'XLU',   # Utilities (electricidad, agua, gas)
+        'XLB',   # Materiales (químicos, minería, papel)
+        'XLRE',  # Real Estate (REITs)
+        'XLC',   # Comunicaciones (Meta, Google, Disney)
+        # ETFs temáticos de alto interés
+        'SOXX',  # Semiconductores (Intel, TSMC, NVDA, AMD)
+        'ARKK',  # Innovación disruptiva (Cathie Wood)
+        'ARKG',  # Genómica e innovación en salud
+        'ARKW',  # Internet de nueva generación
+        'ARKF',  # Fintech e innovación financiera
+        'CIBR',  # Ciberseguridad
+        'ROBO',  # Robótica e IA
+        'ICLN',  # Energías limpias
+        'TAN',   # Solar
+        'LIT',   # Baterías de litio / vehículos eléctricos
+        'JETS',  # Aerolíneas
+        'XHB',   # Construcción de vivienda
+        'KRE',   # Bancos regionales
+        'IBB',   # Biotecnología
+        # ETFs de índice amplios (para comparar vs acciones individuales)
+        'SPY',   # S&P 500
+        'QQQ',   # NASDAQ 100
+        'IWM',   # Russell 2000 (small caps)
+        'DIA',   # Dow Jones
+        'VTI',   # Mercado total EEUU
+    ]
 
-sp100, nasdaq100, ibex35, bmv, sp500, ia_stocks, commodity_etfs, mining_oil = cargar_listas()
+    # ── Mid-cap growth (capitalización $2B–$20B, alto crecimiento) ──
+    # Más volátiles que el S&P 500 pero con mayor potencial de retorno.
+    # Liquidez suficiente para operar sin problemas de spread.
+    mid_cap_growth = [
+        # Tecnología / Software
+        'DDOG',  # Datadog — monitoreo en la nube
+        'NET',   # Cloudflare — seguridad y red
+        'CRWD',  # CrowdStrike — ciberseguridad
+        'ZS',    # Zscaler — seguridad zero-trust
+        'GTLB',  # GitLab — DevOps
+        'BILL',  # Bill.com — automatización financiera
+        'DUOL',  # Duolingo — edtech
+        'CELH',  # Celsius Holdings — bebidas energéticas
+        'AXON',  # Axon — cámaras policiales / Taser
+        'SMCI',  # Super Micro Computer — servidores IA
+        'HUBS',  # HubSpot — CRM marketing
+        'MNDY',  # Monday.com — gestión de proyectos
+        'APPN',  # Appian — low-code
+        'PCTY',  # Paylocity — RRHH / nómina
+        'FIVN',  # Five9 — call center en la nube
+        'RELY',  # Remitly — remesas digitales
+        'PATH',  # UiPath — automatización RPA
+        'SMAR',  # Smartsheet — gestión proyectos
+        'JAMF',  # Jamf — gestión dispositivos Apple
+        # Salud / Biotech
+        'EXAS',  # Exact Sciences — diagnóstico cancer
+        'IRHF',  # Inspire Medical — implantes
+        'NVCR',  # NovoCure — oncología
+        'FATE',  # Fate Therapeutics — terapia celular
+        'RXRX',  # Recursion — IA + farmacología
+        # Consumo / Fintech
+        'AFRM',  # Affirm — BNPL (buy now pay later)
+        'UPST',  # Upstart — crédito con IA
+        'HOOD',  # Robinhood — trading retail
+        'SQ',    # Block (Square) — pagos
+        'SOFI',  # SoFi — banca digital
+        'MELI',  # MercadoLibre — ecommerce LATAM
+        'NU',    # Nubank — fintech LATAM
+        # Energía limpia / EV
+        'ENPH',  # Enphase — microinversores solares
+        'PLUG',  # Plug Power — hidrógeno verde
+        'CHPT',  # ChargePoint — carga VE
+        'RIVN',  # Rivian — camionetas eléctricas
+        'LCID',  # Lucid Motors — autos eléctricos premium
+        # Industrial / Defensa
+        'KTOS',  # Kratos Defense — drones militares
+        'RKLB',  # Rocket Lab — lanzamiento espacial
+        'ACHR',  # Archer Aviation — taxis aéreos
+    ]
+
+    # ── ETFs de mercados emergentes ──────────────────────────
+    # Diversificación geográfica; útil cuando el mercado EEUU está en corrección
+    etfs_emergentes = [
+        'EWZ',   # Brasil
+        'EWJ',   # Japón
+        'FXI',   # China (grandes caps)
+        'KWEB',  # Internet china (Alibaba, Tencent, JD)
+        'EWY',   # Corea del Sur (Samsung, SK Hynix)
+        'EWT',   # Taiwán (TSMC peso alto)
+        'EWH',   # Hong Kong
+        'EWA',   # Australia
+        'EWC',   # Canadá
+        'EWG',   # Alemania
+        'EWQ',   # Francia
+        'EWU',   # Reino Unido
+        'VWO',   # Emergentes amplio (diversificado)
+        'EEM',   # Emergentes amplio (iShares)
+        'INDA',  # India
+        'EWX',   # Small caps emergentes
+    ]
+
+    return (sp100, nasdaq100, ibex35, bmv, sp500,
+            ia_stocks, commodity_etfs, mining_oil,
+            etfs_sectoriales, mid_cap_growth, etfs_emergentes)
+
+(sp100, nasdaq100, ibex35, bmv, sp500,
+ ia_stocks, commodity_etfs, mining_oil,
+ etfs_sectoriales, mid_cap_growth, etfs_emergentes) = cargar_listas()
 
 # ============================================================
 # SIDEBAR
 # ============================================================
 st.sidebar.header("⚙️ Parámetros")
 
+# Universo balanceado recomendado: S&P 500 + ETFs sectoriales + mid-cap growth
+universo_recomendado = list(set(sp100 + etfs_sectoriales + mid_cap_growth))
+
 mercado_opciones = {
-    "Prueba (AAPL, MSFT, NVDA, TSLA)": ['AAPL','MSFT','NVDA','TSLA'],
-    "S&P 100":                          sp100,
-    "S&P 500 (completo)":               sp500,
-    "NASDAQ 100":                       nasdaq100,
-    "IBEX 35":                          ibex35,
-    "BMV":                              bmv,
-    "IA (Inteligencia Artificial)":     ia_stocks,
-    "Commodities (ETFs)":               commodity_etfs,
-    "Mineras y Petroleras":             mining_oil,
-    "Todos (completo)":                 list(set(sp500 + nasdaq100 + ibex35 + bmv +
-                                                  ia_stocks + commodity_etfs + mining_oil)),
+    "⚡ Prueba rápida (12 tickers)":          ['AAPL','MSFT','NVDA','TSLA','QQQ','SPY',
+                                                'DDOG','NET','CRWD','XLK','XLF','SOXX'],
+    "⭐ Recomendado (S&P100 + ETFs + Growth)": universo_recomendado,
+    "📊 S&P 100":                              sp100,
+    "📊 S&P 500 (completo)":                   sp500,
+    "📊 NASDAQ 100":                           nasdaq100,
+    "🏛️ ETFs sectoriales (30)":               etfs_sectoriales,
+    "🚀 Mid-cap growth (38)":                  mid_cap_growth,
+    "🌎 ETFs mercados emergentes (16)":        etfs_emergentes,
+    "🤖 IA (Inteligencia Artificial)":         ia_stocks,
+    "🪙 Commodities (ETFs)":                   commodity_etfs,
+    "⛏️ Mineras y Petroleras":                mining_oil,
+    "🇲🇽 BMV México":                          bmv,
+    "🇪🇸 IBEX 35":                             ibex35,
+    "🌐 Todo USA (S&P500 + ETFs + Growth)":   list(set(sp500 + etfs_sectoriales + mid_cap_growth)),
+    "🌍 Global completo":                      list(set(
+        sp500 + nasdaq100 + ibex35 + bmv +
+        ia_stocks + commodity_etfs + mining_oil +
+        etfs_sectoriales + mid_cap_growth + etfs_emergentes
+    )),
 }
-mercado_seleccionado = st.sidebar.selectbox("📊 Mercado", list(mercado_opciones.keys()), index=0)
+mercado_seleccionado = st.sidebar.selectbox("📊 Mercado", list(mercado_opciones.keys()), index=1)
+
+# Hint de cuántos tickers tiene el mercado seleccionado
+n_tickers = len(mercado_opciones[mercado_seleccionado])
+tiempo_est = round(n_tickers * 0.08)   # ~0.08s por ticker con 10 hilos
+st.sidebar.caption(f"{n_tickers} tickers · tiempo estimado: ~{tiempo_est}s")
 
 # Opciones de análisis
 st.sidebar.markdown("### 🔧 Análisis")
