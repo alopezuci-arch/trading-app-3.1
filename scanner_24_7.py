@@ -72,7 +72,7 @@ WHATSAPP_APIKEY   = os.environ.get("WHATSAPP_APIKEY",   "")
 # ── APIs de IA — el sistema intenta en orden hasta que una funcione ──
 # Configura en GitHub Secrets solo las que tengas.
 # Prioridad: Gemini (gratis) → Groq (gratis) → Anthropic (pago)
-GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY",    "")  # gratis: aistudio.google.com
+GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY",    "AIzaSyA7zfLt3edQywel3Guyom0o7HXiRzNWmAk")  # gratis: aistudio.google.com
 GROQ_API_KEY      = os.environ.get("GROQ_API_KEY",      "")  # gratis: console.groq.com
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")  # pago:   console.anthropic.com
 
