@@ -36,6 +36,14 @@ st.markdown(f"**Última actualización:** {datetime.now().strftime('%d/%m/%Y %H:
 # ============================================================
 EMAIL_DESTINO   = "alopez.uci@gmail.com"
 
+# ── APIs de IA — el sistema usa la primera key disponible ───
+# Prioridad: Gemini (gratis) → Groq (gratis) → Anthropic (pago)
+# En Streamlit Cloud: Settings → Secrets → agrega la que tengas
+import os
+GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY",    "")  # aistudio.google.com
+GROQ_API_KEY      = os.environ.get("GROQ_API_KEY",      "")  # console.groq.com
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")  # console.anthropic.com
+
 # ── WhatsApp vía CallMeBot (gratis) ─────────────────────────
 # Instrucciones de activación en: https://www.callmebot.com/blog/free-api-whatsapp-messages/
 # 1. Agrega el número +34 644 66 83 41 a tus contactos como "CallMeBot"
@@ -273,6 +281,8 @@ filtro_fundamentales = st.sidebar.checkbox("📊 Solo fundamentales sólidos", v
 backtesting_check    = st.sidebar.checkbox("🧪 Backtesting (últimos 6 meses)", value=False)
 market_regime_check  = st.sidebar.checkbox("🌡️ Filtrar por Market Regime", value=True,
                            help="Si el S&P 500 está en tendencia bajista (bajo su EMA200), oculta señales de compra arriesgadas.")
+ia_check = st.sidebar.checkbox("🤖 Análisis IA (Claude)", value=True,
+               help="Claude analiza las mejores oportunidades y da su evaluación en lenguaje natural. Requiere ANTHROPIC_API_KEY.")
 
 # Position sizing
 st.sidebar.markdown("### 💼 Gestión de capital")
@@ -346,7 +356,7 @@ def enviar_whatsapp(mensaje: str):
         st.error(f"Error al enviar WhatsApp: {e}")
         return False
 
-def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame) -> str:
+def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame, resumen_ia: str = "") -> str:
     """Construye el cuerpo HTML del correo de alertas."""
     fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
     filas_compra = ""
@@ -361,9 +371,18 @@ def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame) -> s
             f"<tr><td><b>{r['Símbolo']}</b></td><td>{r['Precio (MXN)']}</td>"
             f"<td>{r.get('Motivo','')}</td></tr>"
         )
+    bloque_ia = ""
+    if resumen_ia:
+        bloque_ia = f"""
+        <h3 style="color:#7b61ff">🤖 Análisis de IA</h3>
+        <div style="background:#f5f3ff;padding:12px 16px;border-left:4px solid #7b61ff;border-radius:4px;font-size:14px;line-height:1.6">
+          {resumen_ia.replace(chr(10), '<br>')}
+        </div>"""
+
     return f"""
     <html><body style="font-family:Arial,sans-serif;max-width:700px">
     <h2 style="color:#1a73e8">📈 Alerta de Trading — {fecha}</h2>
+    {bloque_ia}
 
     <h3 style="color:#34a853">🟢 Señales de COMPRA ({len(compras_df)})</h3>
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
@@ -378,7 +397,7 @@ def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame) -> s
     </table>
 
     <p style="color:#666;font-size:12px;margin-top:20px">
-      Generado por Sistema de Trading Personal v2.0<br>
+      Generado por Sistema de Trading Personal v2.0 con IA<br>
       Este mensaje es informativo, no constituye asesoría financiera.
     </p>
     </body></html>
@@ -609,6 +628,86 @@ def obtener_fundamentales(simbolo: str) -> dict:
         }
     except:
         return {}
+
+# ============================================================
+# ANÁLISIS IA — Gemini (gratis), Groq (gratis) o Anthropic (pago)
+# Usa automáticamente la primera key disponible en ese orden
+# ============================================================
+def _prompt_trading(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
+    resumen = "\n".join([
+        f"- {o['Símbolo']}: Score {o['Score']}/14, RSI {o['RSI']}, "
+        f"ATR {o['ATR']}, Señales: {o.get('Señales','—')}, Motivo: {o['Motivo']}"
+        for o in oportunidades[:8]
+    ])
+    return f"""Eres un analista de mercados financieros experto. Analiza estas señales técnicas de trading y da tu evaluación profesional en español.
+
+CONTEXTO DE MERCADO HOY:
+- Régimen S&P 500: {regime.get('regime','DESCONOCIDO')}
+- S&P 500 precio: {regime.get('precio_sp500',0):,.0f}
+- Distancia a EMA200: {((regime.get('precio_sp500',1)/regime.get('ema200_sp500',1))-1)*100:.1f}%
+- RSI del S&P 500: {regime.get('rsi_sp500',0)}
+- Retorno último mes: {regime.get('ret_1m',0):+.1f}%
+- Tipo de cambio USD/MXN: {usd_mxn:.2f}
+
+OPORTUNIDADES DETECTADAS (top por score):
+{resumen}
+
+Por favor proporciona:
+1. Una evaluación del contexto de mercado actual (2-3 oraciones)
+2. Tu opinión sobre las 3 mejores oportunidades de la lista
+3. Nivel de confianza general: ALTO / MEDIO / BAJO con justificación
+4. Una advertencia si ves algo preocupante
+
+Sé directo y conciso. No inventes datos. Esto es análisis informativo, no asesoría financiera garantizada."""
+
+
+def analisis_ia_claude(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
+    """Llama al primer proveedor de IA disponible: Gemini → Groq → Anthropic."""
+    if not oportunidades:
+        return ""
+    prompt = _prompt_trading(oportunidades, regime, usd_mxn)
+
+    # ── Gemini (completamente gratis) ──────────────────────
+    if GEMINI_API_KEY:
+        try:
+            url  = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+                    f"gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}")
+            resp = requests.post(url, json={"contents":[{"parts":[{"text":prompt}]}]}, timeout=30)
+            if resp.status_code == 200:
+                return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception as e:
+            st.warning(f"Gemini falló, probando siguiente proveedor... ({e})")
+
+    # ── Groq (completamente gratis, muy rápido) ─────────────
+    if GROQ_API_KEY:
+        try:
+            resp = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+                json={"model":"llama-3.1-70b-versatile","messages":[{"role":"user","content":prompt}],"max_tokens":800},
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                return resp.json()["choices"][0]["message"]["content"]
+        except Exception as e:
+            st.warning(f"Groq falló, probando siguiente proveedor... ({e})")
+
+    # ── Anthropic Claude (pago, ~$0.003 por análisis) ───────
+    if ANTHROPIC_API_KEY:
+        try:
+            resp = requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={"Content-Type":"application/json","x-api-key":ANTHROPIC_API_KEY,"anthropic-version":"2023-06-01"},
+                json={"model":"claude-sonnet-4-20250514","max_tokens":800,"messages":[{"role":"user","content":prompt}]},
+                timeout=30,
+            )
+            if resp.status_code == 200:
+                return resp.json()["content"][0]["text"]
+        except Exception as e:
+            st.error(f"Anthropic falló: {e}")
+
+    return "⚠️ Ningún proveedor de IA disponible. Configura GEMINI_API_KEY o GROQ_API_KEY en los Secrets."
+
 
 def puntaje_fundamental(row: pd.Series) -> int:
     score = 0
@@ -1038,14 +1137,34 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     col3.metric("👀 Observar",   len(observar))
     col4.metric("🚫 Evitar",     len(evitar))
 
+    # ── Análisis IA ─────────────────────────────────────────
+    if ia_check:
+        tiene_key = GEMINI_API_KEY or GROQ_API_KEY or ANTHROPIC_API_KEY
+        if not tiene_key:
+            st.info("🤖 Análisis IA desactivado. Agrega en Streamlit Cloud → Settings → Secrets:\n"
+                    "- `GEMINI_API_KEY` (gratis en aistudio.google.com)\n"
+                    "- `GROQ_API_KEY` (gratis en console.groq.com)\n"
+                    "- `ANTHROPIC_API_KEY` (pago en console.anthropic.com)")
+        elif not compras.empty:
+            with st.spinner("🤖 Claude está analizando las oportunidades..."):
+                top_ops = compras.head(8).to_dict('records')
+                analisis_texto = analisis_ia_claude(top_ops, regime_data, usd_mxn)
+
+            with st.expander("🤖 Análisis de IA — Claude", expanded=True):
+                st.markdown(analisis_texto)
+                st.caption("Este análisis es generado por IA con fines informativos. No constituye asesoría financiera.")
+            st.session_state['ultimo_analisis_ia'] = analisis_texto
+
     # ── Alertas automáticas ─────────────────────────────────
     compras_alerta = compras[compras['Score'] >= umbral_score]
+    resumen_ia     = st.session_state.get('ultimo_analisis_ia', '')
+
     if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
         with st.spinner("📤 Enviando alertas..."):
 
             if alerta_email:
-                html   = construir_email_html(compras_alerta, ventas)
-                ok     = enviar_email(f"📈 Alerta Trading {datetime.now().strftime('%d/%m %H:%M')}", html)
+                html = construir_email_html(compras_alerta, ventas, resumen_ia)
+                ok   = enviar_email(f"📈 Alerta Trading {datetime.now().strftime('%d/%m %H:%M')}", html)
                 if ok:
                     st.success(f"📧 Email enviado a {EMAIL_DESTINO}")
 
