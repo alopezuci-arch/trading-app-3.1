@@ -1,43 +1,26 @@
 """
 ============================================================
 SCANNER DE TRADING AUTÓNOMO 24/7
-============================================================
-Corre sin Streamlit — diseñado para GitHub Actions (cron).
-Analiza ~650 activos, consulta IA y envía alertas automáticas.
-
-CONFIGURACIÓN EN GITHUB ACTIONS:
-  1. Sube este archivo (scanner_24_7.py) a la raíz de tu repo
-  2. Sube el archivo scanner.yml a .github/workflows/scanner.yml
-  3. Ve a tu repo → Settings → Secrets and variables → Actions
-  4. Agrega estos secrets (mínimo los 3 primeros):
-
-       GEMINI_API_KEY    → gratis en aistudio.google.com
-       EMAIL_REMITENTE   → tu cuenta Gmail
-       EMAIL_PASSWORD    → contraseña de aplicación Gmail (16 chars)
-
-       Opcionales:
-       GROQ_API_KEY      → gratis en console.groq.com
-       WHATSAPP_NUMERO   → tu número ej: 521234567890
-       WHATSAPP_APIKEY   → key de CallMeBot
+Con historial de señales, backtesting y caché de IA
 ============================================================
 """
 
 import os
 import smtplib
 import requests
-import numpy  as np
+import numpy as np
 import pandas as pd
 import yfinance as yf
 import json
 import hashlib
 import time
-from datetime                import datetime
-from email.mime.text         import MIMEText
-from email.mime.multipart    import MIMEMultipart
-from concurrent.futures      import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ============================================================
-# CONFIGURACIÓN — se leen de variables de entorno (GitHub Secrets)
+# CONFIGURACIÓN
 # ============================================================
 EMAIL_REMITENTE   = os.environ.get("EMAIL_REMITENTE",   "")
 EMAIL_PASSWORD    = os.environ.get("EMAIL_PASSWORD",    "")
@@ -45,20 +28,18 @@ EMAIL_DESTINO     = "alopez.uci@gmail.com"
 WHATSAPP_NUMERO   = os.environ.get("WHATSAPP_NUMERO",   "")
 WHATSAPP_APIKEY   = os.environ.get("WHATSAPP_APIKEY",   "")
 
-# ── APIs de IA — el sistema intenta en orden hasta que una funcione ──
 GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY",    "")
 GROQ_API_KEY      = os.environ.get("GROQ_API_KEY",      "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-# ── Parámetros del scanner ──────────────────────────────────
-SCORE_MINIMO     = 7       # mínimo para considerar COMPRAR
-CAPITAL_TRADING  = 25_000  # MXN destinados a trading activo
-RIESGO_PCT       = 1.0     # % de capital a arriesgar por trade
-MAX_WORKERS      = 20      # hilos paralelos
-
-# ── Caché de IA ────────────────────────────────────────────
-CACHE_DIR = "cache_ia"
-CACHE_TTL = 3600  # segundos (1 hora)
+SCORE_MINIMO     = 7
+CAPITAL_TRADING  = 25_000
+RIESGO_PCT       = 1.0
+MAX_WORKERS      = 20
+CACHE_DIR        = "cache_ia"
+CACHE_TTL        = 3600
+HISTORICO_FILE   = "historial_senales.csv"
+BACKTEST_WINDOW  = 5   # días hábiles para evaluar retorno
 
 # ============================================================
 # UNIVERSO COMPLETO (≈700 activos)
@@ -95,7 +76,7 @@ UNIVERSO = list(set([
     'TRV','TRMB','TFC','TYL','TSN','UDR','ULTA','USB','UHS','UNP','UAL','UNH','UPS','URI',
     'VTR','VLO','VTRS','VRSN','VZ','VRTX','VFC','VNO','VMC','WAB','WBA','WMT','WDC','WU',
     'WRK','WY','WHR','WMB','WEC','WFC','WST','WYNN','XEL','XYL','YUM','ZBRA','ZBH','ZION','ZTS',
-    # NASDAQ 100 (adicionales no en S&P 500)
+    # NASDAQ 100 (adicionales)
     'ASML','CDNS','CHTR','CSX','CTAS','EA','LULU','MELI','MNST','NXPI',
     'PANW','PCAR','REGN','SNPS','WDAY','ZM','ZS','SGEN','TTD','TCOM',
     # IA / Tech adicional
@@ -128,7 +109,7 @@ UNIVERSO = list(set([
 ]))
 
 # ============================================================
-# FUNCIONES AUXILIARES (indicadores, scoring, position sizing)
+# INDICADORES TÉCNICOS
 # ============================================================
 def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist = hist.copy()
@@ -161,61 +142,72 @@ def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
 def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
     score, señales = 0, []
     if r['EMA20'] > r['EMA50']:
-        score += 2; señales.append("EMA alcista")
-        if p and p.get('EMA20',0) <= p.get('EMA50',1):
-            score += 1; señales.append("Golden Cross")
+        score += 2
+        señales.append("EMA alcista")
+        if p and p.get('EMA20', 0) <= p.get('EMA50', 1):
+            score += 1
+            señales.append("Golden Cross")
     rsi = r['RSI']
     if 45 <= rsi <= 65:
-        score += 2; señales.append(f"RSI {rsi:.0f} óptimo")
+        score += 2
+        señales.append(f"RSI {rsi:.0f} óptimo")
     elif 30 <= rsi < 45:
-        score += 1; señales.append(f"RSI {rsi:.0f} rebote")
+        score += 1
+        señales.append(f"RSI {rsi:.0f} rebote")
     if r['MACD'] > r['MACD_sig']:
-        score += 2; señales.append("MACD positivo")
-        if p and p.get('MACD',1) <= p.get('MACD_sig',0):
-            score += 1; señales.append("Cruce MACD")
+        score += 2
+        señales.append("MACD positivo")
+        if p and p.get('MACD', 1) <= p.get('MACD_sig', 0):
+            score += 1
+            señales.append("Cruce MACD")
     if r['Volume'] > r['Vol_avg'] * 1.2:
-        score += 1; señales.append("Volumen alto")
+        score += 1
+        señales.append("Volumen alto")
     bp = r.get('BB_pct')
     if bp is not None and not np.isnan(bp):
         if bp < 0.2:
-            score += 2; señales.append("Banda BB inferior")
+            score += 2
+            señales.append("Banda BB inferior")
         elif bp < 0.4:
-            score += 1; señales.append("BB zona baja")
+            score += 1
+            señales.append("BB zona baja")
     sk, sd = r.get('STOCH_K', np.nan), r.get('STOCH_D', np.nan)
     if not (np.isnan(sk) or np.isnan(sd)) and 20 <= sk <= 50 and sk > sd:
-        score += 1; señales.append(f"Stoch {sk:.0f}")
+        score += 1
+        señales.append(f"Stoch {sk:.0f}")
     dist = (r['Close'] / r['EMA50'] - 1) * 100
     if -3 <= dist <= 0:
-        score += 1; señales.append("Rebote EMA50")
+        score += 1
+        señales.append("Rebote EMA50")
     return score, señales
 
 def obtener_market_regime() -> dict:
     try:
-        sp   = yf.Ticker("^GSPC").history(period="1y")
+        sp = yf.Ticker("^GSPC").history(period="1y")
         if sp.empty or len(sp) < 200:
-            return {'regime':'DESCONOCIDO','score_bonus':0,'precio':0,'ema200':0,'ret_1m':0}
+            return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0, 'ret_1m': 0}
         precio = sp['Close'].iloc[-1]
         ema200 = sp['Close'].ewm(span=200).mean().iloc[-1]
         ema50  = sp['Close'].ewm(span=50).mean().iloc[-1]
         ret_1m = (precio / sp['Close'].iloc[-20] - 1) * 100 if len(sp) >= 20 else 0
         if precio > ema200 and precio > ema50 and ema50 > ema200:
-            return {'regime':'ALCISTA', 'score_bonus':0, 'precio':precio,'ema200':ema200,'ret_1m':ret_1m}
+            return {'regime': 'ALCISTA', 'score_bonus': 0, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m}
         elif precio > ema200:
-            return {'regime':'LATERAL', 'score_bonus':-1, 'precio':precio,'ema200':ema200,'ret_1m':ret_1m}
+            return {'regime': 'LATERAL', 'score_bonus': -1, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m}
         else:
-            return {'regime':'BAJISTA', 'score_bonus':-3, 'precio':precio,'ema200':ema200,'ret_1m':ret_1m}
+            return {'regime': 'BAJISTA', 'score_bonus': -3, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m}
     except:
-        return {'regime':'DESCONOCIDO','score_bonus':0,'precio':0,'ema200':0,'ret_1m':0}
+        return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0, 'ret_1m': 0}
 
 def position_size(precio: float, atr: float) -> dict:
-    riesgo_mxn  = CAPITAL_TRADING * (RIESGO_PCT / 100)
-    stop_dist   = 2 * atr
+    riesgo_mxn = CAPITAL_TRADING * (RIESGO_PCT / 100)
+    stop_dist  = 2 * atr
     if stop_dist <= 0:
-        return {'unidades':0,'inversion':0}
-    unidades  = riesgo_mxn / stop_dist
-    inversion = min(unidades * precio, CAPITAL_TRADING * 0.20)
-    unidades  = inversion / precio
-    return {'unidades': round(unidades,2), 'inversion': round(inversion,2)}
+        return {'unidades': 0, 'inversion': 0}
+    unidades   = riesgo_mxn / stop_dist
+    inversion  = min(unidades * precio, CAPITAL_TRADING * 0.20)
+    unidades   = inversion / precio
+    return {'unidades': round(unidades, 2), 'inversion': round(inversion, 2)}
 
 def analizar(args: tuple) -> dict | None:
     simbolo, usd_mxn, regime_bonus = args
@@ -224,10 +216,10 @@ def analizar(args: tuple) -> dict | None:
         if hist.empty or len(hist) < 55:
             return None
         factor = 1.0 if simbolo.endswith('.MX') else usd_mxn
-        for c in ['Close','Open','High','Low']:
+        for c in ['Close', 'Open', 'High', 'Low']:
             hist[c] *= factor
         hist = calcular_indicadores(hist)
-        hist = hist.dropna(subset=['RSI','MACD','EMA20','EMA50','ATR'])
+        hist = hist.dropna(subset=['RSI', 'MACD', 'EMA20', 'EMA50', 'ATR'])
         if len(hist) < 2:
             return None
         r = hist.iloc[-1].to_dict()
@@ -260,6 +252,63 @@ def analizar(args: tuple) -> dict | None:
         }
     except:
         return None
+
+# ============================================================
+# HISTORIAL Y BACKTESTING
+# ============================================================
+def cargar_historial() -> pd.DataFrame:
+    if os.path.exists(HISTORICO_FILE):
+        return pd.read_csv(HISTORICO_FILE)
+    return pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales'])
+
+def guardar_senal_en_historial(senal: dict, fecha: str):
+    df = cargar_historial()
+    nueva = pd.DataFrame([{
+        'fecha': fecha,
+        'simbolo': senal['Símbolo'],
+        'score': senal['Score'],
+        'precio': senal['Precio MXN'],
+        'recomendacion': senal['Recomendación'],
+        'señales': senal.get('Señales', '')
+    }])
+    df = pd.concat([df, nueva], ignore_index=True)
+    df['fecha'] = pd.to_datetime(df['fecha'])
+    cutoff = datetime.now() - timedelta(days=90)
+    df = df[df['fecha'] >= cutoff]
+    df.to_csv(HISTORICO_FILE, index=False)
+    print(f"  ✅ Señal guardada en historial: {senal['Símbolo']} (Score {senal['Score']})")
+
+def backtest_historial(df_hist: pd.DataFrame) -> dict:
+    if df_hist.empty:
+        return {'win_rate': 0, 'ret_prom': 0, 'total': 0}
+    resultados = []
+    for _, row in df_hist.iterrows():
+        try:
+            ticker = yf.Ticker(row['simbolo'])
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=180)
+            hist = ticker.history(start=start_date, end=end_date)
+            if hist.empty:
+                continue
+            fecha_senal = pd.to_datetime(row['fecha'])
+            idx = hist.index.searchsorted(fecha_senal)
+            if idx + BACKTEST_WINDOW >= len(hist):
+                continue
+            precio_entrada = row['precio']
+            precio_salida = hist['Close'].iloc[idx + BACKTEST_WINDOW]
+            retorno = (precio_salida / precio_entrada - 1) * 100
+            resultados.append(retorno)
+        except:
+            continue
+    if resultados:
+        win_rate = sum(1 for r in resultados if r > 0) / len(resultados) * 100
+        ret_prom = np.mean(resultados)
+        return {
+            'win_rate': round(win_rate, 1),
+            'ret_prom': round(ret_prom, 2),
+            'total': len(resultados)
+        }
+    return {'win_rate': 0, 'ret_prom': 0, 'total': 0}
 
 # ============================================================
 # IA CON CACHÉ Y REINTENTOS
@@ -354,10 +403,10 @@ def _ia_groq(prompt: str) -> str:
         "https://api.groq.com/openai/v1/chat/completions",
         headers={
             "Authorization": f"Bearer {GROQ_API_KEY}",
-            "Content-Type":  "application/json",
+            "Content-Type": "application/json",
         },
         json={
-            "model":    "llama-3.1-70b-versatile",
+            "model": "llama-3.1-70b-versatile",
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 800,
         },
@@ -371,14 +420,14 @@ def _ia_anthropic(prompt: str) -> str:
     resp = requests.post(
         "https://api.anthropic.com/v1/messages",
         headers={
-            "Content-Type":      "application/json",
-            "x-api-key":         ANTHROPIC_API_KEY,
+            "Content-Type": "application/json",
+            "x-api-key": ANTHROPIC_API_KEY,
             "anthropic-version": "2023-06-01",
         },
         json={
-            "model":      "claude-sonnet-4-20250514",
+            "model": "claude-sonnet-4-20250514",
             "max_tokens": 800,
-            "messages":   [{"role": "user", "content": prompt}],
+            "messages": [{"role": "user", "content": prompt}],
         },
         timeout=30,
     )
@@ -389,21 +438,16 @@ def _ia_anthropic(prompt: str) -> str:
 def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
     if not oportunidades:
         return ""
-
     prompt = _construir_prompt(oportunidades, regime, usd_mxn)
-
-    # Intentar caché
     cache = _obtener_cache_ia(prompt)
     if cache:
         print("  ✅ Análisis IA obtenido desde caché")
         return cache
-
     proveedores = [
         ("Gemini", GEMINI_API_KEY),
         ("Groq", GROQ_API_KEY),
         ("Anthropic", ANTHROPIC_API_KEY),
     ]
-
     for nombre, api_key in proveedores:
         if not api_key:
             continue
@@ -415,22 +459,21 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
             return texto
         except Exception as e:
             print(f"  ⚠️  {nombre} falló después de reintentos: {e}")
-
     print("  ⚠️  Ningún proveedor de IA disponible. Configura al menos uno en GitHub Secrets.")
     return ""
 
 # ============================================================
-# ALERTAS
+# ALERTAS (EMAIL Y WHATSAPP)
 # ============================================================
 def enviar_email(asunto: str, html: str) -> bool:
     if not EMAIL_REMITENTE or not EMAIL_PASSWORD:
         print("⚠️  EMAIL_REMITENTE o EMAIL_PASSWORD no configurados")
         return False
     try:
-        msg            = MIMEMultipart("alternative")
+        msg = MIMEMultipart("alternative")
         msg["Subject"] = asunto
-        msg["From"]    = EMAIL_REMITENTE
-        msg["To"]      = EMAIL_DESTINO
+        msg["From"] = EMAIL_REMITENTE
+        msg["To"] = EMAIL_DESTINO
         msg.attach(MIMEText(html, "html"))
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
             s.login(EMAIL_REMITENTE, EMAIL_PASSWORD)
@@ -487,7 +530,7 @@ def construir_email(ops: list[dict], regime: dict, ia_texto: str, hora: str) -> 
       <tr style="background:#e8f5e9">
         <th>Símbolo</th><th>Precio MXN</th><th>Score</th>
         <th>Unidades</th><th>Inversión</th><th>Recomendación</th>
-       </tr>
+      </tr>
       {filas if filas else '<tr><td colspan="6" style="text-align:center">Sin señales</td></tr>'}
     </table>
     <p style="color:#999;font-size:11px;margin-top:20px">
@@ -508,7 +551,7 @@ def main():
     # 1. Tipo de cambio
     try:
         usd_data = yf.Ticker("USDMXN=X").history(period="1d")
-        usd_mxn  = float(usd_data['Close'].iloc[-1]) if not usd_data.empty else 20.0
+        usd_mxn = float(usd_data['Close'].iloc[-1]) if not usd_data.empty else 20.0
     except:
         usd_mxn = 20.0
     print(f"USD/MXN: {usd_mxn:.2f}")
@@ -517,7 +560,6 @@ def main():
     print("Evaluando régimen de mercado...")
     regime = obtener_market_regime()
     print(f"Régimen: {regime['regime']} (bonus score: {regime['score_bonus']})")
-
     if regime['regime'] == 'BAJISTA':
         print("⚠️  Mercado bajista — score mínimo elevado automáticamente a 9")
         score_minimo_efectivo = 9
@@ -527,7 +569,7 @@ def main():
     # 3. Análisis en paralelo
     print(f"\nAnalizando {len(UNIVERSO)} activos en paralelo ({MAX_WORKERS} hilos)...")
     resultados = []
-    args_list  = [(sim, usd_mxn, regime['score_bonus']) for sim in UNIVERSO]
+    args_list = [(sim, usd_mxn, regime['score_bonus']) for sim in UNIVERSO]
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
         futures = {ex.submit(analizar, a): a[0] for a in args_list}
@@ -544,14 +586,29 @@ def main():
         print(f"  {r['Símbolo']:8s} Score:{r['Score']:2d}  RSI:{r['RSI']:5.1f}  "
               f"Precio:{r['Precio MXN']:>10.2f}  {r['Recomendación']}")
 
-    # 4. Análisis IA
+    # 4. Guardar en historial
+    print("\nGuardando señales en historial...")
+    fecha_hoy = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for senal in resultados:
+        guardar_senal_en_historial(senal, fecha_hoy)
+
+    # 5. Backtesting sobre historial
+    print("\nEjecutando backtesting sobre señales previas...")
+    hist_df = cargar_historial()
+    metrics = backtest_historial(hist_df)
+    print(f"  Backtest (ventana {BACKTEST_WINDOW} días):")
+    print(f"    - Total señales evaluadas: {metrics['total']}")
+    print(f"    - Win rate: {metrics['win_rate']}%")
+    print(f"    - Retorno promedio: {metrics['ret_prom']}%")
+
+    # 6. Análisis IA
     print("\nConsultando IA para análisis...")
     ia_texto = analisis_ia(resultados, regime, usd_mxn)
     if ia_texto:
         print("\n--- ANÁLISIS IA ---")
         print(ia_texto[:500] + "..." if len(ia_texto) > 500 else ia_texto)
 
-    # 5. Alertas (solo si hay oportunidades)
+    # 7. Alertas (solo si hay oportunidades)
     if resultados:
         html = construir_email(resultados, regime, ia_texto, hora)
         asunto = (f"📈 Trading Alert {hora} — "
@@ -560,14 +617,12 @@ def main():
 
         top3 = ", ".join([r['Símbolo'] for r in resultados[:3]])
         confianza = "ALTA" if regime['regime'] == 'ALCISTA' else "MEDIA" if regime['regime'] == 'LATERAL' else "BAJA"
-        msg_wa = (
-            f"📈 *Scanner Trading* — {hora}\n"
-            f"Régimen: {regime['regime']} | USD/MXN: {usd_mxn:.2f}\n"
-            f"🟢 {len(resultados)} oportunidades\n"
-            f"Top 3: {top3}\n"
-            f"Confianza: {confianza}\n"
-            f"Ver detalles en tu email"
-        )
+        msg_wa = (f"📈 *Scanner Trading* — {hora}\n"
+                  f"Régimen: {regime['regime']} | USD/MXN: {usd_mxn:.2f}\n"
+                  f"🟢 {len(resultados)} oportunidades\n"
+                  f"Top 3: {top3}\n"
+                  f"Confianza: {confianza}\n"
+                  f"Ver detalles en tu email")
         enviar_whatsapp(msg_wa)
     else:
         print("Sin oportunidades que superen el umbral. No se envían alertas.")
