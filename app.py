@@ -659,14 +659,13 @@ if 'df' in st.session_state:
     compras = st.session_state['compras']
     ventas = st.session_state['ventas']
     observar = st.session_state['observar']
-    evitar = st.session_state['EVITAR']
     usd_mxn = st.session_state['usd_mxn']
     eur_mxn = st.session_state['eur_mxn']
     fundamentales_check = st.session_state['fund_check']
     regime_data = st.session_state['regime']
 
     st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
-
+    evitar = df[df['Recomendación'] == 'EVITAR']
     # Mostrar resumen del market regime
     icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴','DESCONOCIDO':'⚪'}.get(regime_data.get('regime','DESCONOCIDO'),'⚪')
     with st.expander(f"{icono_regime} Market Regime: **{regime_data.get('regime','DESCONOCIDO')}** — {regime_data.get('descripcion','')}", expanded=True):
