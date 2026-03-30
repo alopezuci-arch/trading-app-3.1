@@ -3,50 +3,23 @@
 SCANNER DE TRADING AUTÓNOMO 24/7
 ============================================================
 Corre sin Streamlit — diseñado para GitHub Actions (cron).
-Analiza el mercado, llama a Claude para interpretar señales
-y envía alertas por email y/o WhatsApp automáticamente.
+Analiza ~650 activos, consulta IA y envía alertas automáticas.
 
 CONFIGURACIÓN EN GITHUB ACTIONS:
-  1. Ve a tu repo → Settings → Secrets and variables → Actions
-  2. Agrega estos secrets:
-       ANTHROPIC_API_KEY  → tu key de Anthropic
-       EMAIL_REMITENTE    → tu Gmail
-       EMAIL_PASSWORD     → contraseña de aplicación Gmail
-       WHATSAPP_NUMERO    → tu número (ej: 521234567890)
-       WHATSAPP_APIKEY    → key de CallMeBot
+  1. Sube este archivo (scanner_24_7.py) a la raíz de tu repo
+  2. Sube el archivo scanner.yml a .github/workflows/scanner.yml
+  3. Ve a tu repo → Settings → Secrets and variables → Actions
+  4. Agrega estos secrets (mínimo los 3 primeros):
 
-  3. Crea el archivo .github/workflows/scanner.yml (ver abajo)
+       GEMINI_API_KEY    → gratis en aistudio.google.com
+       EMAIL_REMITENTE   → tu cuenta Gmail
+       EMAIL_PASSWORD    → contraseña de aplicación Gmail (16 chars)
 
-WORKFLOW YAML (.github/workflows/scanner.yml):
-----------------------------------------------
-name: Scanner Trading 24/7
-
-on:
-  schedule:
-    - cron: '30 14 * * 1-5'   # 9:30 AM ET (apertura NY) lun-vie
-    - cron: '0 16 * * 1-5'    # 11:00 AM ET (media mañana)
-    - cron: '30 19 * * 1-5'   # 2:30 PM ET (cierre NY)
-  workflow_dispatch:            # también manual desde GitHub
-
-jobs:
-  scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Instalar dependencias
-        run: pip install yfinance pandas numpy requests anthropic
-      - name: Ejecutar scanner
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          EMAIL_REMITENTE:   ${{ secrets.EMAIL_REMITENTE }}
-          EMAIL_PASSWORD:    ${{ secrets.EMAIL_PASSWORD }}
-          WHATSAPP_NUMERO:   ${{ secrets.WHATSAPP_NUMERO }}
-          WHATSAPP_APIKEY:   ${{ secrets.WHATSAPP_APIKEY }}
-        run: python scanner_24_7.py
-----------------------------------------------
+       Opcionales:
+       GROQ_API_KEY      → gratis en console.groq.com
+       WHATSAPP_NUMERO   → tu número ej: 521234567890
+       WHATSAPP_APIKEY   → key de CallMeBot
+============================================================
 """
 
 import os
