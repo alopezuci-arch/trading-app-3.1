@@ -381,7 +381,7 @@ def analizar_accion(args: tuple) -> dict | None:
         elif score >= 8:
             recomendacion = "COMPRAR ★★★"
             motivo        = f"Score {score}/14"
-        elif score >= 3:
+        elif score >= 6:
             recomendacion = "COMPRAR ★★"
             motivo        = f"Score {score}/14"
         elif score >= 4:
@@ -659,6 +659,7 @@ if 'df' in st.session_state:
     compras = st.session_state['compras']
     ventas = st.session_state['ventas']
     observar = st.session_state['observar']
+    evitar = st.session_state['EVITAR']
     usd_mxn = st.session_state['usd_mxn']
     eur_mxn = st.session_state['eur_mxn']
     fundamentales_check = st.session_state['fund_check']
@@ -676,13 +677,14 @@ if 'df' in st.session_state:
         c4.metric("Ret. 1 mes", f"{regime_data.get('ret_1m',0):+.1f}%")
 
     # Métricas
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("✅ Compras",    len(compras))
     col2.metric("🔴 Ventas",     len(ventas))
     col3.metric("👀 Observar",   len(observar))
+    col4.metric("🚫 Evitar",     len(evitar))
 
     # Tabs de resultados
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "📜 HISTORIAL"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "📜 HISTORIAL", "🚫 Evitar"])
 
     cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit',
                  'Unidades','Inversión (MXN)','% Capital','Dist EMA50','Recomendación','Motivo','Señales']
