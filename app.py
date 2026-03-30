@@ -851,7 +851,23 @@ if 'df' in st.session_state:
         )
     except ImportError:
         st.warning("⚠️ openpyxl no instalado. No se puede generar Excel.")
-
+# ============================================================
+# HISTORIAL DE TRANSACCIONES (NUEVO)
+# ============================================================
+st.divider()
+st.subheader("📜 Historial de transacciones")
+df_trans = cargar_transacciones()
+if not df_trans.empty:
+    st.dataframe(df_trans.sort_values('fecha', ascending=False), use_container_width=True)
+    csv = df_trans.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📥 Descargar historial (CSV)",
+        data=csv,
+        file_name=f"transacciones_{datetime.now().strftime('%Y%m%d')}.csv",
+        mime="text/csv"
+    )
+else:
+    st.info("Aún no hay transacciones registradas. Usa el panel lateral para añadir compras.")
 # ============================================================
 # SELECTOR DE GRÁFICO PARA EXPLORAR ACCIONES
 # ============================================================
