@@ -1,1 +1,28 @@
+name: Scanner Trading 24/7
 
+on:
+  schedule:
+    - cron: '30 14 * * 1-5'
+    - cron: '0 16 * * 1-5'
+    - cron: '30 19 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependencias
+        run: pip install yfinance pandas numpy requests
+      - name: Ejecutar scanner
+        env:
+          GEMINI_API_KEY:    ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY:      ${{ secrets.GROQ_API_KEY }}
+          EMAIL_REMITENTE:   ${{ secrets.EMAIL_REMITENTE }}
+          EMAIL_PASSWORD:    ${{ secrets.EMAIL_PASSWORD }}
+          WHATSAPP_NUMERO:   ${{ secrets.WHATSAPP_NUMERO }}
+          WHATSAPP_APIKEY:   ${{ secrets.WHATSAPP_APIKEY }}
+        run: python scanner_24_7.py
