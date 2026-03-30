@@ -1,5 +1,5 @@
 name: Scanner Trading 24/7
- 
+
 on:
   schedule:
     # Horarios en UTC — equivalentes a hora de México (UTC-6):
@@ -7,22 +7,33 @@ on:
     - cron: '0 16 * * 1-5'    # 10:00 AM MX — media mañana
     - cron: '30 19 * * 1-5'   # 1:30 PM MX  — tarde
   workflow_dispatch:            # permite ejecutarlo manualmente desde GitHub
- 
+
 jobs:
   scan:
     runs-on: ubuntu-latest
+    env:
+      # Forzar Node 24 para evitar warnings (opcional, pero recomendado)
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Descargar código del repo
         uses: actions/checkout@v4
- 
+
       - name: Configurar Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
- 
+
+      - name: Restaurar caché de IA
+        uses: actions/cache@v4
+        with:
+          path: cache_ia
+          key: ${{ runner.os }}-ia-cache-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-ia-cache-
+
       - name: Instalar dependencias
         run: pip install yfinance pandas numpy requests
- 
+
       - name: Ejecutar scanner
         env:
           GEMINI_API_KEY:    ${{ secrets.GEMINI_API_KEY }}
