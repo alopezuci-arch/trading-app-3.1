@@ -1,4 +1,3 @@
-# ── Core app (Streamlit) ────────────────────────────────────
 streamlit>=1.32.0
 yfinance>=0.2.40
 pandas>=2.0.0
@@ -7,8 +6,3 @@ plotly>=5.20.0
 openpyxl>=3.1.0
 requests>=2.31.0
 urllib3>=2.0.0
- 
-# ── IA — instala solo las que vayas a usar ──────────────────
-# Gemini y Groq se llaman vía requests (ya incluido arriba), sin librería extra.
-# Anthropic requiere su SDK solo si usas esa opción:
-# anthropic>=0.25.0
