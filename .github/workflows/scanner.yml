@@ -20,7 +20,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          
+      - name: Mostrar directorio actual
+        run: pwd
 
+      - name: Listar archivos en la raíz
+        run: ls -la
+
+      - name: Verificar contenido de scanner_24_7.py
+        run: head -n 5 scanner_24_7.py
       - name: Restaurar caché de IA
         uses: actions/cache@v4
         with:
