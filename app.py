@@ -130,7 +130,36 @@ def cargar_listas():
 (sp100, nasdaq100, ibex35, bmv, sp500,
  ia_stocks, commodity_etfs, mining_oil,
  etfs_sectoriales, mid_cap_growth, etfs_emergentes) = cargar_listas()
+# ============================================================
+# HISTORIAL DE TRANSACCIONES
+# ============================================================
+TRANSACCIONES_FILE = "transacciones.csv"
 
+def cargar_transacciones() -> pd.DataFrame:
+    """Carga el archivo de transacciones si existe, o devuelve DataFrame vacío."""
+    if os.path.exists(TRANSACCIONES_FILE):
+        df = pd.read_csv(TRANSACCIONES_FILE)
+        # Asegurar formato de fecha
+        df['fecha'] = pd.to_datetime(df['fecha'])
+        return df
+    return pd.DataFrame(columns=['fecha', 'simbolo', 'cantidad', 'precio', 'tipo', 'total', 'notas'])
+
+def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str, notas: str = ""):
+    """Agrega una nueva transacción al archivo CSV."""
+    df = cargar_transacciones()
+    nueva = pd.DataFrame([{
+        'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'simbolo': simbolo.upper(),
+        'cantidad': cantidad,
+        'precio': precio,
+        'tipo': tipo,
+        'total': round(cantidad * precio, 2),
+        'notas': notas
+    }])
+    df = pd.concat([df, nueva], ignore_index=True)
+    df.to_csv(TRANSACCIONES_FILE, index=False)
+    print(f"✅ Transacción registrada: {tipo.upper()} {cantidad} {simbolo} @ ${precio:.2f}")
+    
 # ============================================================
 # SIDEBAR (controles)
 # ============================================================
@@ -179,12 +208,12 @@ alerta_email    = st.sidebar.checkbox("📧 Alertar por email", value=True)
 alerta_whatsapp = st.sidebar.checkbox("💬 Alertar por WhatsApp", value=False)
 umbral_score    = st.sidebar.slider("Umbral mínimo para alertar (score)", 4, 10, 7)
 
-# Compras registradas
-st.sidebar.markdown("### 💰 Registrar compras")
+st.sidebar.markdown("### 💰 Registrar compra")
 compra_input = st.sidebar.text_area(
-    "Formato: SÍMBOLO=PRECIO (MXN)",
-    placeholder="AAPL=4465.53\nWALMEX.MX=56.13",
-    height=100
+    "Formato: SÍMBOLO,CANTIDAD,PRECIO (MXN)\nEjemplo:\nAAPL,10,4465.53\nWALMEX.MX,5,56.13",
+    placeholder="AAPL,10,4465.53\nWALMEX.MX,5,56.13",
+    height=120
+)
 )
 
 # ============================================================
@@ -541,17 +570,46 @@ def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figu
 # ============================================================
 # BOTÓN DE ANÁLISIS (SOLO ACTUALIZA st.session_state)
 # ============================================================
-if st.sidebar.button("🔍 ANALIZAR", type="primary"):
-    # Procesar compras
-    PRECIO_COMPRA = {}
-    if compra_input:
-        for par in compra_input.replace('\n', ',').split(','):
-            if '=' in par:
-                sim, precio = par.split('=', 1)
+# Procesar compras registradas (nuevo formato y antiguo)
+PRECIO_COMPRA = {}
+if compra_input:
+    for linea in compra_input.strip().split('\n'):
+        if not linea.strip():
+            continue
+        # Intentar formato "SÍMBOLO=CANTIDAD,PRECIO" o "SÍMBOLO=PRECIO"
+        if '=' in linea:
+            partes = linea.split('=', 1)
+            if len(partes) == 2:
+                sim = partes[0].strip().upper()
+                resto = partes[1].strip()
+                if ',' in resto:
+                    cant_str, prec_str = resto.split(',', 1)
+                    try:
+                        cantidad = float(cant_str.strip())
+                        precio = float(prec_str.strip())
+                    except:
+                        continue
+                else:
+                    cantidad = 1.0
+                    precio = float(resto)
+        else:
+            partes = linea.split(',')
+            if len(partes) == 3:
+                sim = partes[0].strip().upper()
                 try:
-                    PRECIO_COMPRA[sim.strip().upper()] = float(precio.strip())
-                except ValueError:
-                    pass
+                    cantidad = float(partes[1].strip())
+                    precio = float(partes[2].strip())
+                except:
+                    continue
+            else:
+                continue
+
+        # Guardar transacción en historial
+        guardar_transaccion(sim, cantidad, precio, "compra")
+        PRECIO_COMPRA[sim] = precio
+
+if PRECIO_COMPRA:
+    st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
 
     usd_mxn, eur_mxn = obtener_tipo_cambio()
     regime_data = obtener_market_regime()
