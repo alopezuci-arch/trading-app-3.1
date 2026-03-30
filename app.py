@@ -1,8 +1,6 @@
 # ============================================================
 # SISTEMA DE TRADING PROFESIONAL v2.0 — STREAMLIT
-# Mejoras: score ponderado, ATR dinámico, análisis paralelo,
-# backtesting, alertas email + WhatsApp, gráficos enriquecidos,
-# historial de señales y evaluación de efectividad
+# Versión con persistencia de resultados (session_state)
 # ============================================================
 
 import streamlit as st
@@ -31,35 +29,24 @@ ssl._create_default_https_context = ssl._create_unverified_context
 # ── Configuración de página ────────────────────────────────
 st.set_page_config(page_title="Trading System v2", layout="wide", page_icon="📈")
 st.title("📈 Sistema de Trading Personal v2.0")
-st.markdown(f"**Última actualización:** {datetime.now().strftime('%d/%m/%Y %H:%M')}")
 
 # ============================================================
-# CONSTANTES DE ALERTAS
+# CONSTANTES DE ALERTAS (se leen de Secrets / entorno)
 # ============================================================
 EMAIL_DESTINO   = "alopez.uci@gmail.com"
-
-# ── APIs de IA — el sistema usa la primera key disponible ───
-# Estas variables se leen de variables de entorno (Streamlit Secrets)
 GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY",    "")
 GROQ_API_KEY      = os.environ.get("GROQ_API_KEY",      "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-
-# ── WhatsApp vía CallMeBot (gratis) ─────────────────────────
-# Configura en Secrets: WHATSAPP_NUMERO, WHATSAPP_APIKEY
-WHATSAPP_NUMERO = os.environ.get("WHATSAPP_NUMERO", "")
-WHATSAPP_APIKEY = os.environ.get("WHATSAPP_APIKEY", "")
-
-# ── Email SMTP (Gmail) ──────────────────────────────────────
-# Configura en Secrets: EMAIL_REMITENTE, EMAIL_PASSWORD
-EMAIL_REMITENTE = os.environ.get("EMAIL_REMITENTE", "")
-EMAIL_PASSWORD  = os.environ.get("EMAIL_PASSWORD",  "")
+WHATSAPP_NUMERO   = os.environ.get("WHATSAPP_NUMERO", "")
+WHATSAPP_APIKEY   = os.environ.get("WHATSAPP_APIKEY", "")
+EMAIL_REMITENTE   = os.environ.get("EMAIL_REMITENTE", "")
+EMAIL_PASSWORD    = os.environ.get("EMAIL_PASSWORD",  "")
 
 # ============================================================
-# LISTAS DE MERCADOS (debes tener las listas completas aquí)
+# LISTAS DE MERCADOS (completas)
 # ============================================================
 @st.cache_data(ttl=3600)
 def cargar_listas():
-    # =================== S&P 500 completo (500 símbolos) ===================
     sp500 = [
         'MMM','AOS','ABT','ABBV','ACN','ADBE','AMD','AES','AFL','A','APD','AKAM','ALK','ALB',
         'ARE','ALGN','ALLE','LNT','ALL','GOOGL','GOOG','MO','AMZN','AMCR','AEE','AAL','AEP',
@@ -92,7 +79,6 @@ def cargar_listas():
         'VTR','VLO','VTRS','VRSN','VZ','VRTX','VFC','VNO','VMC','WAB','WBA','WMT','WDC','WU',
         'WRK','WY','WHR','WMB','WEC','WFC','WST','WYNN','XEL','XYL','YUM','ZBRA','ZBH','ZION','ZTS'
     ]
-    # =================== S&P 100 ===================
     sp100 = [
         'AAPL','MSFT','AMZN','NVDA','META','GOOGL','GOOG','JPM','V','JNJ','WMT','PG','UNH','HD',
         'DIS','MA','BAC','XOM','CVX','KO','PEP','ADBE','CRM','NFLX','TMO','ABT','ACN','AMD','INTC',
@@ -101,7 +87,6 @@ def cargar_listas():
         'T','VZ','NEE','DUK','SO','MO','PM','MDLZ','SBUX','MCD','LOW','TGT','TJX','ORCL','NOW','INTU',
         'BKNG','UBER','TSLA','AVGO'
     ]
-    # =================== NASDAQ 100 ===================
     nasdaq100 = [
         'ADBE','AMD','AMGN','AMZN','ASML','AVGO','BIIB','BKNG','CDNS','CHTR','CMCSA','COST','CSCO',
         'CSX','CTAS','DXCM','EA','EBAY','EXC','FANG','FAST','FTNT','GILD','GOOGL','GOOG','HON','IDXX',
@@ -109,40 +94,32 @@ def cargar_listas():
         'NVDA','NXPI','ODFL','ORLY','PANW','PAYX','PCAR','PEP','QCOM','REGN','ROST','SBUX','SNPS','TMUS',
         'TSLA','TXN','VRTX','WBA','WDAY','XEL','ZM','ZS'
     ]
-    # =================== IBEX 35 ===================
     ibex35 = [
         'SAN.MC','BBVA.MC','TEF.MC','ITX.MC','IBE.MC','FER.MC','ENG.MC','ACS.MC','REP.MC','AENA.MC',
         'CLNX.MC','GRF.MC','MTS.MC','MAP.MC','MEL.MC','CABK.MC','ELE.MC','IAG.MC','ANA.MC','VIS.MC',
         'CIE.MC','LOG.MC','ACX.MC'
     ]
-    # =================== BMV México ===================
     bmv = [
         'WALMEX.MX','GMEXICOB.MX','CEMEXCPO.MX','FEMSAUBD.MX','AMXL.MX','KOFUBL.MX','GFNORTEO.MX',
         'BBAJIOO.MX','ALFA.MX','ALPEKA.MX','ASURB.MX','GAPB.MX','OMAB.MX','AC.MX','GCC.MX','LALA.MX',
         'MEGA.MX','PINFRA.MX','TLEVISACPO.MX','VESTA.MX','GRUMA.MX','HERDEZ.MX','CUERVO.MX','ORBIA.MX'
     ]
-    # =================== IA stocks ===================
     ia_stocks = [
         'NVDA','AMD','INTC','AI','PLTR','IBM','MSFT','GOOGL','META','SNOW','CRM','ADBE','NOW','ORCL',
         'BIDU','BABA','SAP'
     ]
-    # =================== Commodity ETFs ===================
     commodity_etfs = ['GLD','SLV','USO','UNG','DBC']
-    # =================== Minería y petróleo ===================
     mining_oil = ['NEM','GOLD','FCX','XOM','CVX','COP','EOG','SLB']
-    # =================== ETFs sectoriales SPDR ===================
     etfs_sectoriales = [
         'XLK','XLV','XLF','XLE','XLI','XLY','XLP','XLU','XLB','XLRE','XLC',
         'SOXX','ARKK','ARKG','ARKW','ARKF','CIBR','ROBO','ICLN','TAN','LIT',
         'JETS','XHB','KRE','IBB','SPY','QQQ','IWM','DIA','VTI'
     ]
-    # =================== Mid-cap growth ===================
     mid_cap_growth = [
         'DDOG','NET','CRWD','ZS','BILL','DUOL','CELH','SMCI','HUBS','MNDY','APPN','PCTY','FIVN',
         'RELY','PATH','SMAR','JAMF','EXAS','NVCR','FATE','RXRX','AFRM','UPST','HOOD','SQ','SOFI',
         'NU','PLUG','CHPT','RIVN','LCID','KTOS','RKLB','ACHR'
     ]
-    # =================== ETFs mercados emergentes ===================
     etfs_emergentes = [
         'EWZ','EWJ','FXI','KWEB','EWY','EWT','EWH','EWA','EWC','EWG','EWQ','EWU','VWO','EEM','INDA','EWX'
     ]
@@ -155,7 +132,7 @@ def cargar_listas():
  etfs_sectoriales, mid_cap_growth, etfs_emergentes) = cargar_listas()
 
 # ============================================================
-# SIDEBAR
+# SIDEBAR (controles)
 # ============================================================
 st.sidebar.header("⚙️ Parámetros")
 
@@ -182,30 +159,19 @@ mercado_opciones = {
     )),
 }
 mercado_seleccionado = st.sidebar.selectbox("📊 Mercado", list(mercado_opciones.keys()), index=1)
-n_tickers = len(mercado_opciones[mercado_seleccionado])
-tiempo_est = round(n_tickers * 0.08)
-st.sidebar.caption(f"{n_tickers} tickers · tiempo estimado: ~{tiempo_est}s")
 
 # Opciones de análisis
 st.sidebar.markdown("### 🔧 Análisis")
 fundamentales_check  = st.sidebar.checkbox("📊 Análisis fundamental", value=False)
 filtro_fundamentales = st.sidebar.checkbox("📊 Solo fundamentales sólidos", value=False) if fundamentales_check else False
 backtesting_check    = st.sidebar.checkbox("🧪 Backtesting (últimos 6 meses)", value=False)
-market_regime_check  = st.sidebar.checkbox("🌡️ Filtrar por Market Regime", value=True,
-                           help="Si el S&P 500 está en tendencia bajista (bajo su EMA200), oculta señales de compra arriesgadas.")
-ia_check = st.sidebar.checkbox("🤖 Análisis IA", value=True,
-               help="Claude/Gemini analizan las mejores oportunidades y dan su evaluación. Requiere API key.")
+market_regime_check  = st.sidebar.checkbox("🌡️ Filtrar por Market Regime", value=True)
+ia_check = st.sidebar.checkbox("🤖 Análisis IA", value=True)
 
-# Position sizing
+# Gestión de capital
 st.sidebar.markdown("### 💼 Gestión de capital")
-capital_total = st.sidebar.number_input(
-    "Capital disponible (MXN)", min_value=1000.0, value=100_000.0, step=1000.0,
-    help="Total que destinas a trading activo (no incluyas tu parte de ETFs)."
-)
-riesgo_pct = st.sidebar.slider(
-    "Riesgo máximo por operación (%)", min_value=0.5, max_value=3.0, value=1.0, step=0.25,
-    help="Porcentaje de tu capital que estás dispuesto a perder en una sola operación. 1% es conservador, 2% moderado."
-)
+capital_total = st.sidebar.number_input("Capital disponible (MXN)", min_value=1000.0, value=100_000.0, step=1000.0)
+riesgo_pct = st.sidebar.slider("Riesgo máximo por operación (%)", min_value=0.5, max_value=3.0, value=1.0, step=0.25)
 
 # Alertas
 st.sidebar.markdown("### 🔔 Alertas")
@@ -222,7 +188,7 @@ compra_input = st.sidebar.text_area(
 )
 
 # ============================================================
-# FUNCIONES DE ANÁLISIS TÉCNICO Y FUNDAMENTAL
+# FUNCIONES AUXILIARES (indicadores, scoring, etc.)
 # ============================================================
 def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist = hist.copy()
@@ -236,9 +202,7 @@ def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist['EMA26']    = hist['Close'].ewm(span=26, adjust=False).mean()
     hist['MACD']     = hist['EMA12'] - hist['EMA26']
     hist['MACD_sig'] = hist['MACD'].ewm(span=9, adjust=False).mean()
-    # 🔧 Agregar MACD Histograma
     hist['MACD_hist'] = hist['MACD'] - hist['MACD_sig']
-    # resto del código...
     hl   = hist['High'] - hist['Low']
     hc   = (hist['High'] - hist['Close'].shift()).abs()
     lc   = (hist['Low']  - hist['Close'].shift()).abs()
@@ -301,19 +265,25 @@ def obtener_market_regime() -> dict:
     try:
         sp = yf.Ticker("^GSPC").history(period="1y")
         if sp.empty or len(sp) < 200:
-            return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0, 'ret_1m': 0}
+            return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0, 'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Sin datos'}
         precio = sp['Close'].iloc[-1]
         ema200 = sp['Close'].ewm(span=200).mean().iloc[-1]
         ema50  = sp['Close'].ewm(span=50).mean().iloc[-1]
         ret_1m = (precio / sp['Close'].iloc[-20] - 1) * 100 if len(sp) >= 20 else 0
+        # RSI del S&P 500 (simple, solo para mostrar)
+        delta = sp['Close'].diff()
+        gain = delta.where(delta > 0, 0).rolling(14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+        rs = gain / loss
+        rsi_sp500 = 100 - (100 / (1 + rs)).iloc[-1] if not loss.empty else 50
         if precio > ema200 and precio > ema50 and ema50 > ema200:
-            return {'regime': 'ALCISTA', 'score_bonus': 0, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m}
+            return {'regime': 'ALCISTA', 'score_bonus': 0, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1), 'descripcion': 'S&P 500 sobre EMA50 y EMA200 — condiciones favorables para compras'}
         elif precio > ema200:
-            return {'regime': 'LATERAL', 'score_bonus': -1, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m}
+            return {'regime': 'LATERAL', 'score_bonus': -1, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1), 'descripcion': 'S&P 500 por debajo de EMA50 pero sobre EMA200 — ser selectivo'}
         else:
-            return {'regime': 'BAJISTA', 'score_bonus': -3, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m}
+            return {'regime': 'BAJISTA', 'score_bonus': -3, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1), 'descripcion': 'S&P 500 bajo su EMA200 — evitar nuevas compras, proteger posiciones'}
     except:
-        return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0, 'ret_1m': 0}
+        return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0, 'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Error al obtener datos'}
 
 def position_size(precio: float, atr: float, capital: float, riesgo_pct: float) -> dict:
     riesgo_mxn = capital * (riesgo_pct / 100)
@@ -439,12 +409,12 @@ def analizar_accion(args: tuple) -> dict | None:
         if incluir_fund:
             resultado.update(obtener_fundamentales(simbolo))
         if incluir_bt:
-            # backtest simple (aquí puedes integrar el que ya tenías)
+            # backtest simple (placeholder)
             resultado['BT Entradas'] = 0
             resultado['BT Win Rate'] = "0%"
             resultado['BT Ret Prom'] = "0%"
         return resultado
-    except Exception:
+    except Exception as e:
         return None
 
 def puntaje_fundamental(row: pd.Series) -> int:
@@ -457,11 +427,10 @@ def puntaje_fundamental(row: pd.Series) -> int:
     return score
 
 # ============================================================
-# FUNCIONES DE ALERTAS
+# ALERTAS
 # ============================================================
 def enviar_email(asunto: str, cuerpo_html: str) -> bool:
     if not EMAIL_REMITENTE or not EMAIL_PASSWORD:
-        st.warning("⚠️ Configura EMAIL_REMITENTE y EMAIL_PASSWORD para recibir alertas por correo.")
         return False
     try:
         msg = MIMEMultipart("alternative")
@@ -473,13 +442,11 @@ def enviar_email(asunto: str, cuerpo_html: str) -> bool:
             s.login(EMAIL_REMITENTE, EMAIL_PASSWORD)
             s.sendmail(EMAIL_REMITENTE, EMAIL_DESTINO, msg.as_string())
         return True
-    except Exception as e:
-        st.error(f"Error al enviar email: {e}")
+    except:
         return False
 
 def enviar_whatsapp(mensaje: str) -> bool:
     if not WHATSAPP_NUMERO or not WHATSAPP_APIKEY:
-        st.warning("⚠️ Configura WHATSAPP_NUMERO y WHATSAPP_APIKEY para alertas por WhatsApp.")
         return False
     try:
         r = requests.get(
@@ -488,8 +455,7 @@ def enviar_whatsapp(mensaje: str) -> bool:
             timeout=10,
         )
         return r.status_code == 200
-    except Exception as e:
-        st.error(f"Error WhatsApp: {e}")
+    except:
         return False
 
 def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame, resumen_ia: str = "") -> str:
@@ -529,283 +495,14 @@ def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame, resu
     </p>
     </body></html>"""
 
-# ============================================================
-# FUNCIONES IA (simplificadas – puedes integrar las reales)
-# ============================================================
 def analisis_ia_claude(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
-    # Aquí iría tu código real de IA (Gemini, Groq, Anthropic)
-    # Para no bloquear, devolvemos un texto simulado.
+    """IA placeholder. Puedes reemplazar con llamada real a Gemini/Groq/Anthropic."""
     if not oportunidades:
         return ""
     return "**Análisis IA:** Las condiciones de mercado actuales favorecen las posiciones de compra en los sectores tecnológico y de semiconductores. Las oportunidades con mayor score presentan buenos fundamentales y momentum. Se recomienda mantener stop loss dinámico según ATR."
 
 # ============================================================
-# FUNCIÓN DE HISTORIAL
-# ============================================================
-@st.cache_data(ttl=3600)
-def cargar_historial_senales() -> pd.DataFrame:
-    if os.path.exists("historial_senales.csv"):
-        df = pd.read_csv("historial_senales.csv")
-        df['fecha'] = pd.to_datetime(df['fecha'])
-        return df
-    return pd.DataFrame(columns=['fecha','simbolo','score','precio','recomendacion','señales'])
-
-# ============================================================
-# BOTÓN PRINCIPAL: ANALIZAR
-# ============================================================
-if st.sidebar.button("🔍 ANALIZAR", type="primary"):
-    # Procesar compras
-    PRECIO_COMPRA = {}
-    if compra_input:
-        for par in compra_input.replace('\n', ',').split(','):
-            if '=' in par:
-                sim, precio = par.split('=', 1)
-                try:
-                    PRECIO_COMPRA[sim.strip().upper()] = float(precio.strip())
-                except ValueError:
-                    pass
-        if PRECIO_COMPRA:
-            st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
-
-    usd_mxn, eur_mxn = obtener_tipo_cambio()
-    st.sidebar.metric("USD/MXN", f"{usd_mxn:.2f}")
-    st.sidebar.metric("EUR/MXN", f"{eur_mxn:.2f}")
-
-    regime_data = obtener_market_regime()
-    regime_bonus = regime_data['score_bonus'] if market_regime_check else 0
-    color_map = {'ALCISTA': '🟢', 'LATERAL': '🟡', 'BAJISTA': '🔴', 'DESCONOCIDO': '⚪'}
-    icono = color_map.get(regime_data['regime'], '⚪')
-    with st.expander(f"{icono} Market Regime: **{regime_data['regime']}** — {regime_data.get('descripcion','')}", expanded=True):
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("S&P 500",    f"{regime_data['precio']:,.0f}")
-        c2.metric("EMA 200",    f"{regime_data['ema200']:,.0f}")
-        c3.metric("RSI S&P",    f"{regime_data.get('rsi_sp500',0)}")
-        c4.metric("Ret. 1 mes", f"{regime_data.get('ret_1m',0):+.1f}%")
-        if market_regime_check and regime_data['regime'] == 'BAJISTA':
-            st.warning("⚠️ Mercado bajista detectado. Las señales de compra están penalizadas. Considera proteger posiciones existentes.")
-        elif market_regime_check and regime_data['regime'] == 'LATERAL':
-            st.info("ℹ️ Mercado lateral. Solo compras con score muy alto (≥8) son recomendables.")
-
-    # Estrategia core + satélite
-    with st.expander("💼 Estrategia recomendada: Core + Satélite"):
-        etf_capital   = round(capital_total * 0.65, 2)
-        trade_capital = round(capital_total * 0.25, 2)
-        conv_capital  = round(capital_total * 0.10, 2)
-        c1, c2, c3 = st.columns(3)
-        c1.metric("🏛️ Core — ETFs (65%)",    f"${etf_capital:,.0f} MXN")
-        c2.metric("⚡ Satélite — Trading (25%)", f"${trade_capital:,.0f} MXN")
-        c3.metric("🎯 Alta convicción (10%)", f"${conv_capital:,.0f} MXN")
-        st.caption(f"Position sizing activo sobre ${trade_capital:,.0f} MXN · Riesgo por operación: {riesgo_pct}% = ${trade_capital*riesgo_pct/100:,.0f} MXN máx. por trade")
-
-    # Análisis en paralelo
-    lista_acciones = mercado_opciones[mercado_seleccionado]
-    total = len(lista_acciones)
-    st.info(f"📊 Analizando {total} acciones en paralelo (máx 10 hilos)...")
-
-    resultados = []
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    args_list = [
-        (sim, PRECIO_COMPRA, usd_mxn, eur_mxn, fundamentales_check, backtesting_check,
-         regime_bonus, trade_capital, riesgo_pct)
-        for sim in lista_acciones
-    ]
-    completados = 0
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(analizar_accion, args): args[0] for args in args_list}
-        for future in as_completed(futures):
-            completados += 1
-            status_text.text(f"Procesando {completados}/{total}: {futures[future]}")
-            res = future.result()
-            if res:
-                resultados.append(res)
-            progress_bar.progress(completados / total)
-    status_text.empty()
-    progress_bar.empty()
-
-    if not resultados:
-        st.warning("⚠️ No se encontraron resultados. Verifica tu conexión o el mercado seleccionado.")
-        st.stop()
-
-    df = pd.DataFrame(resultados)
-
-    # Guardar en session_state para persistencia
-    st.session_state['df']            = df
-    st.session_state['PRECIO_COMPRA'] = PRECIO_COMPRA
-    st.session_state['usd_mxn']       = usd_mxn
-    st.session_state['eur_mxn']       = eur_mxn
-    st.session_state['fund_check']    = fundamentales_check
-    st.session_state['bt_check']      = backtesting_check
-    st.session_state['regime']        = regime_data
-    st.session_state['capital']       = capital_total
-
-    if fundamentales_check and 'ROE (%)' in df.columns:
-        df['Score Fund'] = df.apply(puntaje_fundamental, axis=1)
-
-    # Separar categorías
-    if PRECIO_COMPRA:
-        ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy()
-    else:
-        ventas = pd.DataFrame()
-    compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
-    observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
-    evitar   = df[df['Recomendación'] == 'EVITAR'].copy()
-
-    if filtro_fundamentales and 'ROE (%)' in compras.columns:
-        compras = compras[
-            compras['ROE (%)'].notna() & compras['Rev Growth (%)'].notna() &
-            (compras['ROE (%)'] > 10) & (compras['Rev Growth (%)'] > 5)
-        ]
-
-    # Métricas
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("✅ Compras",    len(compras))
-    col2.metric("🔴 Ventas",     len(ventas))
-    col3.metric("👀 Observar",   len(observar))
-    col4.metric("🚫 Evitar",     len(evitar))
-
-    # Análisis IA
-    if ia_check:
-        tiene_key = GEMINI_API_KEY or GROQ_API_KEY or ANTHROPIC_API_KEY
-        if not tiene_key:
-            st.info("🤖 Análisis IA desactivado. Agrega en Secrets: GEMINI_API_KEY, GROQ_API_KEY o ANTHROPIC_API_KEY.")
-        elif not compras.empty:
-            with st.spinner("🤖 Analizando oportunidades con IA..."):
-                top_ops = compras.head(8).to_dict('records')
-                analisis_texto = analisis_ia_claude(top_ops, regime_data, usd_mxn)
-            with st.expander("🤖 Análisis de IA", expanded=True):
-                st.markdown(analisis_texto)
-                st.caption("Este análisis es generado por IA con fines informativos. No constituye asesoría financiera.")
-            st.session_state['ultimo_analisis_ia'] = analisis_texto
-
-    # Alertas automáticas
-    compras_alerta = compras[compras['Score'] >= umbral_score]
-    resumen_ia = st.session_state.get('ultimo_analisis_ia', '')
-    if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
-        with st.spinner("📤 Enviando alertas..."):
-            if alerta_email:
-                html = construir_email_html(compras_alerta, ventas, resumen_ia)
-                ok = enviar_email(f"📈 Alerta Trading {datetime.now().strftime('%d/%m %H:%M')}", html)
-                if ok:
-                    st.success(f"📧 Email enviado a {EMAIL_DESTINO}")
-            if alerta_whatsapp:
-                n_compras = len(compras_alerta)
-                n_ventas  = len(ventas)
-                top3 = ", ".join(compras_alerta.head(3)['Símbolo'].tolist()) if n_compras else "ninguna"
-                msg = (f"📈 *Alerta Trading* {datetime.now().strftime('%d/%m %H:%M')}\n"
-                       f"🟢 Compras: {n_compras} (Top: {top3})\n🔴 Ventas: {n_ventas}\nUmbral score: {umbral_score}")
-                ok = enviar_whatsapp(msg)
-                if ok:
-                    st.success("💬 WhatsApp enviado")
-
-    # ============================================================
-    # TABS DE RESULTADOS (ahora con 5 pestañas)
-    # ============================================================
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "📜 HISTORIAL"])
-
-    cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit',
-                 'Unidades','Inversión (MXN)','% Capital','Dist EMA50','Recomendación','Motivo','Señales']
-    cols_fund = [c for c in df.columns if c not in cols_base]
-
-    def show_df(frame, cols_extra=None):
-        cols = cols_base + (cols_extra or [])
-        cols = [c for c in cols if c in frame.columns]
-        st.dataframe(frame[cols].reset_index(drop=True), use_container_width=True)
-
-    with tab1:
-        if not compras.empty:
-            show_df(compras, cols_fund if fundamentales_check else [])
-        else:
-            st.info("Sin oportunidades de compra en este momento.")
-
-    with tab2:
-        if not ventas.empty:
-            st.caption(f"Mostrando señales de venta únicamente para tus {len(PRECIO_COMPRA)} acción(es) registradas.")
-            show_df(ventas, cols_fund if fundamentales_check else [])
-        elif PRECIO_COMPRA:
-            st.info("✅ Ninguna de tus acciones registradas tiene señal de venta en este momento.")
-        else:
-            st.warning("⚠️ No has registrado ninguna compra. Ingresa tus acciones en el panel lateral con el formato SÍMBOLO=PRECIO para recibir recomendaciones de venta.")
-
-    with tab3:
-        show_df(observar.head(20), cols_fund if fundamentales_check else [])
-
-    with tab4:
-        st.dataframe(df.reset_index(drop=True), use_container_width=True)
-
-    with tab5:
-        st.subheader("📜 Historial de señales guardadas")
-        df_hist = cargar_historial_senales()
-        if not df_hist.empty:
-            st.dataframe(df_hist.sort_values('fecha', ascending=False).head(50), use_container_width=True)
-            st.subheader("🧪 Evaluación de efectividad (backtesting)")
-            with st.spinner("Calculando retornos históricos..."):
-                resultados_bt = []
-                for _, row in df_hist.iterrows():
-                    try:
-                        ticker = yf.Ticker(row['simbolo'])
-                        start = row['fecha']
-                        end = datetime.now()
-                        hist = ticker.history(start=start, end=end)
-                        if hist.empty:
-                            continue
-                        idx = hist.index.searchsorted(start)
-                        if idx + 5 >= len(hist):
-                            continue
-                        precio_entrada = row['precio']
-                        precio_salida = hist['Close'].iloc[idx + 5]
-                        ret = (precio_salida / precio_entrada - 1) * 100
-                        resultados_bt.append(ret)
-                    except:
-                        continue
-                if resultados_bt:
-                    win_rate = sum(1 for r in resultados_bt if r > 0) / len(resultados_bt) * 100
-                    ret_prom = np.mean(resultados_bt)
-                    c1, c2, c3 = st.columns(3)
-                    c1.metric("📊 Total señales evaluadas", len(resultados_bt))
-                    c2.metric("✅ Win rate", f"{win_rate:.1f}%")
-                    c3.metric("📈 Retorno promedio", f"{ret_prom:.2f}%")
-                    st.caption("Backtesting sobre señales pasadas, usando ventana de 5 días hábiles.")
-                else:
-                    st.info("No hay suficientes datos históricos para backtesting aún.")
-        else:
-            st.info("Aún no hay historial de señales. El scanner automático generará el archivo después de algunas ejecuciones.")
-
-    # Gráficos (mejor oportunidad)
-    if not compras.empty:
-        mejor = compras.iloc[0]['Símbolo']
-        st.subheader(f"📊 Análisis completo: {mejor}")
-        fig = grafico_enriquecido(mejor, usd_mxn, eur_mxn)  # Debes tener esta función definida
-        st.plotly_chart(fig, use_container_width=True)
-
-        top10 = compras.head(10)
-        fig_score = px.bar(top10, x='Símbolo', y='Score', color='Score', color_continuous_scale='RdYlGn', text='Score', title="Top 10 — Score ponderado de compra (máx 14 pts)")
-        fig_score.add_hline(y=8, line_dash="dash", line_color="green", annotation_text="Compra fuerte")
-        fig_score.add_hline(y=6, line_dash="dash", line_color="orange", annotation_text="Compra moderada")
-        fig_score.update_traces(textposition='outside')
-        fig_score.update_layout(showlegend=False, height=420, template='plotly_dark')
-        st.plotly_chart(fig_score, use_container_width=True)
-
-    # Descarga Excel
-    try:
-        import openpyxl  # noqa: F401
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            compras.to_excel(writer, index=False, sheet_name='Compras')
-            ventas.to_excel(writer, index=False, sheet_name='Ventas')
-            observar.to_excel(writer, index=False, sheet_name='Observar')
-            df.to_excel(writer, index=False, sheet_name='Todos')
-        st.download_button(
-            label="📥 Descargar informe Excel",
-            data=output.getvalue(),
-            file_name=f"trading_v2_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    except ImportError:
-        st.warning("⚠️ openpyxl no está instalado. Instálalo para habilitar la descarga Excel.")
-
-# ============================================================
-# GRÁFICO ENRIQUECIDO (debes tener esta función)
+# GRÁFICO ENRIQUECIDO
 # ============================================================
 def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figure:
     hist = yf.Ticker(simbolo).history(period="3mo")
@@ -842,42 +539,270 @@ def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figu
     return fig
 
 # ============================================================
-# SELECTOR DE GRÁFICO (fuera del botón)
+# BOTÓN DE ANÁLISIS (SOLO ACTUALIZA st.session_state)
+# ============================================================
+if st.sidebar.button("🔍 ANALIZAR", type="primary"):
+    # Procesar compras
+    PRECIO_COMPRA = {}
+    if compra_input:
+        for par in compra_input.replace('\n', ',').split(','):
+            if '=' in par:
+                sim, precio = par.split('=', 1)
+                try:
+                    PRECIO_COMPRA[sim.strip().upper()] = float(precio.strip())
+                except ValueError:
+                    pass
+
+    usd_mxn, eur_mxn = obtener_tipo_cambio()
+    regime_data = obtener_market_regime()
+    regime_bonus = regime_data['score_bonus'] if market_regime_check else 0
+    trade_capital = capital_total * 0.25  # Capital destinado a trading activo
+
+    lista_acciones = mercado_opciones[mercado_seleccionado]
+    total = len(lista_acciones)
+
+    with st.spinner(f"Analizando {total} acciones..."):
+        resultados = []
+        args_list = [
+            (sim, PRECIO_COMPRA, usd_mxn, eur_mxn, fundamentales_check, backtesting_check,
+             regime_bonus, trade_capital, riesgo_pct)
+            for sim in lista_acciones
+        ]
+        completados = 0
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(analizar_accion, args): args[0] for args in args_list}
+            for future in as_completed(futures):
+                completados += 1
+                status_text.text(f"Procesando {completados}/{total}: {futures[future]}")
+                res = future.result()
+                if res:
+                    resultados.append(res)
+                progress_bar.progress(completados / total)
+        status_text.empty()
+        progress_bar.empty()
+
+        if not resultados:
+            st.warning("⚠️ No se encontraron resultados.")
+            st.stop()
+
+        df = pd.DataFrame(resultados)
+
+        # Añadir puntaje fundamental
+        if fundamentales_check and 'ROE (%)' in df.columns:
+            df['Score Fund'] = df.apply(puntaje_fundamental, axis=1)
+
+        # Separar categorías
+        if PRECIO_COMPRA:
+            ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy()
+        else:
+            ventas = pd.DataFrame()
+        compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
+        observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
+
+        # Filtrar fundamentales
+        if filtro_fundamentales and 'ROE (%)' in compras.columns:
+            compras = compras[
+                compras['ROE (%)'].notna() & compras['Rev Growth (%)'].notna() &
+                (compras['ROE (%)'] > 10) & (compras['Rev Growth (%)'] > 5)
+            ]
+
+        # Guardar en session_state
+        st.session_state['df'] = df
+        st.session_state['compras'] = compras
+        st.session_state['ventas'] = ventas
+        st.session_state['observar'] = observar
+        st.session_state['PRECIO_COMPRA'] = PRECIO_COMPRA
+        st.session_state['usd_mxn'] = usd_mxn
+        st.session_state['eur_mxn'] = eur_mxn
+        st.session_state['fund_check'] = fundamentales_check
+        st.session_state['regime'] = regime_data
+        st.session_state['capital'] = capital_total
+        st.session_state['ultima_actualizacion'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+        # Análisis IA
+        if ia_check and not compras.empty:
+            tiene_key = GEMINI_API_KEY or GROQ_API_KEY or ANTHROPIC_API_KEY
+            if tiene_key:
+                with st.spinner("🤖 Analizando oportunidades con IA..."):
+                    top_ops = compras.head(8).to_dict('records')
+                    texto_ia = analisis_ia_claude(top_ops, regime_data, usd_mxn)
+                    st.session_state['analisis_ia'] = texto_ia
+            else:
+                st.session_state['analisis_ia'] = ""
+
+        # Alertas (solo se envían al ejecutar el análisis)
+        compras_alerta = compras[compras['Score'] >= umbral_score]
+        resumen_ia = st.session_state.get('analisis_ia', '')
+        if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
+            with st.spinner("📤 Enviando alertas..."):
+                if alerta_email:
+                    html = construir_email_html(compras_alerta, ventas, resumen_ia)
+                    enviar_email(f"📈 Alerta Trading {datetime.now().strftime('%d/%m %H:%M')}", html)
+                if alerta_whatsapp:
+                    n_compras = len(compras_alerta)
+                    n_ventas = len(ventas)
+                    top3 = ", ".join(compras_alerta.head(3)['Símbolo'].tolist()) if n_compras else "ninguna"
+                    msg = (f"📈 *Alerta Trading* {datetime.now().strftime('%d/%m %H:%M')}\n"
+                           f"🟢 Compras: {n_compras} (Top: {top3})\n🔴 Ventas: {n_ventas}\nUmbral score: {umbral_score}")
+                    enviar_whatsapp(msg)
+
+        st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra encontradas.")
+        st.rerun()
+
+# ============================================================
+# PRESENTACIÓN DE RESULTADOS (basada en session_state)
 # ============================================================
 if 'df' in st.session_state:
-    _df = st.session_state['df']
-    _usd_mxn = st.session_state['usd_mxn']
-    _eur_mxn = st.session_state['eur_mxn']
-    _capital = st.session_state.get('capital', 100_000)
+    df = st.session_state['df']
+    compras = st.session_state['compras']
+    ventas = st.session_state['ventas']
+    observar = st.session_state['observar']
+    usd_mxn = st.session_state['usd_mxn']
+    eur_mxn = st.session_state['eur_mxn']
+    fundamentales_check = st.session_state['fund_check']
+    regime_data = st.session_state['regime']
 
-    if st.session_state.get('PRECIO_COMPRA'):
-        st.divider()
-        st.subheader("💼 Resumen de tu portafolio activo")
-        rows = []
-        for sim, precio_compra in st.session_state['PRECIO_COMPRA'].items():
-            fila_df = _df[_df['Símbolo'] == sim]
-            if not fila_df.empty:
-                f = fila_df.iloc[0]
-                precio_actual = float(str(f['Precio (MXN)']).replace(',',''))
-                ganancia_pct = (precio_actual / precio_compra - 1) * 100
-                rows.append({
-                    'Símbolo': sim,
-                    'Comprado a': precio_compra,
-                    'Precio actual': precio_actual,
-                    'Ganancia %': f"{ganancia_pct:+.2f}%",
-                    'Score': f['Score'],
-                    'Recomendación': f['Recomendación'],
-                    'Inversión (MXN)': f.get('Inversión (MXN)', '—'),
-                })
-        if rows:
-            st.dataframe(pd.DataFrame(rows), use_container_width=True)
+    st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
 
+    # Mostrar resumen del market regime
+    icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴','DESCONOCIDO':'⚪'}.get(regime_data.get('regime','DESCONOCIDO'),'⚪')
+    with st.expander(f"{icono_regime} Market Regime: **{regime_data.get('regime','DESCONOCIDO')}** — {regime_data.get('descripcion','')}", expanded=True):
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("S&P 500",    f"{regime_data.get('precio',0):,.0f}")
+        c2.metric("EMA 200",    f"{regime_data.get('ema200',0):,.0f}")
+        c3.metric("RSI S&P",    f"{regime_data.get('rsi_sp500',0)}")
+        c4.metric("Ret. 1 mes", f"{regime_data.get('ret_1m',0):+.1f}%")
+
+    # Métricas
+    col1, col2, col3 = st.columns(3)
+    col1.metric("✅ Compras",    len(compras))
+    col2.metric("🔴 Ventas",     len(ventas))
+    col3.metric("👀 Observar",   len(observar))
+
+    # Tabs de resultados
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "📜 HISTORIAL"])
+
+    cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit',
+                 'Unidades','Inversión (MXN)','% Capital','Dist EMA50','Recomendación','Motivo','Señales']
+    cols_fund = [c for c in df.columns if c not in cols_base]
+
+    def show_df(frame, cols_extra=None):
+        cols = cols_base + (cols_extra or [])
+        cols = [c for c in cols if c in frame.columns]
+        st.dataframe(frame[cols].reset_index(drop=True), use_container_width=True)
+
+    with tab1:
+        if not compras.empty:
+            show_df(compras, cols_fund if fundamentales_check else [])
+        else:
+            st.info("Sin oportunidades de compra en este momento.")
+
+    with tab2:
+        if not ventas.empty:
+            st.caption(f"Mostrando señales de venta únicamente para tus {len(st.session_state.get('PRECIO_COMPRA',{}))} acción(es) registradas.")
+            show_df(ventas, cols_fund if fundamentales_check else [])
+        elif st.session_state.get('PRECIO_COMPRA'):
+            st.info("✅ Ninguna de tus acciones registradas tiene señal de venta en este momento.")
+        else:
+            st.warning("⚠️ No has registrado ninguna compra. Ingresa tus acciones en el panel lateral para recibir recomendaciones de venta.")
+
+    with tab3:
+        show_df(observar.head(20), cols_fund if fundamentales_check else [])
+
+    with tab4:
+        st.dataframe(df.reset_index(drop=True), use_container_width=True)
+
+    with tab5:
+        st.subheader("📜 Historial de señales guardadas")
+        historial_path = "historial_senales.csv"
+        if os.path.exists(historial_path):
+            df_hist = pd.read_csv(historial_path)
+            df_hist['fecha'] = pd.to_datetime(df_hist['fecha'])
+            st.dataframe(df_hist.sort_values('fecha', ascending=False).head(50), use_container_width=True)
+            st.subheader("🧪 Evaluación de efectividad (backtesting)")
+            with st.spinner("Calculando retornos históricos..."):
+                resultados_bt = []
+                for _, row in df_hist.iterrows():
+                    try:
+                        ticker = yf.Ticker(row['simbolo'])
+                        start = row['fecha']
+                        end = datetime.now()
+                        hist = ticker.history(start=start, end=end)
+                        if hist.empty:
+                            continue
+                        idx = hist.index.searchsorted(start)
+                        if idx + 5 >= len(hist):
+                            continue
+                        precio_entrada = row['precio']
+                        precio_salida = hist['Close'].iloc[idx + 5]
+                        ret = (precio_salida / precio_entrada - 1) * 100
+                        resultados_bt.append(ret)
+                    except:
+                        continue
+                if resultados_bt:
+                    win_rate = sum(1 for r in resultados_bt if r > 0) / len(resultados_bt) * 100
+                    ret_prom = np.mean(resultados_bt)
+                    cola, colb, colc = st.columns(3)
+                    cola.metric("📊 Total señales evaluadas", len(resultados_bt))
+                    colb.metric("✅ Win rate", f"{win_rate:.1f}%")
+                    colc.metric("📈 Retorno promedio", f"{ret_prom:.2f}%")
+                    st.caption("Backtesting sobre señales pasadas, usando ventana de 5 días hábiles.")
+                else:
+                    st.info("No hay suficientes datos históricos para backtesting aún.")
+        else:
+            st.info("Aún no hay historial de señales. El scanner automático generará el archivo después de algunas ejecuciones.")
+
+    # Análisis IA (si existe)
+    if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
+        with st.expander("🤖 Análisis de IA", expanded=True):
+            st.markdown(st.session_state['analisis_ia'])
+            st.caption("Este análisis es generado por IA con fines informativos. No constituye asesoría financiera.")
+
+    # Gráfico de la mejor oportunidad
+    if not compras.empty:
+        mejor = compras.iloc[0]['Símbolo']
+        st.subheader(f"📊 Análisis completo: {mejor}")
+        fig = grafico_enriquecido(mejor, usd_mxn, eur_mxn)
+        st.plotly_chart(fig, use_container_width=True)
+
+        top10 = compras.head(10)
+        fig_score = px.bar(top10, x='Símbolo', y='Score', color='Score', color_continuous_scale='RdYlGn', text='Score', title="Top 10 — Score ponderado de compra (máx 14 pts)")
+        fig_score.add_hline(y=8, line_dash="dash", line_color="green", annotation_text="Compra fuerte")
+        fig_score.add_hline(y=6, line_dash="dash", line_color="orange", annotation_text="Compra moderada")
+        fig_score.update_traces(textposition='outside')
+        fig_score.update_layout(showlegend=False, height=420, template='plotly_dark')
+        st.plotly_chart(fig_score, use_container_width=True)
+
+    # Descarga Excel
+    try:
+        import openpyxl  # noqa: F401
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            compras.to_excel(writer, index=False, sheet_name='Compras')
+            ventas.to_excel(writer, index=False, sheet_name='Ventas')
+            observar.to_excel(writer, index=False, sheet_name='Observar')
+            df.to_excel(writer, index=False, sheet_name='Todos')
+        st.download_button(
+            label="📥 Descargar informe Excel",
+            data=output.getvalue(),
+            file_name=f"trading_v2_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except ImportError:
+        st.warning("⚠️ openpyxl no instalado. No se puede generar Excel.")
+
+# ============================================================
+# SELECTOR DE GRÁFICO PARA EXPLORAR ACCIONES
+# ============================================================
+if 'df' in st.session_state:
     st.divider()
     st.subheader("🔎 Explorar cualquier acción analizada")
-    todos_simbolos = _df['Símbolo'].tolist()
+    todos_simbolos = st.session_state['df']['Símbolo'].tolist()
     sim_elegido = st.selectbox("Selecciona un símbolo para ver su gráfico completo", todos_simbolos, key="selector_grafico")
     if sim_elegido:
-        fila = _df[_df['Símbolo'] == sim_elegido].iloc[0]
+        fila = st.session_state['df'][st.session_state['df']['Símbolo'] == sim_elegido].iloc[0]
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Precio (MXN)", fila['Precio (MXN)'])
         c2.metric("Score", fila['Score'])
@@ -888,5 +813,5 @@ if 'df' in st.session_state:
             precio_actual = float(str(fila['Precio (MXN)']).replace(',',''))
             ganancia_pct = (precio_actual / precio_compra - 1) * 100
             st.metric(f"Tu compra en {precio_compra:.2f} MXN", f"{precio_actual:.2f} MXN", delta=f"{ganancia_pct:+.2f}%", delta_color="normal" if ganancia_pct >= 0 else "inverse")
-        fig2 = grafico_enriquecido(sim_elegido, _usd_mxn, _eur_mxn)
+        fig2 = grafico_enriquecido(sim_elegido, st.session_state['usd_mxn'], st.session_state['eur_mxn'])
         st.plotly_chart(fig2, use_container_width=True)
