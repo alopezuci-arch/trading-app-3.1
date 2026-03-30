@@ -28,6 +28,9 @@ import requests
 import numpy  as np
 import pandas as pd
 import yfinance as yf
+import json
+import hashlib
+import time
 from datetime                import datetime
 from email.mime.text         import MIMEText
 from email.mime.multipart    import MIMEMultipart
@@ -43,21 +46,23 @@ WHATSAPP_NUMERO   = os.environ.get("WHATSAPP_NUMERO",   "")
 WHATSAPP_APIKEY   = os.environ.get("WHATSAPP_APIKEY",   "")
 
 # ── APIs de IA — el sistema intenta en orden hasta que una funcione ──
-# Configura en GitHub Secrets solo las que tengas.
-# Prioridad: Gemini (gratis) → Groq (gratis) → Anthropic (pago)
-GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY",    "")  # gratis: aistudio.google.com
-GROQ_API_KEY      = os.environ.get("GROQ_API_KEY",      "")  # gratis: console.groq.com
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")  # pago:   console.anthropic.com
+GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY",    "")
+GROQ_API_KEY      = os.environ.get("GROQ_API_KEY",      "")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ── Parámetros del scanner ──────────────────────────────────
 SCORE_MINIMO     = 7       # mínimo para considerar COMPRAR
 CAPITAL_TRADING  = 25_000  # MXN destinados a trading activo
 RIESGO_PCT       = 1.0     # % de capital a arriesgar por trade
-MAX_WORKERS      = 20      # hilos paralelos — 20 para universo grande (~700 tickers)
+MAX_WORKERS      = 20      # hilos paralelos
 
-# ── Universo completo — todos los mercados ─────────────────
-# ~700 activos únicos: S&P 500 + NASDAQ 100 + ETFs sectoriales
-# + Mid-cap growth + Emergentes + BMV + IBEX 35 + IA + Commodities
+# ── Caché de IA ────────────────────────────────────────────
+CACHE_DIR = "cache_ia"
+CACHE_TTL = 3600  # segundos (1 hora)
+
+# ============================================================
+# UNIVERSO COMPLETO (≈700 activos)
+# ============================================================
 UNIVERSO = list(set([
     # S&P 500 completo
     'MMM','AOS','ABT','ABBV','ACN','ADBE','AMD','AES','AFL','A','APD','AKAM','ALK','ALB',
@@ -123,7 +128,7 @@ UNIVERSO = list(set([
 ]))
 
 # ============================================================
-# INDICADORES TÉCNICOS
+# FUNCIONES AUXILIARES (indicadores, scoring, position sizing)
 # ============================================================
 def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist = hist.copy()
@@ -184,9 +189,6 @@ def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
         score += 1; señales.append("Rebote EMA50")
     return score, señales
 
-# ============================================================
-# MARKET REGIME
-# ============================================================
 def obtener_market_regime() -> dict:
     try:
         sp   = yf.Ticker("^GSPC").history(period="1y")
@@ -197,7 +199,7 @@ def obtener_market_regime() -> dict:
         ema50  = sp['Close'].ewm(span=50).mean().iloc[-1]
         ret_1m = (precio / sp['Close'].iloc[-20] - 1) * 100 if len(sp) >= 20 else 0
         if precio > ema200 and precio > ema50 and ema50 > ema200:
-            return {'regime':'ALCISTA', 'score_bonus': 0, 'precio':precio,'ema200':ema200,'ret_1m':ret_1m}
+            return {'regime':'ALCISTA', 'score_bonus':0, 'precio':precio,'ema200':ema200,'ret_1m':ret_1m}
         elif precio > ema200:
             return {'regime':'LATERAL', 'score_bonus':-1, 'precio':precio,'ema200':ema200,'ret_1m':ret_1m}
         else:
@@ -205,9 +207,6 @@ def obtener_market_regime() -> dict:
     except:
         return {'regime':'DESCONOCIDO','score_bonus':0,'precio':0,'ema200':0,'ret_1m':0}
 
-# ============================================================
-# POSITION SIZING
-# ============================================================
 def position_size(precio: float, atr: float) -> dict:
     riesgo_mxn  = CAPITAL_TRADING * (RIESGO_PCT / 100)
     stop_dist   = 2 * atr
@@ -218,9 +217,6 @@ def position_size(precio: float, atr: float) -> dict:
     unidades  = inversion / precio
     return {'unidades': round(unidades,2), 'inversion': round(inversion,2)}
 
-# ============================================================
-# ANÁLISIS POR ACCIÓN
-# ============================================================
 def analizar(args: tuple) -> dict | None:
     simbolo, usd_mxn, regime_bonus = args
     try:
@@ -248,8 +244,7 @@ def analizar(args: tuple) -> dict | None:
         elif score >= SCORE_MINIMO:
             rec = "COMPRAR"
         else:
-            return None   # descartar señales débiles en el scanner
-
+            return None
         return {
             'Símbolo':      simbolo,
             'Precio MXN':   round(precio, 2),
@@ -267,9 +262,56 @@ def analizar(args: tuple) -> dict | None:
         return None
 
 # ============================================================
-# ANÁLISIS IA — soporta Gemini, Groq y Anthropic
-# Intenta en orden: Gemini → Groq → Anthropic
+# IA CON CACHÉ Y REINTENTOS
 # ============================================================
+def _calcular_hash_prompt(prompt: str) -> str:
+    return hashlib.sha256(prompt.encode()).hexdigest()
+
+def _guardar_cache_ia(prompt: str, respuesta: str):
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    key = _calcular_hash_prompt(prompt)
+    ruta = os.path.join(CACHE_DIR, f"{key}.json")
+    with open(ruta, 'w', encoding='utf-8') as f:
+        json.dump({
+            'timestamp': time.time(),
+            'prompt': prompt,
+            'respuesta': respuesta
+        }, f, ensure_ascii=False, indent=2)
+
+def _obtener_cache_ia(prompt: str) -> str | None:
+    key = _calcular_hash_prompt(prompt)
+    ruta = os.path.join(CACHE_DIR, f"{key}.json")
+    if not os.path.exists(ruta):
+        return None
+    try:
+        with open(ruta, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        if time.time() - data.get('timestamp', 0) < CACHE_TTL:
+            return data.get('respuesta')
+        else:
+            os.remove(ruta)
+    except:
+        pass
+    return None
+
+def _llamar_ia_con_reintentos(proveedor: str, prompt: str, max_retries=3):
+    for intento in range(max_retries):
+        try:
+            if proveedor == "Gemini":
+                return _ia_gemini(prompt)
+            elif proveedor == "Groq":
+                return _ia_groq(prompt)
+            elif proveedor == "Anthropic":
+                return _ia_anthropic(prompt)
+        except Exception as e:
+            print(f"  ⚠️  {proveedor} intento {intento+1}/{max_retries} falló: {e}")
+            if intento == max_retries - 1:
+                raise
+            espera = 2 ** intento
+            print(f"     Reintentando en {espera} segundos...")
+            time.sleep(espera)
+    raise RuntimeError(f"No se pudo obtener respuesta de {proveedor} después de {max_retries} intentos.")
+
 def _construir_prompt(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
     resumen = "\n".join([
         f"- {o['Símbolo']}: Score {o['Score']}/14, RSI {o['RSI']}, "
@@ -295,13 +337,7 @@ Proporciona en formato conciso:
 
 Sé directo y práctico. No inventes datos."""
 
-
 def _ia_gemini(prompt: str) -> str:
-    """
-    Google Gemini 1.5 Flash — completamente gratis.
-    Registro: https://aistudio.google.com/app/apikey
-    Límites: 15 req/min · 1,000,000 tokens/día · sin tarjeta de crédito
-    """
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
            f"gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}")
     resp = requests.post(
@@ -313,13 +349,7 @@ def _ia_gemini(prompt: str) -> str:
         return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
     raise RuntimeError(f"Gemini {resp.status_code}: {resp.text[:200]}")
 
-
 def _ia_groq(prompt: str) -> str:
-    """
-    Groq — completamente gratis (Llama 3.1 70B, muy rápido).
-    Registro: https://console.groq.com
-    Límites: 30 req/min · 14,400 req/día · sin tarjeta de crédito
-    """
     resp = requests.post(
         "https://api.groq.com/openai/v1/chat/completions",
         headers={
@@ -337,12 +367,7 @@ def _ia_groq(prompt: str) -> str:
         return resp.json()["choices"][0]["message"]["content"]
     raise RuntimeError(f"Groq {resp.status_code}: {resp.text[:200]}")
 
-
 def _ia_anthropic(prompt: str) -> str:
-    """
-    Anthropic Claude — de pago (~$0.003 USD por análisis).
-    Registro: https://console.anthropic.com
-    """
     resp = requests.post(
         "https://api.anthropic.com/v1/messages",
         headers={
@@ -361,34 +386,35 @@ def _ia_anthropic(prompt: str) -> str:
         return resp.json()["content"][0]["text"]
     raise RuntimeError(f"Anthropic {resp.status_code}: {resp.text[:200]}")
 
-
 def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
-    """
-    Intenta los proveedores de IA en orden de preferencia.
-    Usa el primero que tenga API key configurada y funcione.
-    """
     if not oportunidades:
         return ""
 
     prompt = _construir_prompt(oportunidades, regime, usd_mxn)
 
-    # (proveedor, función, key configurada)
+    # Intentar caché
+    cache = _obtener_cache_ia(prompt)
+    if cache:
+        print("  ✅ Análisis IA obtenido desde caché")
+        return cache
+
     proveedores = [
-        ("Gemini",    _ia_gemini,    GEMINI_API_KEY),
-        ("Groq",      _ia_groq,      GROQ_API_KEY),
-        ("Anthropic", _ia_anthropic, ANTHROPIC_API_KEY),
+        ("Gemini", GEMINI_API_KEY),
+        ("Groq", GROQ_API_KEY),
+        ("Anthropic", ANTHROPIC_API_KEY),
     ]
 
-    for nombre, func, key in proveedores:
-        if not key:
+    for nombre, api_key in proveedores:
+        if not api_key:
             continue
         try:
             print(f"  Intentando IA con {nombre}...")
-            texto = func(prompt)
+            texto = _llamar_ia_con_reintentos(nombre, prompt)
             print(f"  ✅ Análisis IA completado con {nombre}")
+            _guardar_cache_ia(prompt, texto)
             return texto
         except Exception as e:
-            print(f"  ⚠️  {nombre} falló: {e} — probando siguiente...")
+            print(f"  ⚠️  {nombre} falló después de reintentos: {e}")
 
     print("  ⚠️  Ningún proveedor de IA disponible. Configura al menos uno en GitHub Secrets.")
     return ""
@@ -446,9 +472,7 @@ def construir_email(ops: list[dict], regime: dict, ia_texto: str, hora: str) -> 
         <div style="background:#f5f3ff;padding:12px;border-left:4px solid #7b61ff;font-size:14px;line-height:1.6">
           {ia_texto.replace(chr(10),'<br>')}
         </div>"""
-
     icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴'}.get(regime['regime'],'⚪')
-
     return f"""
     <html><body style="font-family:Arial,sans-serif;max-width:700px;margin:auto">
     <h2 style="color:#1a73e8">📈 Scanner Trading — {hora}</h2>
@@ -463,7 +487,7 @@ def construir_email(ops: list[dict], regime: dict, ia_texto: str, hora: str) -> 
       <tr style="background:#e8f5e9">
         <th>Símbolo</th><th>Precio MXN</th><th>Score</th>
         <th>Unidades</th><th>Inversión</th><th>Recomendación</th>
-      </tr>
+       </tr>
       {filas if filas else '<tr><td colspan="6" style="text-align:center">Sin señales</td></tr>'}
     </table>
     <p style="color:#999;font-size:11px;margin-top:20px">
@@ -473,7 +497,7 @@ def construir_email(ops: list[dict], regime: dict, ia_texto: str, hora: str) -> 
     </body></html>"""
 
 # ============================================================
-# MAIN — ejecución del scanner
+# MAIN
 # ============================================================
 def main():
     hora = datetime.now().strftime("%d/%m/%Y %H:%M")
@@ -514,16 +538,14 @@ def main():
             if i % 20 == 0:
                 print(f"  {i}/{len(UNIVERSO)} procesados...")
 
-    # Ordenar por score
     resultados.sort(key=lambda x: x['Score'], reverse=True)
     print(f"\nOportunidades detectadas: {len(resultados)}")
-
     for r in resultados:
         print(f"  {r['Símbolo']:8s} Score:{r['Score']:2d}  RSI:{r['RSI']:5.1f}  "
               f"Precio:{r['Precio MXN']:>10.2f}  {r['Recomendación']}")
 
     # 4. Análisis IA
-    print("\nConsultando a Claude para análisis IA...")
+    print("\nConsultando IA para análisis...")
     ia_texto = analisis_ia(resultados, regime, usd_mxn)
     if ia_texto:
         print("\n--- ANÁLISIS IA ---")
@@ -532,14 +554,11 @@ def main():
     # 5. Alertas (solo si hay oportunidades)
     if resultados:
         html = construir_email(resultados, regime, ia_texto, hora)
-
-        # Email
         asunto = (f"📈 Trading Alert {hora} — "
                   f"{len(resultados)} señales | Mercado: {regime['regime']}")
         enviar_email(asunto, html)
 
-        # WhatsApp — resumen compacto
-        top3  = ", ".join([r['Símbolo'] for r in resultados[:3]])
+        top3 = ", ".join([r['Símbolo'] for r in resultados[:3]])
         confianza = "ALTA" if regime['regime'] == 'ALCISTA' else "MEDIA" if regime['regime'] == 'LATERAL' else "BAJA"
         msg_wa = (
             f"📈 *Scanner Trading* — {hora}\n"
