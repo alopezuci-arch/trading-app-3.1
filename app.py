@@ -236,6 +236,9 @@ def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist['EMA26']    = hist['Close'].ewm(span=26, adjust=False).mean()
     hist['MACD']     = hist['EMA12'] - hist['EMA26']
     hist['MACD_sig'] = hist['MACD'].ewm(span=9, adjust=False).mean()
+    # 🔧 Agregar MACD Histograma
+    hist['MACD_hist'] = hist['MACD'] - hist['MACD_sig']
+    # resto del código...
     hl   = hist['High'] - hist['Low']
     hc   = (hist['High'] - hist['Close'].shift()).abs()
     lc   = (hist['Low']  - hist['Close'].shift()).abs()
