@@ -2,23 +2,21 @@ name: Scanner Trading 24/7
 
 on:
   schedule:
-    # Horarios en UTC — equivalentes a hora de México (UTC-6):
-    - cron: '30 14 * * 1-5'   # 8:30 AM MX  — pre-apertura mercado NY
-    - cron: '0 16 * * 1-5'    # 10:00 AM MX — media mañana
-    - cron: '30 19 * * 1-5'   # 1:30 PM MX  — tarde
-  workflow_dispatch:            # permite ejecutarlo manualmente desde GitHub
+    - cron: '30 14 * * 1-5'   # 8:30 AM MX
+    - cron: '0 16 * * 1-5'    # 10:00 AM MX
+    - cron: '30 19 * * 1-5'   # 1:30 PM MX
+  workflow_dispatch:
 
 jobs:
   scan:
     runs-on: ubuntu-latest
     env:
-      # Forzar Node 24 para evitar warnings (opcional, pero recomendado)
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - name: Descargar código del repo
+      - name: Descargar código
         uses: actions/checkout@v4
 
-      - name: Configurar Python 3.11
+      - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -30,6 +28,14 @@ jobs:
           key: ${{ runner.os }}-ia-cache-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-ia-cache-
+
+      - name: Restaurar historial de señales
+        uses: actions/cache@v4
+        with:
+          path: historial_senales.csv
+          key: historial-${{ github.run_id }}
+          restore-keys: |
+            historial-
 
       - name: Instalar dependencias
         run: pip install yfinance pandas numpy requests
@@ -44,3 +50,9 @@ jobs:
           WHATSAPP_NUMERO:   ${{ secrets.WHATSAPP_NUMERO }}
           WHATSAPP_APIKEY:   ${{ secrets.WHATSAPP_APIKEY }}
         run: python scanner_24_7.py
+
+      - name: Subir historial de señales como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: historial_senales
+          path: historial_senales.csv
