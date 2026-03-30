@@ -381,7 +381,7 @@ def analizar_accion(args: tuple) -> dict | None:
         elif score >= 8:
             recomendacion = "COMPRAR ★★★"
             motivo        = f"Score {score}/14"
-        elif score >= 6:
+        elif score >= 3:
             recomendacion = "COMPRAR ★★"
             motivo        = f"Score {score}/14"
         elif score >= 4:
