@@ -1,6 +1,7 @@
 # ============================================================
 # SISTEMA DE TRADING PROFESIONAL v2.0 — STREAMLIT
-# Versión con persistencia de resultados (session_state)
+# Versión final: scoring ponderado, ATR, market regime,
+# position sizing, IA, alertas, gráficos, historial de transacciones
 # ============================================================
 
 import streamlit as st
@@ -41,6 +42,35 @@ WHATSAPP_NUMERO   = os.environ.get("WHATSAPP_NUMERO", "")
 WHATSAPP_APIKEY   = os.environ.get("WHATSAPP_APIKEY", "")
 EMAIL_REMITENTE   = os.environ.get("EMAIL_REMITENTE", "")
 EMAIL_PASSWORD    = os.environ.get("EMAIL_PASSWORD",  "")
+
+# ============================================================
+# HISTORIAL DE TRANSACCIONES
+# ============================================================
+TRANSACCIONES_FILE = "transacciones.csv"
+
+def cargar_transacciones() -> pd.DataFrame:
+    """Carga el archivo de transacciones si existe, o devuelve DataFrame vacío."""
+    if os.path.exists(TRANSACCIONES_FILE):
+        df = pd.read_csv(TRANSACCIONES_FILE)
+        df['fecha'] = pd.to_datetime(df['fecha'])
+        return df
+    return pd.DataFrame(columns=['fecha', 'simbolo', 'cantidad', 'precio', 'tipo', 'total', 'notas'])
+
+def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str, notas: str = ""):
+    """Agrega una nueva transacción al archivo CSV."""
+    df = cargar_transacciones()
+    nueva = pd.DataFrame([{
+        'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'simbolo': simbolo.upper(),
+        'cantidad': cantidad,
+        'precio': precio,
+        'tipo': tipo,
+        'total': round(cantidad * precio, 2),
+        'notas': notas
+    }])
+    df = pd.concat([df, nueva], ignore_index=True)
+    df.to_csv(TRANSACCIONES_FILE, index=False)
+    print(f"✅ Transacción registrada: {tipo.upper()} {cantidad} {simbolo} @ ${precio:.2f}")
 
 # ============================================================
 # LISTAS DE MERCADOS (completas)
@@ -130,36 +160,7 @@ def cargar_listas():
 (sp100, nasdaq100, ibex35, bmv, sp500,
  ia_stocks, commodity_etfs, mining_oil,
  etfs_sectoriales, mid_cap_growth, etfs_emergentes) = cargar_listas()
-# ============================================================
-# HISTORIAL DE TRANSACCIONES
-# ============================================================
-TRANSACCIONES_FILE = "transacciones.csv"
 
-def cargar_transacciones() -> pd.DataFrame:
-    """Carga el archivo de transacciones si existe, o devuelve DataFrame vacío."""
-    if os.path.exists(TRANSACCIONES_FILE):
-        df = pd.read_csv(TRANSACCIONES_FILE)
-        # Asegurar formato de fecha
-        df['fecha'] = pd.to_datetime(df['fecha'])
-        return df
-    return pd.DataFrame(columns=['fecha', 'simbolo', 'cantidad', 'precio', 'tipo', 'total', 'notas'])
-
-def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str, notas: str = ""):
-    """Agrega una nueva transacción al archivo CSV."""
-    df = cargar_transacciones()
-    nueva = pd.DataFrame([{
-        'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        'simbolo': simbolo.upper(),
-        'cantidad': cantidad,
-        'precio': precio,
-        'tipo': tipo,
-        'total': round(cantidad * precio, 2),
-        'notas': notas
-    }])
-    df = pd.concat([df, nueva], ignore_index=True)
-    df.to_csv(TRANSACCIONES_FILE, index=False)
-    print(f"✅ Transacción registrada: {tipo.upper()} {cantidad} {simbolo} @ ${precio:.2f}")
-    
 # ============================================================
 # SIDEBAR (controles)
 # ============================================================
@@ -208,12 +209,13 @@ alerta_email    = st.sidebar.checkbox("📧 Alertar por email", value=True)
 alerta_whatsapp = st.sidebar.checkbox("💬 Alertar por WhatsApp", value=False)
 umbral_score    = st.sidebar.slider("Umbral mínimo para alertar (score)", 4, 10, 7)
 
+# Compras registradas
 st.sidebar.markdown("### 💰 Registrar compra")
+st.sidebar.caption("Formato: SÍMBOLO,CANTIDAD,PRECIO (MXN)\nEjemplo: AAPL,10,4465.53")
 compra_input = st.sidebar.text_area(
-    "Formato: SÍMBOLO,CANTIDAD,PRECIO (MXN)\nEjemplo:\nAAPL,10,4465.53\nWALMEX.MX,5,56.13",
+    "Compra (una por línea)",
     placeholder="AAPL,10,4465.53\nWALMEX.MX,5,56.13",
     height=120
-)
 )
 
 # ============================================================
@@ -299,7 +301,6 @@ def obtener_market_regime() -> dict:
         ema200 = sp['Close'].ewm(span=200).mean().iloc[-1]
         ema50  = sp['Close'].ewm(span=50).mean().iloc[-1]
         ret_1m = (precio / sp['Close'].iloc[-20] - 1) * 100 if len(sp) >= 20 else 0
-        # RSI del S&P 500 (simple, solo para mostrar)
         delta = sp['Close'].diff()
         gain = delta.where(delta > 0, 0).rolling(14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
@@ -438,12 +439,11 @@ def analizar_accion(args: tuple) -> dict | None:
         if incluir_fund:
             resultado.update(obtener_fundamentales(simbolo))
         if incluir_bt:
-            # backtest simple (placeholder)
             resultado['BT Entradas'] = 0
             resultado['BT Win Rate'] = "0%"
             resultado['BT Ret Prom'] = "0%"
         return resultado
-    except Exception as e:
+    except Exception:
         return None
 
 def puntaje_fundamental(row: pd.Series) -> int:
@@ -568,53 +568,52 @@ def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figu
     return fig
 
 # ============================================================
-# BOTÓN DE ANÁLISIS (SOLO ACTUALIZA st.session_state)
+# BOTÓN DE ANÁLISIS (actualiza session_state)
 # ============================================================
-# Procesar compras registradas (nuevo formato y antiguo)
-PRECIO_COMPRA = {}
-if compra_input:
-    for linea in compra_input.strip().split('\n'):
-        if not linea.strip():
-            continue
-        # Intentar formato "SÍMBOLO=CANTIDAD,PRECIO" o "SÍMBOLO=PRECIO"
-        if '=' in linea:
-            partes = linea.split('=', 1)
-            if len(partes) == 2:
-                sim = partes[0].strip().upper()
-                resto = partes[1].strip()
-                if ',' in resto:
-                    cant_str, prec_str = resto.split(',', 1)
+if st.sidebar.button("🔍 ANALIZAR", type="primary"):
+    # Procesar compras registradas
+    PRECIO_COMPRA = {}
+    if compra_input:
+        for linea in compra_input.strip().split('\n'):
+            if not linea.strip():
+                continue
+            # Intentar formato con '=' (antiguo) o con comas (nuevo)
+            if '=' in linea:
+                partes = linea.split('=', 1)
+                if len(partes) == 2:
+                    sim = partes[0].strip().upper()
+                    resto = partes[1].strip()
+                    if ',' in resto:
+                        cant_str, prec_str = resto.split(',', 1)
+                        try:
+                            cantidad = float(cant_str.strip())
+                            precio = float(prec_str.strip())
+                        except:
+                            continue
+                    else:
+                        cantidad = 1.0
+                        precio = float(resto)
+            else:
+                partes = linea.split(',')
+                if len(partes) == 3:
+                    sim = partes[0].strip().upper()
                     try:
-                        cantidad = float(cant_str.strip())
-                        precio = float(prec_str.strip())
+                        cantidad = float(partes[1].strip())
+                        precio = float(partes[2].strip())
                     except:
                         continue
                 else:
-                    cantidad = 1.0
-                    precio = float(resto)
-        else:
-            partes = linea.split(',')
-            if len(partes) == 3:
-                sim = partes[0].strip().upper()
-                try:
-                    cantidad = float(partes[1].strip())
-                    precio = float(partes[2].strip())
-                except:
                     continue
-            else:
-                continue
-
-        # Guardar transacción en historial
-        guardar_transaccion(sim, cantidad, precio, "compra")
-        PRECIO_COMPRA[sim] = precio
-
-if PRECIO_COMPRA:
-    st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
+            # Guardar transacción en historial
+            guardar_transaccion(sim, cantidad, precio, "compra")
+            PRECIO_COMPRA[sim] = precio   # para señales de venta (último precio)
+        if PRECIO_COMPRA:
+            st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
 
     usd_mxn, eur_mxn = obtener_tipo_cambio()
     regime_data = obtener_market_regime()
     regime_bonus = regime_data['score_bonus'] if market_regime_check else 0
-    trade_capital = capital_total * 0.25  # Capital destinado a trading activo
+    trade_capital = capital_total * 0.25  # capital destinado a trading activo
 
     lista_acciones = mercado_opciones[mercado_seleccionado]
     total = len(lista_acciones)
@@ -658,6 +657,7 @@ if PRECIO_COMPRA:
             ventas = pd.DataFrame()
         compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
         observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
+        evitar   = df[df['Recomendación'] == 'EVITAR'].copy()   # para métricas
 
         # Filtrar fundamentales
         if filtro_fundamentales and 'ROE (%)' in compras.columns:
@@ -722,8 +722,11 @@ if 'df' in st.session_state:
     fundamentales_check = st.session_state['fund_check']
     regime_data = st.session_state['regime']
 
-    st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
+    # Calcular evitadas para métricas
     evitar = df[df['Recomendación'] == 'EVITAR']
+
+    st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
+
     # Mostrar resumen del market regime
     icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴','DESCONOCIDO':'⚪'}.get(regime_data.get('regime','DESCONOCIDO'),'⚪')
     with st.expander(f"{icono_regime} Market Regime: **{regime_data.get('regime','DESCONOCIDO')}** — {regime_data.get('descripcion','')}", expanded=True):
@@ -733,7 +736,7 @@ if 'df' in st.session_state:
         c3.metric("RSI S&P",    f"{regime_data.get('rsi_sp500',0)}")
         c4.metric("Ret. 1 mes", f"{regime_data.get('ret_1m',0):+.1f}%")
 
-    # Métricas
+    # Métricas (4 columnas)
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("✅ Compras",    len(compras))
     col2.metric("🔴 Ventas",     len(ventas))
@@ -741,7 +744,7 @@ if 'df' in st.session_state:
     col4.metric("🚫 Evitar",     len(evitar))
 
     # Tabs de resultados
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "📜 HISTORIAL", "🚫 Evitar"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "📜 HISTORIAL"])
 
     cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit',
                  'Unidades','Inversión (MXN)','% Capital','Dist EMA50','Recomendación','Motivo','Señales']
@@ -774,44 +777,19 @@ if 'df' in st.session_state:
         st.dataframe(df.reset_index(drop=True), use_container_width=True)
 
     with tab5:
-        st.subheader("📜 Historial de señales guardadas")
-        historial_path = "historial_senales.csv"
-        if os.path.exists(historial_path):
-            df_hist = pd.read_csv(historial_path)
-            df_hist['fecha'] = pd.to_datetime(df_hist['fecha'])
-            st.dataframe(df_hist.sort_values('fecha', ascending=False).head(50), use_container_width=True)
-            st.subheader("🧪 Evaluación de efectividad (backtesting)")
-            with st.spinner("Calculando retornos históricos..."):
-                resultados_bt = []
-                for _, row in df_hist.iterrows():
-                    try:
-                        ticker = yf.Ticker(row['simbolo'])
-                        start = row['fecha']
-                        end = datetime.now()
-                        hist = ticker.history(start=start, end=end)
-                        if hist.empty:
-                            continue
-                        idx = hist.index.searchsorted(start)
-                        if idx + 5 >= len(hist):
-                            continue
-                        precio_entrada = row['precio']
-                        precio_salida = hist['Close'].iloc[idx + 5]
-                        ret = (precio_salida / precio_entrada - 1) * 100
-                        resultados_bt.append(ret)
-                    except:
-                        continue
-                if resultados_bt:
-                    win_rate = sum(1 for r in resultados_bt if r > 0) / len(resultados_bt) * 100
-                    ret_prom = np.mean(resultados_bt)
-                    cola, colb, colc = st.columns(3)
-                    cola.metric("📊 Total señales evaluadas", len(resultados_bt))
-                    colb.metric("✅ Win rate", f"{win_rate:.1f}%")
-                    colc.metric("📈 Retorno promedio", f"{ret_prom:.2f}%")
-                    st.caption("Backtesting sobre señales pasadas, usando ventana de 5 días hábiles.")
-                else:
-                    st.info("No hay suficientes datos históricos para backtesting aún.")
+        st.subheader("📜 Historial de transacciones")
+        df_trans = cargar_transacciones()
+        if not df_trans.empty:
+            st.dataframe(df_trans.sort_values('fecha', ascending=False), use_container_width=True)
+            csv = df_trans.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Descargar historial (CSV)",
+                data=csv,
+                file_name=f"transacciones_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
         else:
-            st.info("Aún no hay historial de señales. El scanner automático generará el archivo después de algunas ejecuciones.")
+            st.info("Aún no hay transacciones registradas. Usa el panel lateral para añadir compras.")
 
     # Análisis IA (si existe)
     if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
@@ -851,23 +829,7 @@ if 'df' in st.session_state:
         )
     except ImportError:
         st.warning("⚠️ openpyxl no instalado. No se puede generar Excel.")
-# ============================================================
-# HISTORIAL DE TRANSACCIONES (NUEVO)
-# ============================================================
-st.divider()
-st.subheader("📜 Historial de transacciones")
-df_trans = cargar_transacciones()
-if not df_trans.empty:
-    st.dataframe(df_trans.sort_values('fecha', ascending=False), use_container_width=True)
-    csv = df_trans.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📥 Descargar historial (CSV)",
-        data=csv,
-        file_name=f"transacciones_{datetime.now().strftime('%Y%m%d')}.csv",
-        mime="text/csv"
-    )
-else:
-    st.info("Aún no hay transacciones registradas. Usa el panel lateral para añadir compras.")
+
 # ============================================================
 # SELECTOR DE GRÁFICO PARA EXPLORAR ACCIONES
 # ============================================================
