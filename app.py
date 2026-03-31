@@ -659,30 +659,30 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
     df = pd.DataFrame(resultados)
 
-        if fundamentales_check and 'ROE (%)' in df.columns:
-            df['Score Fund'] = df.apply(puntaje_fundamental, axis=1)
+    if fundamentales_check and 'ROE (%)' in df.columns:
+        df['Score Fund'] = df.apply(puntaje_fundamental, axis=1)
 
-        ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
-        compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
-        observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
+    ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
+    compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
+    observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
 
-        st.session_state['df'] = df
-        st.session_state['compras'] = compras
-        st.session_state['ventas'] = ventas
-        st.session_state['observar'] = observar
-        st.session_state['PRECIO_COMPRA'] = PRECIO_COMPRA
-        st.session_state['usd_mxn'] = usd_mxn
-        st.session_state['regime'] = regime_data
-        st.session_state['capital'] = capital_total
-        st.session_state['ultima_actualizacion'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    st.session_state['df'] = df
+    st.session_state['compras'] = compras
+    st.session_state['ventas'] = ventas
+    st.session_state['observar'] = observar
+    st.session_state['PRECIO_COMPRA'] = PRECIO_COMPRA
+    st.session_state['usd_mxn'] = usd_mxn
+    st.session_state['regime'] = regime_data
+    st.session_state['capital'] = capital_total
+    st.session_state['ultima_actualizacion'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
-        if ia_check and not compras.empty:
-            with st.spinner("🤖 Analizando con IA..."):
-                texto_ia = analisis_ia(compras.head(8).to_dict('records'), regime_data, usd_mxn)
-                st.session_state['analisis_ia'] = texto_ia
+    if ia_check and not compras.empty:
+        with st.spinner("🤖 Analizando con IA..."):
+            texto_ia = analisis_ia(compras.head(8).to_dict('records'), regime_data, usd_mxn)
+            st.session_state['analisis_ia'] = texto_ia
 
-        st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra.")
-        st.rerun()
+    st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra.")
+    st.rerun()
 
 # ============================================================
 # PRESENTACIÓN DE RESULTADOS
