@@ -41,8 +41,40 @@ HISTORICO_FILE   = "historial_senales.csv"
 # ============================================================
 # UNIVERSO (el mismo que tenías)
 # ============================================================
-UNIVERSO = [ ... ]  # ← Mantengo tu lista completa (no la copio aquí por espacio, pero usa exactamente la misma que ya tienes)
+UNIVERSO = [
+    'AAPL', 'MSFT', 'AMZN', 'NVDA', 'META', 'GOOGL', 'GOOG', 'BRK-B', 'JPM', 'V',
+    'JNJ', 'WMT', 'PG', 'UNH', 'HD', 'DIS', 'MA', 'BAC', 'XOM', 'CVX',
+    'KO', 'PEP', 'ADBE', 'CRM', 'NFLX', 'TMO', 'ABT', 'ACN', 'AMD', 'INTC',
+    'CMCSA', 'TXN', 'QCOM', 'COST', 'NKE', 'MRK', 'ABBV', 'LLY', 'PFE', 'BMY',
+    'CVS', 'HON', 'UPS', 'BA', 'CAT', 'GE', 'IBM', 'GS', 'SPGI', 'MS',
+    'PLD', 'LMT', 'MDT', 'ISRG', 'BLK', 'AMGN', 'GILD', 'FISV', 'SYK', 'ZTS',
+    'T', 'VZ', 'NEE', 'DUK', 'SO', 'MO', 'PM', 'MDLZ', 'SBUX', 'MCD',
+    'LOW', 'TGT', 'TJX', 'ORCL', 'NOW', 'INTU', 'BKNG', 'UBER', 'TSLA', 'AVGO',
+    'ADBE', 'AMD', 'AMGN', 'AMZN', 'ASML', 'AVGO', 'BIIB', 'BKNG', 'CDNS', 'CHTR',
+    'CMCSA', 'COST', 'CSCO', 'CSX', 'CTAS', 'DXCM', 'EA', 'EBAY', 'EXC', 'FANG',
+    'FAST', 'FTNT', 'GILD', 'GOOGL', 'GOOG', 'HON', 'IDXX', 'ILMN', 'INTC', 'INTU',
+    'ISRG', 'KDP', 'KLAC', 'LRCX', 'LULU', 'MAR', 'MELI', 'META', 'MNST', 'MSFT',
+    'MU', 'NFLX', 'NVDA', 'NXPI', 'ODFL', 'ORLY', 'PANW', 'PAYX', 'PCAR', 'PDD',
+    'PEP', 'QCOM', 'REGN', 'ROST', 'SBUX', 'SGEN', 'SIRI', 'SNPS', 'SPLK', 'SWKS',
+    'TCOM', 'TEAM', 'TMUS', 'TSLA', 'TTD', 'TXN', 'VRTX', 'WBA', 'WDAY', 'XEL',
+    'ZM', 'ZS', 'SAN.MC', 'BBVA.MC', 'TEF.MC', 'ITX.MC', 'IBE.MC', 'FER.MC',
+    'ENG.MC', 'ACS.MC', 'REP.MC', 'AENA.MC', 'CLNX.MC', 'GRF.MC', 'MTS.MC',
+    'MAP.MC', 'MEL.MC', 'CABK.MC', 'ELE.MC', 'IAG.MC', 'ANA.MC', 'VIS.MC',
+    'CIE.MC', 'LOG.MC', 'ACX.MC', 'WALMEX.MX', 'GMEXICOB.MX', 'CEMEXCPO.MX',
+    'FEMSAUBD.MX', 'AMXL.MX', 'KOFUBL.MX', 'GFNORTEO.MX', 'BBAJIOO.MX',
+    'ALFA.MX', 'ALPEKA.MX', 'ASURB.MX', 'GAPB.MX', 'OMAB.MX', 'AC.MX',
+    'GCC.MX', 'LALA.MX', 'MEGA.MX', 'PINFRA.MX', 'TLEVISACPO.MX', 'VESTA.MX',
+    'GRUMA.MX', 'HERDEZ.MX', 'CUERVO.MX', 'ORBIA.MX', 'XLK','XLV','XLF','XLE',
+    'XLI','XLY','XLP','XLU','XLB','XLRE','XLC','SOXX','ARKK','ARKG','ARKW','ARKF',
+    'CIBR','ROBO','ICLN','TAN','LIT','JETS','XHB','KRE','IBB','SPY','QQQ','IWM',
+    'DIA','VTI','GLD','SLV','USO','UNG','DBC','NEM','GOLD','FCX','DDOG','NET',
+    'CRWD','ZS','BILL','DUOL','CELH','SMCI','HUBS','MNDY','APPN','PCTY','FIVN',
+    'RELY','PATH','SMAR','JAMF','EXAS','NVCR','FATE','RXRX','AFRM','UPST','HOOD',
+    'SQ','SOFI','NU','PLUG','CHPT','RIVN','LCID','KTOS','RKLB','ACHR','EWZ','EWJ',
+    'FXI','KWEB','EWY','EWT','EWH','EWA','EWC','EWG','EWQ','EWU','VWO','EEM','INDA','EWX'
+]
 
+# Eliminar duplicados manteniendo orden
 UNIVERSO = list(dict.fromkeys(UNIVERSO))
 
 # ============================================================
