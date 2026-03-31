@@ -1,5 +1,5 @@
 # ============================================================
-# SISTEMA DE TRADING PROFESIONAL v2.1 — STREAMLIT (MEJORADO 2026)
+# SISTEMA DE TRADING PROFESIONAL v2.1 — STREAMLIT (COMPLETO)
 # Mejoras: safe yfinance + multi-timeframe + backtest realista + IA completa
 # ============================================================
 
@@ -33,7 +33,7 @@ st.set_page_config(page_title="Trading System v2.1", layout="wide", page_icon="�
 st.title("📈 Sistema de Trading Personal v2.1 (Mejorado)")
 
 # ============================================================
-# CONSTANTES DE ALERTAS
+# CONSTANTES
 # ============================================================
 EMAIL_DESTINO   = "alopez.uci@gmail.com"
 GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY",    "")
@@ -71,67 +71,15 @@ def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str,
     df.to_csv(TRANSACCIONES_FILE, index=False)
 
 # ============================================================
-# LISTAS DE MERCADOS + UNIVERSO RECOMENDADO (TU CÓDIGO ORIGINAL)
+# LISTAS DE MERCADOS
 # ============================================================
 @st.cache_data(ttl=3600)
 def cargar_listas():
-    sp500 = [
-        'MMM','AOS','ABT','ABBV','ACN','ADBE','AMD','AES','AFL','A','APD','AKAM','ALK','ALB',
-        'ARE','ALGN','ALLE','LNT','ALL','GOOGL','GOOG','MO','AMZN','AMCR','AEE','AAL','AEP',
-        'AXP','AIG','AMT','AWK','AMP','ABC','AME','AMGN','APH','ADI','ANSS','AON','APA','AAPL',
-        'AMAT','APTV','ADM','ANET','AJG','AIZ','T','ATO','ADSK','ADP','AZO','AVB','AVY','AXON',
-        'BKR','BALL','BAC','BBWI','BAX','BDX','BBY','BIO','BIIB','BLK','BK','BA','BKNG','BWA',
-        'BSX','BMY','AVGO','BR','BRO','CDNS','CAT','CBOE','CBRE','CDW','CE','CNC','CNP','CF',
-        'CRL','CHTR','CVX','CMG','CB','CHD','CI','CINF','CTAS','CSCO','C','CFG','CLX','CME',
-        'CMS','KO','CTSH','CL','CMCSA','CMA','CAG','COP','ED','STZ','COO','CPB','COST','CTVA',
-        'CVS','DHI','DHR','DRI','DVA','DE','DAL','DVN','DXCM','FANG','DLR','DFS','DG','DLTR',
-        'D','DPZ','DOV','DOW','DTE','DUK','DD','EMN','ETN','EBAY','ECL','EIX','EW','EL','EMR',
-        'ENPH','ETR','EOG','EFX','EQIX','EQR','ESS','ELV','EXC','EXPE','EXPD','EXR','XOM',
-        'FDS','FICO','FAST','FDX','FITB','FSLR','FE','FIS','FISV','FLT','FMC','F','FTNT','FTV',
-        'FCX','GRMN','IT','GNRC','GD','GE','GIS','GM','GPC','GILD','GL','GPN','GS','GWW','HAL',
-        'HAS','HCA','HSIC','HSY','HES','HPE','HLT','HOLX','HD','HON','HRL','HST','HWM','HPQ',
-        'HUM','HBAN','IBM','IEX','IDXX','ITW','ILMN','INCY','IR','INTC','ICE','IP','IPG','IFF',
-        'INTU','ISRG','IVZ','INVH','IQV','IRM','JBHT','JKHY','J','JNJ','JCI','JPM','JNPR','K',
-        'KEY','KEYS','KMB','KIM','KMI','KLAC','KHC','KR','LHX','LH','LRCX','LW','LVS','LDOS',
-        'LEN','LIN','LYV','LKQ','LMT','L','LOW','LYB','MTB','MRO','MPC','MKTX','MAR','MMC',
-        'MLM','MAS','MA','MKC','MCD','MCK','MDT','MRK','MET','MTD','MGM','MCHP','MU','MSFT',
-        'MAA','MRNA','MHK','MDLZ','MPWR','MNST','MCO','MS','MOS','MSI','MSCI','NDAQ','NTAP',
-        'NFLX','NEM','NEE','NKE','NI','NSC','NTRS','NOC','NRG','NUE','NVDA','NVR','NXPI','ORLY',
-        'OXY','ODFL','OMC','OKE','ORCL','OTIS','PCAR','PH','PAYX','PAYC','PYPL','PNR','PEP',
-        'PFE','PCG','PM','PSX','PNW','PLD','PGR','PPL','PFG','PG','PWR','POOL','PRU','PEG',
-        'PSA','PHM','QCOM','RJF','RTX','O','REGN','RF','RSG','RMD','RVTY','RHI','ROK','ROL',
-        'ROP','ROST','RCL','SPGI','CRM','SBAC','STX','SYY','SCHW','STLD','SRE','NOW','SHW',
-        'SPG','SLB','SNA','SO','LUV','SWK','SBUX','STT','STE','SYK','SYF','SNPS','TMUS','TROW',
-        'TTWO','TPR','TGT','TEL','TDY','TFX','TER','TSLA','TXN','TXT','TMO','TJX','TSCO','TDG',
-        'TRV','TRMB','TFC','TYL','TSN','UDR','ULTA','USB','UHS','UNP','UAL','UNH','UPS','URI',
-        'VTR','VLO','VTRS','VRSN','VZ','VRTX','VFC','VNO','VMC','WAB','WBA','WMT','WDC','WU',
-        'WRK','WY','WHR','WMB','WEC','WFC','WST','WYNN','XEL','XYL','YUM','ZBRA','ZBH','ZION','ZTS'
-    ]
-    sp100 = [
-        'AAPL','MSFT','AMZN','NVDA','META','GOOGL','GOOG','JPM','V','JNJ','WMT','PG','UNH','HD',
-        'DIS','MA','BAC','XOM','CVX','KO','PEP','ADBE','CRM','NFLX','TMO','ABT','ACN','AMD','INTC',
-        'CMCSA','TXN','QCOM','COST','NKE','MRK','ABBV','LLY','PFE','BMY','CVS','HON','UPS','BA','CAT',
-        'GE','IBM','GS','SPGI','MS','PLD','LMT','MDT','ISRG','BLK','AMGN','GILD','FISV','SYK','ZTS',
-        'T','VZ','NEE','DUK','SO','MO','PM','MDLZ','SBUX','MCD','LOW','TGT','TJX','ORCL','NOW','INTU',
-        'BKNG','UBER','TSLA','AVGO'
-    ]
-    nasdaq100 = [
-        'ADBE','AMD','AMGN','AMZN','ASML','AVGO','BIIB','BKNG','CDNS','CHTR','CMCSA','COST','CSCO',
-        'CSX','CTAS','DXCM','EA','EBAY','EXC','FANG','FAST','FTNT','GILD','GOOGL','GOOG','HON','IDXX',
-        'ILMN','INTC','INTU','ISRG','KLAC','LRCX','LULU','MAR','MELI','META','MNST','MSFT','MU','NFLX',
-        'NVDA','NXPI','ODFL','ORLY','PANW','PAYX','PCAR','PEP','QCOM','REGN','ROST','SBUX','SNPS','TMUS',
-        'TSLA','TXN','VRTX','WBA','WDAY','XEL','ZM','ZS'
-    ]
-    ibex35 = [
-        'SAN.MC','BBVA.MC','TEF.MC','ITX.MC','IBE.MC','FER.MC','ENG.MC','ACS.MC','REP.MC','AENA.MC',
-        'CLNX.MC','GRF.MC','MTS.MC','MAP.MC','MEL.MC','CABK.MC','ELE.MC','IAG.MC','ANA.MC','VIS.MC',
-        'CIE.MC','LOG.MC','ACX.MC'
-    ]
-    bmv = [
-        'WALMEX.MX','GMEXICOB.MX','CEMEXCPO.MX','FEMSAUBD.MX','AMXL.MX','KOFUBL.MX','GFNORTEO.MX',
-        'BBAJIOO.MX','ALFA.MX','ALPEKA.MX','ASURB.MX','GAPB.MX','OMAB.MX','AC.MX','GCC.MX','LALA.MX',
-        'MEGA.MX','PINFRA.MX','TLEVISACPO.MX','VESTA.MX','GRUMA.MX','HERDEZ.MX','CUERVO.MX','ORBIA.MX'
-    ]
+    sp500 = ['MMM','AOS','ABT','ABBV','ACN','ADBE','AMD','AES','AFL','A','APD','AKAM','ALK','ALB','ARE','ALGN','ALLE','LNT','ALL','GOOGL','GOOG','MO','AMZN','AMCR','AEE','AAL','AEP','AXP','AIG','AMT','AWK','AMP','ABC','AME','AMGN','APH','ADI','ANSS','AON','APA','AAPL','AMAT','APTV','ADM','ANET','AJG','AIZ','T','ATO','ADSK','ADP','AZO','AVB','AVY','AXON','BKR','BALL','BAC','BBWI','BAX','BDX','BBY','BIO','BIIB','BLK','BK','BA','BKNG','BWA','BSX','BMY','AVGO','BR','BRO','CDNS','CAT','CBOE','CBRE','CDW','CE','CNC','CNP','CF','CRL','CHTR','CVX','CMG','CB','CHD','CI','CINF','CTAS','CSCO','C','CFG','CLX','CME','CMS','KO','CTSH','CL','CMCSA','CMA','CAG','COP','ED','STZ','COO','CPB','COST','CTVA','CVS','DHI','DHR','DRI','DVA','DE','DAL','DVN','DXCM','FANG','DLR','DFS','DG','DLTR','D','DPZ','DOV','DOW','DTE','DUK','DD','EMN','ETN','EBAY','ECL','EIX','EW','EL','EMR','ENPH','ETR','EOG','EFX','EQIX','EQR','ESS','ELV','EXC','EXPE','EXPD','EXR','XOM','FDS','FICO','FAST','FDX','FITB','FSLR','FE','FIS','FISV','FLT','FMC','F','FTNT','FTV','FCX','GRMN','IT','GNRC','GD','GE','GIS','GM','GPC','GILD','GL','GPN','GS','GWW','HAL','HAS','HCA','HSIC','HSY','HES','HPE','HLT','HOLX','HD','HON','HRL','HST','HWM','HPQ','HUM','HBAN','IBM','IEX','IDXX','ITW','ILMN','INCY','IR','INTC','ICE','IP','IPG','IFF','INTU','ISRG','IVZ','INVH','IQV','IRM','JBHT','JKHY','J','JNJ','JCI','JPM','JNPR','K','KEY','KEYS','KMB','KIM','KMI','KLAC','KHC','KR','LHX','LH','LRCX','LW','LVS','LDOS','LEN','LIN','LYV','LKQ','LMT','L','LOW','LYB','MTB','MRO','MPC','MKTX','MAR','MMC','MLM','MAS','MA','MKC','MCD','MCK','MDT','MRK','MET','MTD','MGM','MCHP','MU','MSFT','MAA','MRNA','MHK','MDLZ','MPWR','MNST','MCO','MS','MOS','MSI','MSCI','NDAQ','NTAP','NFLX','NEM','NEE','NKE','NI','NSC','NTRS','NOC','NRG','NUE','NVDA','NVR','NXPI','ORLY','OXY','ODFL','OMC','OKE','ORCL','OTIS','PCAR','PH','PAYX','PAYC','PYPL','PNR','PEP','PFE','PCG','PM','PSX','PNW','PLD','PGR','PPL','PFG','PG','PWR','POOL','PRU','PEG','PSA','PHM','QCOM','RJF','RTX','O','REGN','RF','RSG','RMD','RVTY','RHI','ROK','ROL','ROP','ROST','RCL','SPGI','CRM','SBAC','STX','SYY','SCHW','STLD','SRE','NOW','SHW','SPG','SLB','SNA','SO','LUV','SWK','SBUX','STT','STE','SYK','SYF','SNPS','TMUS','TROW','TTWO','TPR','TGT','TEL','TDY','TFX','TER','TSLA','TXN','TXT','TMO','TJX','TSCO','TDG','TRV','TRMB','TFC','TYL','TSN','UDR','ULTA','USB','UHS','UNP','UAL','UNH','UPS','URI','VTR','VLO','VTRS','VRSN','VZ','VRTX','VFC','VNO','VMC','WAB','WBA','WMT','WDC','WU','WRK','WY','WHR','WMB','WEC','WFC','WST','WYNN','XEL','XYL','YUM','ZBRA','ZBH','ZION','ZTS']
+    sp100 = ['AAPL','MSFT','AMZN','NVDA','META','GOOGL','GOOG','JPM','V','JNJ','WMT','PG','UNH','HD','DIS','MA','BAC','XOM','CVX','KO','PEP','ADBE','CRM','NFLX','TMO','ABT','ACN','AMD','INTC','CMCSA','TXN','QCOM','COST','NKE','MRK','ABBV','LLY','PFE','BMY','CVS','HON','UPS','BA','CAT','GE','IBM','GS','SPGI','MS','PLD','LMT','MDT','ISRG','BLK','AMGN','GILD','FISV','SYK','ZTS','T','VZ','NEE','DUK','SO','MO','PM','MDLZ','SBUX','MCD','LOW','TGT','TJX','ORCL','NOW','INTU','BKNG','UBER','TSLA','AVGO']
+    nasdaq100 = ['ADBE','AMD','AMGN','AMZN','ASML','AVGO','BIIB','BKNG','CDNS','CHTR','CMCSA','COST','CSCO','CSX','CTAS','DXCM','EA','EBAY','EXC','FANG','FAST','FTNT','GILD','GOOGL','GOOG','HON','IDXX','ILMN','INTC','INTU','ISRG','KLAC','LRCX','LULU','MAR','MELI','META','MNST','MSFT','MU','NFLX','NVDA','NXPI','ODFL','ORLY','PANW','PAYX','PCAR','PEP','QCOM','REGN','ROST','SBUX','SNPS','TMUS','TSLA','TXN','VRTX','WBA','WDAY','XEL','ZM','ZS']
+    ibex35 = ['SAN.MC','BBVA.MC','TEF.MC','ITX.MC','IBE.MC','FER.MC','ENG.MC','ACS.MC','REP.MC','AENA.MC','CLNX.MC','GRF.MC','MTS.MC','MAP.MC','MEL.MC','CABK.MC','ELE.MC','IAG.MC','ANA.MC','VIS.MC','CIE.MC','LOG.MC','ACX.MC']
+    bmv = ['WALMEX.MX','GMEXICOB.MX','CEMEXCPO.MX','FEMSAUBD.MX','AMXL.MX','KOFUBL.MX','GFNORTEO.MX','BBAJIOO.MX','ALFA.MX','ALPEKA.MX','ASURB.MX','GAPB.MX','OMAB.MX','AC.MX','GCC.MX','LALA.MX','MEGA.MX','PINFRA.MX','TLEVISACPO.MX','VESTA.MX','GRUMA.MX','HERDEZ.MX','CUERVO.MX','ORBIA.MX']
     ia_stocks = ['NVDA','AMD','INTC','AI','PLTR','IBM','MSFT','GOOGL','META','SNOW','CRM','ADBE','NOW','ORCL','BIDU','BABA','SAP']
     commodity_etfs = ['GLD','SLV','USO','UNG','DBC']
     mining_oil = ['NEM','GOLD','FCX','XOM','CVX','COP','EOG','SLB']
@@ -140,13 +88,8 @@ def cargar_listas():
     etfs_emergentes = ['EWZ','EWJ','FXI','KWEB','EWY','EWT','EWH','EWA','EWC','EWG','EWQ','EWU','VWO','EEM','INDA','EWX']
     return (sp100, nasdaq100, ibex35, bmv, sp500, ia_stocks, commodity_etfs, mining_oil, etfs_sectoriales, mid_cap_growth, etfs_emergentes)
 
-(sp100, nasdaq100, ibex35, bmv, sp500,
- ia_stocks, commodity_etfs, mining_oil,
- etfs_sectoriales, mid_cap_growth, etfs_emergentes) = cargar_listas()
+(sp100, nasdaq100, ibex35, bmv, sp500, ia_stocks, commodity_etfs, mining_oil, etfs_sectoriales, mid_cap_growth, etfs_emergentes) = cargar_listas()
 
-# ============================================================
-# MERCADO OPCIONES (TU DEFINICIÓN ORIGINAL)
-# ============================================================
 universo_recomendado = list(set(sp100 + etfs_sectoriales + mid_cap_growth))
 
 mercado_opciones = {
@@ -167,8 +110,30 @@ mercado_opciones = {
     "🌍 Global completo":                      list(set(sp500 + nasdaq100 + ibex35 + bmv + ia_stocks + commodity_etfs + mining_oil + etfs_sectoriales + mid_cap_growth + etfs_emergentes)),
 }
 
-# Aquí continúa tu código normal (el selectbox ya funcionará)
+# ============================================================
+# SIDEBAR
+# ============================================================
+st.sidebar.header("⚙️ Parámetros")
 mercado_seleccionado = st.sidebar.selectbox("📊 Mercado", list(mercado_opciones.keys()), index=1)
+
+st.sidebar.markdown("### 🔧 Análisis")
+fundamentales_check  = st.sidebar.checkbox("📊 Análisis fundamental", value=False)
+filtro_fundamentales = st.sidebar.checkbox("📊 Solo fundamentales sólidos", value=False) if fundamentales_check else False
+backtesting_check    = st.sidebar.checkbox("🧪 Backtesting realista (SL/TP)", value=True)
+market_regime_check  = st.sidebar.checkbox("🌡️ Filtrar por Market Regime", value=True)
+ia_check = st.sidebar.checkbox("🤖 Análisis IA", value=True)
+
+st.sidebar.markdown("### 💼 Gestión de capital")
+capital_total = st.sidebar.number_input("Capital disponible (MXN)", min_value=1000.0, value=100_000.0, step=1000.0)
+riesgo_pct = st.sidebar.slider("Riesgo máximo por operación (%)", min_value=0.5, max_value=3.0, value=1.0, step=0.25)
+
+st.sidebar.markdown("### 🔔 Alertas")
+alerta_email    = st.sidebar.checkbox("📧 Alertar por email", value=True)
+alerta_whatsapp = st.sidebar.checkbox("💬 Alertar por WhatsApp", value=False)
+umbral_score    = st.sidebar.slider("Umbral mínimo para alertar (score)", 4, 10, 7)
+
+st.sidebar.markdown("### 💰 Registrar compra")
+compra_input = st.sidebar.text_area("Compra (una por línea)", placeholder="AAPL,10,4465.53\nWALMEX.MX,5,56.13", height=120)
 
 # ============================================================
 # FUNCIONES MEJORADAS
@@ -180,7 +145,7 @@ def safe_history(ticker, period="3mo", max_retries=3):
             if not hist.empty and len(hist) >= 55:
                 return hist
             time.sleep(1)
-        except Exception as e:
+        except Exception:
             time.sleep(2 ** intento)
     return pd.DataFrame()
 
@@ -212,7 +177,6 @@ def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist['STOCH_D']  = hist['STOCH_K'].rolling(3).mean()
     hist['Vol_avg']  = hist['Volume'].rolling(20).mean()
 
-    # NUEVO: Multi-Timeframe Semanal
     if len(hist) > 100:
         weekly = hist['Close'].resample('W').last()
         hist['EMA20_weekly'] = weekly.ewm(span=20, adjust=False).mean().reindex(hist.index, method='ffill')
@@ -260,7 +224,6 @@ def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
         score += 1
         señales.append("Rebote EMA50")
 
-    # NUEVO: Confirmación Multi-Timeframe Semanal
     if 'EMA20_weekly' in r and 'EMA50_weekly' in r and r['EMA20_weekly'] > r['EMA50_weekly']:
         score += 2
         señales.append("EMA semanal alcista")
@@ -268,7 +231,6 @@ def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
     return score, señales
 
 def obtener_market_regime() -> dict:
-    # tu función original (sin cambios)
     try:
         sp = yf.Ticker("^GSPC").history(period="1y")
         if sp.empty or len(sp) < 200:
@@ -299,11 +261,7 @@ def position_size(precio: float, atr: float, capital: float, riesgo_pct: float) 
     unidades   = riesgo_mxn / stop_dist
     inversion  = min(unidades * precio, capital * 0.20)
     pct_capital = (inversion / capital) * 100
-    return {
-        'unidades': round(unidades, 2),
-        'inversion_mxn': round(inversion, 2),
-        'pct_capital': round(pct_capital, 1)
-    }
+    return {'unidades': round(unidades, 2), 'inversion_mxn': round(inversion, 2), 'pct_capital': round(pct_capital, 1)}
 
 def obtener_tipo_cambio() -> tuple[float, float]:
     try:
@@ -336,19 +294,15 @@ def obtener_fundamentales(simbolo: str) -> dict:
     except:
         return {}
 
-# ============================================================
-# BACKTESTING REALISTA (nueva función)
-# ============================================================
 def backtest_realista(simbolo: str, precio_entrada: float, atr: float, window_dias=30) -> dict:
     try:
         ticker = yf.Ticker(simbolo)
         hist = safe_history(ticker, "6mo")
         if hist.empty:
-            return {'win_rate': 0, 'ret_prom': 0}
+            return {'resultado': 0, 'tipo': 'error'}
         factor = 20.0 if not simbolo.endswith('.MX') else 1.0
         hist_mxn = hist.copy()
         hist_mxn['Close'] *= factor
-        idx = len(hist_mxn) - 1
         sl = precio_entrada - 2 * atr
         tp = precio_entrada + 3 * atr
         forward = hist_mxn.iloc[-window_dias:]
@@ -364,9 +318,6 @@ def backtest_realista(simbolo: str, precio_entrada: float, atr: float, window_di
     except:
         return {'resultado': 0, 'tipo': 'error'}
 
-# ============================================================
-# ANÁLISIS POR ACCIÓN (con todas las mejoras)
-# ============================================================
 def analizar_accion(args: tuple) -> dict | None:
     simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt, regime_bonus, capital, riesgo_pct = args
     try:
@@ -388,7 +339,6 @@ def analizar_accion(args: tuple) -> dict | None:
         ultimo = hist.iloc[-1].to_dict()
         penultimo = hist.iloc[-2].to_dict()
 
-        # NUEVO: Filtro de liquidez
         if ultimo['Volume'] < (500_000 if not simbolo.endswith('.MX') else 1_000_000):
             return None
 
@@ -397,10 +347,8 @@ def analizar_accion(args: tuple) -> dict | None:
         score_base, señales = calcular_score(ultimo, penultimo)
         score = max(0, score_base + regime_bonus)
 
-        # Position sizing
         ps = position_size(precio, atr, capital, riesgo_pct)
 
-        # Señales de venta si tienes compra registrada
         p_compra = precio_compra_dict.get(simbolo)
         señales_venta = []
         if p_compra:
@@ -463,7 +411,7 @@ def puntaje_fundamental(row: pd.Series) -> int:
     return score
 
 # ============================================================
-# IA COMPLETA (copiada y adaptada del scanner)
+# IA COMPLETA
 # ============================================================
 def _calcular_hash_prompt(prompt: str) -> str:
     return hashlib.sha256(prompt.encode()).hexdigest()
@@ -537,19 +485,117 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
     return "**IA no disponible** — revisa tus API keys en GitHub Secrets."
 
 # ============================================================
-# ALERTAS Y GRÁFICOS (mantengo tu código original)
+# ALERTAS Y GRÁFICOS (mantengo tu versión original)
 # ============================================================
-# (Funciones enviar_email, enviar_whatsapp, construir_email_html, grafico_enriquecido, etc. se mantienen exactamente como las tenías)
+def enviar_email(asunto: str, cuerpo_html: str) -> bool:
+    if not EMAIL_REMITENTE or not EMAIL_PASSWORD:
+        return False
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = asunto
+        msg["From"]    = EMAIL_REMITENTE
+        msg["To"]      = EMAIL_DESTINO
+        msg.attach(MIMEText(cuerpo_html, "html"))
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
+            s.login(EMAIL_REMITENTE, EMAIL_PASSWORD)
+            s.sendmail(EMAIL_REMITENTE, EMAIL_DESTINO, msg.as_string())
+        return True
+    except:
+        return False
+
+def enviar_whatsapp(mensaje: str) -> bool:
+    if not WHATSAPP_NUMERO or not WHATSAPP_APIKEY:
+        return False
+    try:
+        r = requests.get("https://api.callmebot.com/whatsapp.php", params={"phone": WHATSAPP_NUMERO, "apikey": WHATSAPP_APIKEY, "text": mensaje}, timeout=10)
+        return r.status_code == 200
+    except:
+        return False
+
+def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame, resumen_ia: str = "") -> str:
+    fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+    filas_compra = "".join([f"<tr><td><b>{r['Símbolo']}</b></td><td>{r['Precio (MXN)']}</td><td>{r.get('Score','')}</td><td>{r.get('Motivo','')}</td></tr>" for _, r in compras_df.iterrows()])
+    filas_venta = "".join([f"<tr><td><b>{r['Símbolo']}</b></td><td>{r['Precio (MXN)']}</td><td>{r.get('Motivo','')}</td></tr>" for _, r in ventas_df.iterrows()])
+    bloque_ia = f"<h3 style='color:#7b61ff'>🤖 Análisis de IA</h3><div style='background:#f5f3ff;padding:12px 16px;border-left:4px solid #7b61ff;border-radius:4px;font-size:14px;line-height:1.6'>{resumen_ia.replace(chr(10), '<br>')}</div>" if resumen_ia else ""
+    return f"""
+    <html><body style="font-family:Arial,sans-serif;max-width:700px">
+    <h2 style="color:#1a73e8">📈 Alerta de Trading — {fecha}</h2>
+    {bloque_ia}
+    <h3 style="color:#34a853">🟢 Señales de COMPRA ({len(compras_df)})</h3>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+      <tr style="background:#e8f5e9"><th>Símbolo</th><th>Precio (MXN)</th><th>Score</th><th>Motivo</th></tr>
+      {filas_compra if filas_compra else '<tr><td colspan="4">Sin señales</td></tr>'}
+    </table>
+    <h3 style="color:#ea4335">🔴 Señales de VENTA ({len(ventas_df)})</h3>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+      <tr style="background:#fce8e6"><th>Símbolo</th><th>Precio (MXN)</th><th>Motivo</th></tr>
+      {filas_venta if filas_venta else '<tr><td colspan="3">Sin señales</td></tr>'}
+    </table>
+    <p style="color:#666;font-size:12px;margin-top:20px">Generado por Sistema de Trading Personal v2.1</p>
+    </body></html>"""
+
+def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figure:
+    hist = safe_history(yf.Ticker(simbolo), "3mo")
+    if hist.empty:
+        return go.Figure()
+    factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
+    for col in ['Close','Open','High','Low']:
+        hist[col] *= factor
+    hist = calcular_indicadores(hist)
+    fig = make_subplots(rows=4, cols=1, shared_xaxes=True, row_heights=[0.5, 0.18, 0.18, 0.14], vertical_spacing=0.03, subplot_titles=[f"{simbolo} — Precio (MXN)", "RSI (14)", "MACD", "Volumen"])
+    fig.add_trace(go.Candlestick(x=hist.index, open=hist['Open'], high=hist['High'], low=hist['Low'], close=hist['Close'], name="Precio"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['EMA20'], line=dict(color='#ff9800', width=1.5), name='EMA20'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['EMA50'], line=dict(color='#e91e63', width=1.5), name='EMA50'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['RSI'], line=dict(color='#7e57c2', width=1.5), name='RSI'), row=2, col=1)
+    colors_hist = ['#26a69a' if v >= 0 else '#ef5350' for v in hist['MACD_hist'].fillna(0)]
+    fig.add_trace(go.Bar(x=hist.index, y=hist['MACD_hist'], marker_color=colors_hist, name='MACD Hist'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['MACD'], line=dict(color='#2196f3', width=1.5), name='MACD'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['MACD_sig'], line=dict(color='#ff5722', width=1.5), name='Señal'), row=3, col=1)
+    vol_colors = ['#26a69a' if c >= o else '#ef5350' for c, o in zip(hist['Close'], hist['Open'])]
+    fig.add_trace(go.Bar(x=hist.index, y=hist['Volume'], marker_color=vol_colors, name='Volumen'), row=4, col=1)
+    fig.update_layout(template='plotly_dark', height=750, xaxis_rangeslider_visible=False, legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
+    return fig
 
 # ============================================================
 # BOTÓN DE ANÁLISIS
 # ============================================================
 if st.sidebar.button("🔍 ANALIZAR", type="primary"):
-    # ... (tu código original de procesamiento de compras + PRECIO_COMPRA)
     PRECIO_COMPRA = {}
-    if compra_input:
-        # (tu lógica de parseo de compras)
-        pass
+    if compra_input and compra_input.strip():
+        for linea in compra_input.strip().split('\n'):
+            if not linea.strip():
+                continue
+            linea = linea.strip()
+            if '=' in linea:
+                partes = linea.split('=', 1)
+                if len(partes) == 2:
+                    sim = partes[0].strip().upper()
+                    resto = partes[1].strip()
+                    if ',' in resto:
+                        try:
+                            cant_str, prec_str = resto.split(',', 1)
+                            cantidad = float(cant_str.strip())
+                            precio = float(prec_str.strip())
+                        except:
+                            continue
+                    else:
+                        cantidad = 1.0
+                        precio = float(resto)
+            else:
+                partes = linea.split(',')
+                if len(partes) == 3:
+                    sim = partes[0].strip().upper()
+                    try:
+                        cantidad = float(partes[1].strip())
+                        precio = float(partes[2].strip())
+                    except:
+                        continue
+                else:
+                    continue
+            guardar_transaccion(sim, cantidad, precio, "compra")
+            PRECIO_COMPRA[sim] = precio
+        if PRECIO_COMPRA:
+            st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
 
     usd_mxn, eur_mxn = obtener_tipo_cambio()
     regime_data = obtener_market_regime()
@@ -573,7 +619,6 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         if fundamentales_check and 'ROE (%)' in df.columns:
             df['Score Fund'] = df.apply(puntaje_fundamental, axis=1)
 
-        # Separar categorías
         ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
         compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
         observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
@@ -597,16 +642,64 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         st.rerun()
 
 # ============================================================
-# PRESENTACIÓN DE RESULTADOS (igual que antes)
+# PRESENTACIÓN DE RESULTADOS
 # ============================================================
 if 'df' in st.session_state:
-    # ... (tu código original de tabs, métricas, gráficos, etc.)
-    # Solo se agrega la columna 'BT Resultado' cuando backtesting_check estaba activado
-    pass
+    df = st.session_state['df']
+    compras = st.session_state['compras']
+    ventas = st.session_state['ventas']
+    observar = st.session_state['observar']
+    usd_mxn = st.session_state['usd_mxn']
+    regime_data = st.session_state['regime']
 
-# ============================================================
-# SELECTOR DE GRÁFICO
-# ============================================================
-# (tu código final de exploración de gráfico)
+    st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
+
+    icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴','DESCONOCIDO':'⚪'}.get(regime_data.get('regime','DESCONOCIDO'),'⚪')
+    with st.expander(f"{icono_regime} Market Regime: **{regime_data.get('regime','DESCONOCIDO')}** — {regime_data.get('descripcion','')}", expanded=True):
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("S&P 500", f"{regime_data.get('precio',0):,.0f}")
+        c2.metric("EMA 200", f"{regime_data.get('ema200',0):,.0f}")
+        c3.metric("RSI S&P", f"{regime_data.get('rsi_sp500',0)}")
+        c4.metric("Ret. 1 mes", f"{regime_data.get('ret_1m',0):+.1f}%")
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("✅ Compras", len(compras))
+    col2.metric("🔴 Ventas", len(ventas))
+    col3.metric("👀 Observar", len(observar))
+    col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
+
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "📜 HISTORIAL"])
+
+    cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit','Unidades','Inversión (MXN)','% Capital','Dist EMA50','Recomendación','Motivo','Señales']
+    with tab1:
+        if not compras.empty:
+            st.dataframe(compras[cols_base + ([c for c in df.columns if c not in cols_base])], use_container_width=True)
+        else:
+            st.info("Sin oportunidades de compra en este momento.")
+    with tab2:
+        if not ventas.empty:
+            st.dataframe(ventas[cols_base], use_container_width=True)
+        else:
+            st.info("Ninguna señal de venta para tus compras registradas.")
+    with tab3:
+        st.dataframe(observar[cols_base], use_container_width=True)
+    with tab4:
+        st.dataframe(df, use_container_width=True)
+    with tab5:
+        df_trans = cargar_transacciones()
+        if not df_trans.empty:
+            st.dataframe(df_trans.sort_values('fecha', ascending=False), use_container_width=True)
+        else:
+            st.info("Aún no hay transacciones registradas.")
+
+    if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
+        with st.expander("🤖 Análisis de IA", expanded=True):
+            st.markdown(st.session_state['analisis_ia'])
+
+    if not compras.empty:
+        mejor = compras.iloc[0]['Símbolo']
+        st.subheader(f"📊 Análisis completo: {mejor}")
+        fig = grafico_enriquecido(mejor, usd_mxn, 21.5)  # eur_mxn aproximado
+        st.plotly_chart(fig, use_container_width=True)
 
 st.caption("v2.1 — Con backtesting realista, multi-timeframe y IA completa • Adrian López")
