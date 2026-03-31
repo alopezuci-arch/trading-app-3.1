@@ -486,7 +486,7 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
                     json={
-                        "model":    "llama-3.3-70b-versatile",   # modelo actualizado
+                        "model":    "llama-3.3-70b-versatile",
                         "messages": [{"role": "user", "content": prompt}],
                         "max_tokens": 800,
                     },
@@ -511,7 +511,7 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
     return f"**IA no disponible** — {detalle}"
 
 # ============================================================
-# ALERTAS Y GRÁFICOS (mantengo tu versión original)
+# ALERTAS Y GRÁFICOS
 # ============================================================
 def enviar_email(asunto: str, cuerpo_html: str) -> bool:
     if not EMAIL_REMITENTE or not EMAIL_PASSWORD:
@@ -624,6 +624,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
             st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
 
     usd_mxn, eur_mxn = obtener_tipo_cambio()
+    st.session_state['eur_mxn'] = eur_mxn  # Guardar para gráfico
 
     # ── Tipo de cambio en sidebar ────────────────────────────
     st.sidebar.markdown("---")
@@ -758,8 +759,37 @@ if 'df' in st.session_state:
         df_trans = cargar_transacciones()
         if not df_trans.empty:
             st.dataframe(df_trans.sort_values('fecha', ascending=False), use_container_width=True)
+            # Botón para descargar historial
+            csv = df_trans.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Descargar historial (CSV)",
+                data=csv,
+                file_name=f"transacciones_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
         else:
             st.info("Aún no hay transacciones registradas.")
+
+    # ============================================================
+    # DESCARGA DE EXCEL (AÑADIDO)
+    # ============================================================
+    st.divider()
+    try:
+        import openpyxl
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            compras.to_excel(writer, index=False, sheet_name='Compras')
+            ventas.to_excel(writer, index=False, sheet_name='Ventas')
+            observar.to_excel(writer, index=False, sheet_name='Observar')
+            df.to_excel(writer, index=False, sheet_name='Todos')
+        st.download_button(
+            label="📥 Descargar informe Excel",
+            data=output.getvalue(),
+            file_name=f"trading_v2_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except ImportError:
+        st.warning("⚠️ openpyxl no instalado. Instálalo para habilitar la descarga Excel.")
 
     if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
         with st.expander("🤖 Análisis de IA", expanded=True):
@@ -768,7 +798,8 @@ if 'df' in st.session_state:
     if not compras.empty:
         mejor = compras.iloc[0]['Símbolo']
         st.subheader(f"📊 Análisis completo: {mejor}")
-        fig = grafico_enriquecido(mejor, usd_mxn, 21.5)  # eur_mxn aproximado
+        eur_mxn = st.session_state.get('eur_mxn', 21.5)
+        fig = grafico_enriquecido(mejor, usd_mxn, eur_mxn)
         st.plotly_chart(fig, use_container_width=True)
 
 st.caption("v2.1 — Con backtesting realista, multi-timeframe y IA completa • Adrian López")
