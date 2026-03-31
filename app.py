@@ -598,23 +598,66 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
             st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
 
     usd_mxn, eur_mxn = obtener_tipo_cambio()
+
+    # ── Tipo de cambio en sidebar ────────────────────────────
+    st.sidebar.markdown("---")
+    st.sidebar.metric("USD/MXN", f"{usd_mxn:.2f}")
+    st.sidebar.metric("EUR/MXN", f"{eur_mxn:.2f}")
+
     regime_data = obtener_market_regime()
     regime_bonus = regime_data['score_bonus'] if market_regime_check else 0
     trade_capital = capital_total * 0.25
 
+    # ── Panel Core + Satélite ────────────────────────────────
+    with st.expander("💼 Estrategia recomendada: Core + Satélite", expanded=False):
+        etf_cap   = round(capital_total * 0.65, 2)
+        trade_cap = round(capital_total * 0.25, 2)
+        conv_cap  = round(capital_total * 0.10, 2)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("🏛️ Core — ETFs (65%)",         f"${etf_cap:,.0f} MXN",
+                  help="VOO, QQQ, IVV — comprar y mantener, no tocar")
+        c2.metric("⚡ Satélite — Trading (25%)",   f"${trade_cap:,.0f} MXN",
+                  help="Tu sistema activo con este scanner")
+        c3.metric("🎯 Alta convicción (10%)",       f"${conv_cap:,.0f} MXN",
+                  help="1-2 ideas con investigación fundamental profunda")
+        st.caption(f"Position sizing sobre ${trade_cap:,.0f} MXN · "
+                   f"Riesgo por operación: {riesgo_pct}% = "
+                   f"${trade_cap * riesgo_pct / 100:,.0f} MXN máx. por trade")
+
     lista_acciones = mercado_opciones[mercado_seleccionado]
+    total = len(lista_acciones)
 
-    with st.spinner(f"Analizando {len(lista_acciones)} acciones..."):
-        resultados = []
-        args_list = [(sim, PRECIO_COMPRA, usd_mxn, eur_mxn, fundamentales_check, backtesting_check, regime_bonus, trade_capital, riesgo_pct) for sim in lista_acciones]
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = {executor.submit(analizar_accion, args): args[0] for args in args_list}
-            for future in as_completed(futures):
-                res = future.result()
-                if res:
-                    resultados.append(res)
+    # ── Análisis con barra de progreso ──────────────────────
+    st.info(f"📊 Analizando {total} acciones en paralelo (máx 10 hilos)...")
+    progress_bar = st.progress(0)
+    status_text  = st.empty()
+    resultados   = []
+    completados  = 0
 
-        df = pd.DataFrame(resultados)
+    args_list = [
+        (sim, PRECIO_COMPRA, usd_mxn, eur_mxn, fundamentales_check,
+         backtesting_check, regime_bonus, trade_capital, riesgo_pct)
+        for sim in lista_acciones
+    ]
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(analizar_accion, args): args[0] for args in args_list}
+        for future in as_completed(futures):
+            completados += 1
+            status_text.text(f"Procesando {completados}/{total}: {futures[future]}")
+            res = future.result()
+            if res:
+                resultados.append(res)
+            progress_bar.progress(completados / total)
+
+    status_text.empty()
+    progress_bar.empty()
+
+    if not resultados:
+        st.warning("⚠️ No se encontraron resultados. Verifica tu conexión o el mercado seleccionado.")
+        st.stop()
+
+    df = pd.DataFrame(resultados)
 
         if fundamentales_check and 'ROE (%)' in df.columns:
             df['Score Fund'] = df.apply(puntaje_fundamental, axis=1)
