@@ -1,7 +1,8 @@
 # ============================================================
 # SISTEMA DE TRADING PROFESIONAL v2.1 — STREAMLIT (FINAL)
-# Mejoras: tipos de cambio siempre visibles, gestión de capital,
-# selector de gráficos post‑análisis, descarga Excel e historial
+# Mejoras: tipos de cambio siempre visibles, gestión de capital
+# dinámica tras análisis, selector de gráficos post‑análisis,
+# descarga Excel e historial.
 # ============================================================
 
 import streamlit as st
@@ -72,7 +73,7 @@ def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str,
     df.to_csv(TRANSACCIONES_FILE, index=False)
 
 # ============================================================
-# LISTAS DE MERCADOS
+# LISTAS DE MERCADOS (completas)
 # ============================================================
 @st.cache_data(ttl=3600)
 def cargar_listas():
@@ -108,19 +109,57 @@ def cargar_listas():
         'VTR','VLO','VTRS','VRSN','VZ','VRTX','VFC','VNO','VMC','WAB','WBA','WMT','WDC','WU',
         'WRK','WY','WHR','WMB','WEC','WFC','WST','WYNN','XEL','XYL','YUM','ZBRA','ZBH','ZION','ZTS'
     ]
-    sp100 = ['AAPL','MSFT','AMZN','NVDA','META','GOOGL','GOOG','JPM','V','JNJ','WMT','PG','UNH','HD','DIS','MA','BAC','XOM','CVX','KO','PEP','ADBE','CRM','NFLX','TMO','ABT','ACN','AMD','INTC','CMCSA','TXN','QCOM','COST','NKE','MRK','ABBV','LLY','PFE','BMY','CVS','HON','UPS','BA','CAT','GE','IBM','GS','SPGI','MS','PLD','LMT','MDT','ISRG','BLK','AMGN','GILD','FISV','SYK','ZTS','T','VZ','NEE','DUK','SO','MO','PM','MDLZ','SBUX','MCD','LOW','TGT','TJX','ORCL','NOW','INTU','BKNG','UBER','TSLA','AVGO']
-    nasdaq100 = ['ADBE','AMD','AMGN','AMZN','ASML','AVGO','BIIB','BKNG','CDNS','CHTR','CMCSA','COST','CSCO','CSX','CTAS','DXCM','EA','EBAY','EXC','FANG','FAST','FTNT','GILD','GOOGL','GOOG','HON','IDXX','ILMN','INTC','INTU','ISRG','KLAC','LRCX','LULU','MAR','MELI','META','MNST','MSFT','MU','NFLX','NVDA','NXPI','ODFL','ORLY','PANW','PAYX','PCAR','PEP','QCOM','REGN','ROST','SBUX','SNPS','TMUS','TSLA','TXN','VRTX','WBA','WDAY','XEL','ZM','ZS']
-    ibex35 = ['SAN.MC','BBVA.MC','TEF.MC','ITX.MC','IBE.MC','FER.MC','ENG.MC','ACS.MC','REP.MC','AENA.MC','CLNX.MC','GRF.MC','MTS.MC','MAP.MC','MEL.MC','CABK.MC','ELE.MC','IAG.MC','ANA.MC','VIS.MC','CIE.MC','LOG.MC','ACX.MC']
-    bmv = ['WALMEX.MX','GMEXICOB.MX','CEMEXCPO.MX','FEMSAUBD.MX','AMXL.MX','KOFUBL.MX','GFNORTEO.MX','BBAJIOO.MX','ALFA.MX','ALPEKA.MX','ASURB.MX','GAPB.MX','OMAB.MX','AC.MX','GCC.MX','LALA.MX','MEGA.MX','PINFRA.MX','TLEVISACPO.MX','VESTA.MX','GRUMA.MX','HERDEZ.MX','CUERVO.MX','ORBIA.MX']
-    ia_stocks = ['NVDA','AMD','INTC','AI','PLTR','IBM','MSFT','GOOGL','META','SNOW','CRM','ADBE','NOW','ORCL','BIDU','BABA','SAP']
+    sp100 = [
+        'AAPL','MSFT','AMZN','NVDA','META','GOOGL','GOOG','JPM','V','JNJ','WMT','PG','UNH','HD',
+        'DIS','MA','BAC','XOM','CVX','KO','PEP','ADBE','CRM','NFLX','TMO','ABT','ACN','AMD','INTC',
+        'CMCSA','TXN','QCOM','COST','NKE','MRK','ABBV','LLY','PFE','BMY','CVS','HON','UPS','BA','CAT',
+        'GE','IBM','GS','SPGI','MS','PLD','LMT','MDT','ISRG','BLK','AMGN','GILD','FISV','SYK','ZTS',
+        'T','VZ','NEE','DUK','SO','MO','PM','MDLZ','SBUX','MCD','LOW','TGT','TJX','ORCL','NOW','INTU',
+        'BKNG','UBER','TSLA','AVGO'
+    ]
+    nasdaq100 = [
+        'ADBE','AMD','AMGN','AMZN','ASML','AVGO','BIIB','BKNG','CDNS','CHTR','CMCSA','COST','CSCO',
+        'CSX','CTAS','DXCM','EA','EBAY','EXC','FANG','FAST','FTNT','GILD','GOOGL','GOOG','HON','IDXX',
+        'ILMN','INTC','INTU','ISRG','KLAC','LRCX','LULU','MAR','MELI','META','MNST','MSFT','MU','NFLX',
+        'NVDA','NXPI','ODFL','ORLY','PANW','PAYX','PCAR','PEP','QCOM','REGN','ROST','SBUX','SNPS','TMUS',
+        'TSLA','TXN','VRTX','WBA','WDAY','XEL','ZM','ZS'
+    ]
+    ibex35 = [
+        'SAN.MC','BBVA.MC','TEF.MC','ITX.MC','IBE.MC','FER.MC','ENG.MC','ACS.MC','REP.MC','AENA.MC',
+        'CLNX.MC','GRF.MC','MTS.MC','MAP.MC','MEL.MC','CABK.MC','ELE.MC','IAG.MC','ANA.MC','VIS.MC',
+        'CIE.MC','LOG.MC','ACX.MC'
+    ]
+    bmv = [
+        'WALMEX.MX','GMEXICOB.MX','CEMEXCPO.MX','FEMSAUBD.MX','AMXL.MX','KOFUBL.MX','GFNORTEO.MX',
+        'BBAJIOO.MX','ALFA.MX','ALPEKA.MX','ASURB.MX','GAPB.MX','OMAB.MX','AC.MX','GCC.MX','LALA.MX',
+        'MEGA.MX','PINFRA.MX','TLEVISACPO.MX','VESTA.MX','GRUMA.MX','HERDEZ.MX','CUERVO.MX','ORBIA.MX'
+    ]
+    ia_stocks = [
+        'NVDA','AMD','INTC','AI','PLTR','IBM','MSFT','GOOGL','META','SNOW','CRM','ADBE','NOW','ORCL',
+        'BIDU','BABA','SAP'
+    ]
     commodity_etfs = ['GLD','SLV','USO','UNG','DBC']
     mining_oil = ['NEM','GOLD','FCX','XOM','CVX','COP','EOG','SLB']
-    etfs_sectoriales = ['XLK','XLV','XLF','XLE','XLI','XLY','XLP','XLU','XLB','XLRE','XLC','SOXX','ARKK','ARKG','ARKW','ARKF','CIBR','ROBO','ICLN','TAN','LIT','JETS','XHB','KRE','IBB','SPY','QQQ','IWM','DIA','VTI']
-    mid_cap_growth = ['DDOG','NET','CRWD','ZS','BILL','DUOL','CELH','SMCI','HUBS','MNDY','APPN','PCTY','FIVN','RELY','PATH','SMAR','JAMF','EXAS','NVCR','FATE','RXRX','AFRM','UPST','HOOD','SQ','SOFI','NU','PLUG','CHPT','RIVN','LCID','KTOS','RKLB','ACHR']
-    etfs_emergentes = ['EWZ','EWJ','FXI','KWEB','EWY','EWT','EWH','EWA','EWC','EWG','EWQ','EWU','VWO','EEM','INDA','EWX']
-    return (sp100, nasdaq100, ibex35, bmv, sp500, ia_stocks, commodity_etfs, mining_oil, etfs_sectoriales, mid_cap_growth, etfs_emergentes)
+    etfs_sectoriales = [
+        'XLK','XLV','XLF','XLE','XLI','XLY','XLP','XLU','XLB','XLRE','XLC',
+        'SOXX','ARKK','ARKG','ARKW','ARKF','CIBR','ROBO','ICLN','TAN','LIT',
+        'JETS','XHB','KRE','IBB','SPY','QQQ','IWM','DIA','VTI'
+    ]
+    mid_cap_growth = [
+        'DDOG','NET','CRWD','ZS','BILL','DUOL','CELH','SMCI','HUBS','MNDY','APPN','PCTY','FIVN',
+        'RELY','PATH','SMAR','JAMF','EXAS','NVCR','FATE','RXRX','AFRM','UPST','HOOD','SQ','SOFI',
+        'NU','PLUG','CHPT','RIVN','LCID','KTOS','RKLB','ACHR'
+    ]
+    etfs_emergentes = [
+        'EWZ','EWJ','FXI','KWEB','EWY','EWT','EWH','EWA','EWC','EWG','EWQ','EWU','VWO','EEM','INDA','EWX'
+    ]
+    return (sp100, nasdaq100, ibex35, bmv, sp500,
+            ia_stocks, commodity_etfs, mining_oil,
+            etfs_sectoriales, mid_cap_growth, etfs_emergentes)
 
-(sp100, nasdaq100, ibex35, bmv, sp500, ia_stocks, commodity_etfs, mining_oil, etfs_sectoriales, mid_cap_growth, etfs_emergentes) = cargar_listas()
+(sp100, nasdaq100, ibex35, bmv, sp500,
+ ia_stocks, commodity_etfs, mining_oil,
+ etfs_sectoriales, mid_cap_growth, etfs_emergentes) = cargar_listas()
 
 universo_recomendado = list(set(sp100 + etfs_sectoriales + mid_cap_growth))
 
@@ -143,7 +182,7 @@ mercado_opciones = {
 }
 
 # ============================================================
-# FUNCIONES DE TIPOS DE CAMBIO Y OTROS
+# FUNCIONES DE TIPOS DE CAMBIO (siempre visibles en sidebar)
 # ============================================================
 @st.cache_data(ttl=3600)
 def obtener_tipo_cambio() -> tuple[float, float]:
@@ -161,21 +200,6 @@ st.sidebar.markdown("### 💱 Tipos de cambio")
 st.sidebar.metric("USD/MXN", f"{usd_mxn:.2f}")
 st.sidebar.metric("EUR/MXN", f"{eur_mxn:.2f}")
 st.sidebar.markdown("---")
-
-# ============================================================
-# GESTIÓN DE CAPITAL (siempre visible)
-# ============================================================
-st.subheader("💼 Estrategia recomendada: Core + Satélite")
-capital_total_demo = 100_000  # valor de demostración, el usuario lo ajusta en sidebar
-c1, c2, c3 = st.columns(3)
-c1.metric("🏛️ Core — ETFs (65%)",         f"${capital_total_demo * 0.65:,.0f} MXN",
-          help="VOO, QQQ, IVV — comprar y mantener, no tocar")
-c2.metric("⚡ Satélite — Trading (25%)",   f"${capital_total_demo * 0.25:,.0f} MXN",
-          help="Tu sistema activo con este scanner")
-c3.metric("🎯 Alta convicción (10%)",       f"${capital_total_demo * 0.10:,.0f} MXN",
-          help="1-2 ideas con investigación fundamental profunda")
-st.caption("La distribución se ajusta según el capital que ingreses en el panel lateral.")
-st.markdown("---")
 
 # ============================================================
 # SIDEBAR (parámetros)
@@ -203,7 +227,7 @@ st.sidebar.markdown("### 💰 Registrar compra")
 compra_input = st.sidebar.text_area("Compra (una por línea)", placeholder="AAPL,10,4465.53\nWALMEX.MX,5,56.13", height=120)
 
 # ============================================================
-# FUNCIONES DE ANÁLISIS (sin cambios respecto a la versión anterior)
+# FUNCIONES DE ANÁLISIS TÉCNICO, SCORE, BACKTESTING, IA, ETC.
 # ============================================================
 def safe_history(ticker, period="3mo", max_retries=3):
     for intento in range(max_retries):
@@ -681,12 +705,29 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         if PRECIO_COMPRA:
             st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
 
-    # Tipos de cambio ya están en sidebar, los usamos directamente
-    usd_mxn, eur_mxn = obtener_tipo_cambio()  # refrescar por si acaso
+    # Refrescar tipos de cambio (ya están en sidebar, pero los usamos para conversión)
+    usd_mxn, eur_mxn = obtener_tipo_cambio()
 
     regime_data = obtener_market_regime()
     regime_bonus = regime_data['score_bonus'] if market_regime_check else 0
     trade_capital = capital_total * 0.25
+
+    # ── Panel Core + Satélite (aparece solo después de ANALIZAR, dinámico) ──
+    etf_cap   = round(capital_total * 0.65, 2)
+    trade_cap = round(capital_total * 0.25, 2)
+    conv_cap  = round(capital_total * 0.10, 2)
+    st.markdown("### 💼 Estrategia recomendada: Core + Satélite")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("🏛️ Core — ETFs (65%)",         f"${etf_cap:,.0f} MXN",
+              help="VOO, QQQ, IVV — comprar y mantener, no tocar")
+    c2.metric("⚡ Satélite — Trading (25%)",   f"${trade_cap:,.0f} MXN",
+              help="Tu sistema activo con este scanner")
+    c3.metric("🎯 Alta convicción (10%)",       f"${conv_cap:,.0f} MXN",
+              help="1-2 ideas con investigación fundamental profunda")
+    st.caption(f"Position sizing sobre ${trade_cap:,.0f} MXN · "
+               f"Riesgo por operación: {riesgo_pct}% = "
+               f"${trade_cap * riesgo_pct / 100:,.0f} MXN máx. por trade")
+    st.markdown("---")
 
     lista_acciones = mercado_opciones[mercado_seleccionado]
     total = len(lista_acciones)
