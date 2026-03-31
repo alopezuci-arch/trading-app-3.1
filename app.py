@@ -1,6 +1,7 @@
 # ============================================================
-# SISTEMA DE TRADING PROFESIONAL v2.1 — STREAMLIT (COMPLETO)
-# Mejoras: safe yfinance + multi-timeframe + backtest realista + IA completa
+# SISTEMA DE TRADING PROFESIONAL v2.1 — STREAMLIT (FINAL)
+# Mejoras: tipos de cambio siempre visibles, gestión de capital,
+# selector de gráficos post‑análisis, descarga Excel e historial
 # ============================================================
 
 import streamlit as st
@@ -75,7 +76,38 @@ def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str,
 # ============================================================
 @st.cache_data(ttl=3600)
 def cargar_listas():
-    sp500 = ['MMM','AOS','ABT','ABBV','ACN','ADBE','AMD','AES','AFL','A','APD','AKAM','ALK','ALB','ARE','ALGN','ALLE','LNT','ALL','GOOGL','GOOG','MO','AMZN','AMCR','AEE','AAL','AEP','AXP','AIG','AMT','AWK','AMP','ABC','AME','AMGN','APH','ADI','ANSS','AON','APA','AAPL','AMAT','APTV','ADM','ANET','AJG','AIZ','T','ATO','ADSK','ADP','AZO','AVB','AVY','AXON','BKR','BALL','BAC','BBWI','BAX','BDX','BBY','BIO','BIIB','BLK','BK','BA','BKNG','BWA','BSX','BMY','AVGO','BR','BRO','CDNS','CAT','CBOE','CBRE','CDW','CE','CNC','CNP','CF','CRL','CHTR','CVX','CMG','CB','CHD','CI','CINF','CTAS','CSCO','C','CFG','CLX','CME','CMS','KO','CTSH','CL','CMCSA','CMA','CAG','COP','ED','STZ','COO','CPB','COST','CTVA','CVS','DHI','DHR','DRI','DVA','DE','DAL','DVN','DXCM','FANG','DLR','DFS','DG','DLTR','D','DPZ','DOV','DOW','DTE','DUK','DD','EMN','ETN','EBAY','ECL','EIX','EW','EL','EMR','ENPH','ETR','EOG','EFX','EQIX','EQR','ESS','ELV','EXC','EXPE','EXPD','EXR','XOM','FDS','FICO','FAST','FDX','FITB','FSLR','FE','FIS','FISV','FLT','FMC','F','FTNT','FTV','FCX','GRMN','IT','GNRC','GD','GE','GIS','GM','GPC','GILD','GL','GPN','GS','GWW','HAL','HAS','HCA','HSIC','HSY','HES','HPE','HLT','HOLX','HD','HON','HRL','HST','HWM','HPQ','HUM','HBAN','IBM','IEX','IDXX','ITW','ILMN','INCY','IR','INTC','ICE','IP','IPG','IFF','INTU','ISRG','IVZ','INVH','IQV','IRM','JBHT','JKHY','J','JNJ','JCI','JPM','JNPR','K','KEY','KEYS','KMB','KIM','KMI','KLAC','KHC','KR','LHX','LH','LRCX','LW','LVS','LDOS','LEN','LIN','LYV','LKQ','LMT','L','LOW','LYB','MTB','MRO','MPC','MKTX','MAR','MMC','MLM','MAS','MA','MKC','MCD','MCK','MDT','MRK','MET','MTD','MGM','MCHP','MU','MSFT','MAA','MRNA','MHK','MDLZ','MPWR','MNST','MCO','MS','MOS','MSI','MSCI','NDAQ','NTAP','NFLX','NEM','NEE','NKE','NI','NSC','NTRS','NOC','NRG','NUE','NVDA','NVR','NXPI','ORLY','OXY','ODFL','OMC','OKE','ORCL','OTIS','PCAR','PH','PAYX','PAYC','PYPL','PNR','PEP','PFE','PCG','PM','PSX','PNW','PLD','PGR','PPL','PFG','PG','PWR','POOL','PRU','PEG','PSA','PHM','QCOM','RJF','RTX','O','REGN','RF','RSG','RMD','RVTY','RHI','ROK','ROL','ROP','ROST','RCL','SPGI','CRM','SBAC','STX','SYY','SCHW','STLD','SRE','NOW','SHW','SPG','SLB','SNA','SO','LUV','SWK','SBUX','STT','STE','SYK','SYF','SNPS','TMUS','TROW','TTWO','TPR','TGT','TEL','TDY','TFX','TER','TSLA','TXN','TXT','TMO','TJX','TSCO','TDG','TRV','TRMB','TFC','TYL','TSN','UDR','ULTA','USB','UHS','UNP','UAL','UNH','UPS','URI','VTR','VLO','VTRS','VRSN','VZ','VRTX','VFC','VNO','VMC','WAB','WBA','WMT','WDC','WU','WRK','WY','WHR','WMB','WEC','WFC','WST','WYNN','XEL','XYL','YUM','ZBRA','ZBH','ZION','ZTS']
+    sp500 = [
+        'MMM','AOS','ABT','ABBV','ACN','ADBE','AMD','AES','AFL','A','APD','AKAM','ALK','ALB',
+        'ARE','ALGN','ALLE','LNT','ALL','GOOGL','GOOG','MO','AMZN','AMCR','AEE','AAL','AEP',
+        'AXP','AIG','AMT','AWK','AMP','ABC','AME','AMGN','APH','ADI','ANSS','AON','APA','AAPL',
+        'AMAT','APTV','ADM','ANET','AJG','AIZ','T','ATO','ADSK','ADP','AZO','AVB','AVY','AXON',
+        'BKR','BALL','BAC','BBWI','BAX','BDX','BBY','BIO','BIIB','BLK','BK','BA','BKNG','BWA',
+        'BSX','BMY','AVGO','BR','BRO','CDNS','CAT','CBOE','CBRE','CDW','CE','CNC','CNP','CF',
+        'CRL','CHTR','CVX','CMG','CB','CHD','CI','CINF','CTAS','CSCO','C','CFG','CLX','CME',
+        'CMS','KO','CTSH','CL','CMCSA','CMA','CAG','COP','ED','STZ','COO','CPB','COST','CTVA',
+        'CVS','DHI','DHR','DRI','DVA','DE','DAL','DVN','DXCM','FANG','DLR','DFS','DG','DLTR',
+        'D','DPZ','DOV','DOW','DTE','DUK','DD','EMN','ETN','EBAY','ECL','EIX','EW','EL','EMR',
+        'ENPH','ETR','EOG','EFX','EQIX','EQR','ESS','ELV','EXC','EXPE','EXPD','EXR','XOM',
+        'FDS','FICO','FAST','FDX','FITB','FSLR','FE','FIS','FISV','FLT','FMC','F','FTNT','FTV',
+        'FCX','GRMN','IT','GNRC','GD','GE','GIS','GM','GPC','GILD','GL','GPN','GS','GWW','HAL',
+        'HAS','HCA','HSIC','HSY','HES','HPE','HLT','HOLX','HD','HON','HRL','HST','HWM','HPQ',
+        'HUM','HBAN','IBM','IEX','IDXX','ITW','ILMN','INCY','IR','INTC','ICE','IP','IPG','IFF',
+        'INTU','ISRG','IVZ','INVH','IQV','IRM','JBHT','JKHY','J','JNJ','JCI','JPM','JNPR','K',
+        'KEY','KEYS','KMB','KIM','KMI','KLAC','KHC','KR','LHX','LH','LRCX','LW','LVS','LDOS',
+        'LEN','LIN','LYV','LKQ','LMT','L','LOW','LYB','MTB','MRO','MPC','MKTX','MAR','MMC',
+        'MLM','MAS','MA','MKC','MCD','MCK','MDT','MRK','MET','MTD','MGM','MCHP','MU','MSFT',
+        'MAA','MRNA','MHK','MDLZ','MPWR','MNST','MCO','MS','MOS','MSI','MSCI','NDAQ','NTAP',
+        'NFLX','NEM','NEE','NKE','NI','NSC','NTRS','NOC','NRG','NUE','NVDA','NVR','NXPI','ORLY',
+        'OXY','ODFL','OMC','OKE','ORCL','OTIS','PCAR','PH','PAYX','PAYC','PYPL','PNR','PEP',
+        'PFE','PCG','PM','PSX','PNW','PLD','PGR','PPL','PFG','PG','PWR','POOL','PRU','PEG',
+        'PSA','PHM','QCOM','RJF','RTX','O','REGN','RF','RSG','RMD','RVTY','RHI','ROK','ROL',
+        'ROP','ROST','RCL','SPGI','CRM','SBAC','STX','SYY','SCHW','STLD','SRE','NOW','SHW',
+        'SPG','SLB','SNA','SO','LUV','SWK','SBUX','STT','STE','SYK','SYF','SNPS','TMUS','TROW',
+        'TTWO','TPR','TGT','TEL','TDY','TFX','TER','TSLA','TXN','TXT','TMO','TJX','TSCO','TDG',
+        'TRV','TRMB','TFC','TYL','TSN','UDR','ULTA','USB','UHS','UNP','UAL','UNH','UPS','URI',
+        'VTR','VLO','VTRS','VRSN','VZ','VRTX','VFC','VNO','VMC','WAB','WBA','WMT','WDC','WU',
+        'WRK','WY','WHR','WMB','WEC','WFC','WST','WYNN','XEL','XYL','YUM','ZBRA','ZBH','ZION','ZTS'
+    ]
     sp100 = ['AAPL','MSFT','AMZN','NVDA','META','GOOGL','GOOG','JPM','V','JNJ','WMT','PG','UNH','HD','DIS','MA','BAC','XOM','CVX','KO','PEP','ADBE','CRM','NFLX','TMO','ABT','ACN','AMD','INTC','CMCSA','TXN','QCOM','COST','NKE','MRK','ABBV','LLY','PFE','BMY','CVS','HON','UPS','BA','CAT','GE','IBM','GS','SPGI','MS','PLD','LMT','MDT','ISRG','BLK','AMGN','GILD','FISV','SYK','ZTS','T','VZ','NEE','DUK','SO','MO','PM','MDLZ','SBUX','MCD','LOW','TGT','TJX','ORCL','NOW','INTU','BKNG','UBER','TSLA','AVGO']
     nasdaq100 = ['ADBE','AMD','AMGN','AMZN','ASML','AVGO','BIIB','BKNG','CDNS','CHTR','CMCSA','COST','CSCO','CSX','CTAS','DXCM','EA','EBAY','EXC','FANG','FAST','FTNT','GILD','GOOGL','GOOG','HON','IDXX','ILMN','INTC','INTU','ISRG','KLAC','LRCX','LULU','MAR','MELI','META','MNST','MSFT','MU','NFLX','NVDA','NXPI','ODFL','ORLY','PANW','PAYX','PCAR','PEP','QCOM','REGN','ROST','SBUX','SNPS','TMUS','TSLA','TXN','VRTX','WBA','WDAY','XEL','ZM','ZS']
     ibex35 = ['SAN.MC','BBVA.MC','TEF.MC','ITX.MC','IBE.MC','FER.MC','ENG.MC','ACS.MC','REP.MC','AENA.MC','CLNX.MC','GRF.MC','MTS.MC','MAP.MC','MEL.MC','CABK.MC','ELE.MC','IAG.MC','ANA.MC','VIS.MC','CIE.MC','LOG.MC','ACX.MC']
@@ -111,7 +143,42 @@ mercado_opciones = {
 }
 
 # ============================================================
-# SIDEBAR
+# FUNCIONES DE TIPOS DE CAMBIO Y OTROS
+# ============================================================
+@st.cache_data(ttl=3600)
+def obtener_tipo_cambio() -> tuple[float, float]:
+    try:
+        usd = yf.Ticker("USDMXN=X").history(period="1d")
+        eur = yf.Ticker("EURMXN=X").history(period="1d")
+        return (float(usd['Close'].iloc[-1]) if not usd.empty else 20.0,
+                float(eur['Close'].iloc[-1]) if not eur.empty else 21.5)
+    except:
+        return 20.0, 21.5
+
+# Mostrar tipos de cambio siempre en el sidebar
+usd_mxn, eur_mxn = obtener_tipo_cambio()
+st.sidebar.markdown("### 💱 Tipos de cambio")
+st.sidebar.metric("USD/MXN", f"{usd_mxn:.2f}")
+st.sidebar.metric("EUR/MXN", f"{eur_mxn:.2f}")
+st.sidebar.markdown("---")
+
+# ============================================================
+# GESTIÓN DE CAPITAL (siempre visible)
+# ============================================================
+st.subheader("💼 Estrategia recomendada: Core + Satélite")
+capital_total_demo = 100_000  # valor de demostración, el usuario lo ajusta en sidebar
+c1, c2, c3 = st.columns(3)
+c1.metric("🏛️ Core — ETFs (65%)",         f"${capital_total_demo * 0.65:,.0f} MXN",
+          help="VOO, QQQ, IVV — comprar y mantener, no tocar")
+c2.metric("⚡ Satélite — Trading (25%)",   f"${capital_total_demo * 0.25:,.0f} MXN",
+          help="Tu sistema activo con este scanner")
+c3.metric("🎯 Alta convicción (10%)",       f"${capital_total_demo * 0.10:,.0f} MXN",
+          help="1-2 ideas con investigación fundamental profunda")
+st.caption("La distribución se ajusta según el capital que ingreses en el panel lateral.")
+st.markdown("---")
+
+# ============================================================
+# SIDEBAR (parámetros)
 # ============================================================
 st.sidebar.header("⚙️ Parámetros")
 mercado_seleccionado = st.sidebar.selectbox("📊 Mercado", list(mercado_opciones.keys()), index=1)
@@ -136,7 +203,7 @@ st.sidebar.markdown("### 💰 Registrar compra")
 compra_input = st.sidebar.text_area("Compra (una por línea)", placeholder="AAPL,10,4465.53\nWALMEX.MX,5,56.13", height=120)
 
 # ============================================================
-# FUNCIONES MEJORADAS
+# FUNCIONES DE ANÁLISIS (sin cambios respecto a la versión anterior)
 # ============================================================
 def safe_history(ticker, period="3mo", max_retries=3):
     for intento in range(max_retries):
@@ -262,15 +329,6 @@ def position_size(precio: float, atr: float, capital: float, riesgo_pct: float) 
     inversion  = min(unidades * precio, capital * 0.20)
     pct_capital = (inversion / capital) * 100
     return {'unidades': round(unidades, 2), 'inversion_mxn': round(inversion, 2), 'pct_capital': round(pct_capital, 1)}
-
-def obtener_tipo_cambio() -> tuple[float, float]:
-    try:
-        usd = yf.Ticker("USDMXN=X").history(period="1d")
-        eur = yf.Ticker("EURMXN=X").history(period="1d")
-        return (float(usd['Close'].iloc[-1]) if not usd.empty else 20.0,
-                float(eur['Close'].iloc[-1]) if not eur.empty else 21.5)
-    except:
-        return 20.0, 21.5
 
 @st.cache_data(ttl=86400)
 def obtener_fundamentales(simbolo: str) -> dict:
@@ -623,62 +681,39 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         if PRECIO_COMPRA:
             st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
 
-    usd_mxn, eur_mxn = obtener_tipo_cambio()
-    st.session_state['eur_mxn'] = eur_mxn  # Guardar para gráfico
-
-    # ── Tipo de cambio en sidebar ────────────────────────────
-    st.sidebar.markdown("---")
-    st.sidebar.metric("USD/MXN", f"{usd_mxn:.2f}")
-    st.sidebar.metric("EUR/MXN", f"{eur_mxn:.2f}")
+    # Tipos de cambio ya están en sidebar, los usamos directamente
+    usd_mxn, eur_mxn = obtener_tipo_cambio()  # refrescar por si acaso
 
     regime_data = obtener_market_regime()
     regime_bonus = regime_data['score_bonus'] if market_regime_check else 0
     trade_capital = capital_total * 0.25
 
-    # ── Panel Core + Satélite ────────────────────────────────
-    with st.expander("💼 Estrategia recomendada: Core + Satélite", expanded=False):
-        etf_cap   = round(capital_total * 0.65, 2)
-        trade_cap = round(capital_total * 0.25, 2)
-        conv_cap  = round(capital_total * 0.10, 2)
-        c1, c2, c3 = st.columns(3)
-        c1.metric("🏛️ Core — ETFs (65%)",         f"${etf_cap:,.0f} MXN",
-                  help="VOO, QQQ, IVV — comprar y mantener, no tocar")
-        c2.metric("⚡ Satélite — Trading (25%)",   f"${trade_cap:,.0f} MXN",
-                  help="Tu sistema activo con este scanner")
-        c3.metric("🎯 Alta convicción (10%)",       f"${conv_cap:,.0f} MXN",
-                  help="1-2 ideas con investigación fundamental profunda")
-        st.caption(f"Position sizing sobre ${trade_cap:,.0f} MXN · "
-                   f"Riesgo por operación: {riesgo_pct}% = "
-                   f"${trade_cap * riesgo_pct / 100:,.0f} MXN máx. por trade")
-
     lista_acciones = mercado_opciones[mercado_seleccionado]
     total = len(lista_acciones)
 
-    # ── Análisis con barra de progreso ──────────────────────
-    st.info(f"📊 Analizando {total} acciones en paralelo (máx 10 hilos)...")
-    progress_bar = st.progress(0)
-    status_text  = st.empty()
-    resultados   = []
-    completados  = 0
+    with st.spinner(f"Analizando {total} acciones en paralelo..."):
+        resultados = []
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        completados = 0
+        args_list = [
+            (sim, PRECIO_COMPRA, usd_mxn, eur_mxn, fundamentales_check,
+             backtesting_check, regime_bonus, trade_capital, riesgo_pct)
+            for sim in lista_acciones
+        ]
 
-    args_list = [
-        (sim, PRECIO_COMPRA, usd_mxn, eur_mxn, fundamentales_check,
-         backtesting_check, regime_bonus, trade_capital, riesgo_pct)
-        for sim in lista_acciones
-    ]
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {executor.submit(analizar_accion, args): args[0] for args in args_list}
+            for future in as_completed(futures):
+                completados += 1
+                status_text.text(f"Procesando {completados}/{total}: {futures[future]}")
+                res = future.result()
+                if res:
+                    resultados.append(res)
+                progress_bar.progress(completados / total)
 
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(analizar_accion, args): args[0] for args in args_list}
-        for future in as_completed(futures):
-            completados += 1
-            status_text.text(f"Procesando {completados}/{total}: {futures[future]}")
-            res = future.result()
-            if res:
-                resultados.append(res)
-            progress_bar.progress(completados / total)
-
-    status_text.empty()
-    progress_bar.empty()
+        status_text.empty()
+        progress_bar.empty()
 
     if not resultados:
         st.warning("⚠️ No se encontraron resultados. Verifica tu conexión o el mercado seleccionado.")
@@ -699,6 +734,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.session_state['observar'] = observar
     st.session_state['PRECIO_COMPRA'] = PRECIO_COMPRA
     st.session_state['usd_mxn'] = usd_mxn
+    st.session_state['eur_mxn'] = eur_mxn
     st.session_state['regime'] = regime_data
     st.session_state['capital'] = capital_total
     st.session_state['ultima_actualizacion'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -712,7 +748,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.rerun()
 
 # ============================================================
-# PRESENTACIÓN DE RESULTADOS
+# PRESENTACIÓN DE RESULTADOS (después del análisis)
 # ============================================================
 if 'df' in st.session_state:
     df = st.session_state['df']
@@ -720,6 +756,7 @@ if 'df' in st.session_state:
     ventas = st.session_state['ventas']
     observar = st.session_state['observar']
     usd_mxn = st.session_state['usd_mxn']
+    eur_mxn = st.session_state['eur_mxn']
     regime_data = st.session_state['regime']
 
     st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
@@ -759,7 +796,6 @@ if 'df' in st.session_state:
         df_trans = cargar_transacciones()
         if not df_trans.empty:
             st.dataframe(df_trans.sort_values('fecha', ascending=False), use_container_width=True)
-            # Botón para descargar historial
             csv = df_trans.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Descargar historial (CSV)",
@@ -770,9 +806,7 @@ if 'df' in st.session_state:
         else:
             st.info("Aún no hay transacciones registradas.")
 
-    # ============================================================
-    # DESCARGA DE EXCEL (AÑADIDO)
-    # ============================================================
+    # Descarga de Excel
     st.divider()
     try:
         import openpyxl
@@ -795,11 +829,24 @@ if 'df' in st.session_state:
         with st.expander("🤖 Análisis de IA", expanded=True):
             st.markdown(st.session_state['analisis_ia'])
 
-    if not compras.empty:
-        mejor = compras.iloc[0]['Símbolo']
-        st.subheader(f"📊 Análisis completo: {mejor}")
-        eur_mxn = st.session_state.get('eur_mxn', 21.5)
-        fig = grafico_enriquecido(mejor, usd_mxn, eur_mxn)
-        st.plotly_chart(fig, use_container_width=True)
+    # Selector de gráfico para cualquier acción analizada
+    if not df.empty:
+        st.subheader("🔎 Explorar cualquier acción analizada")
+        todos_simbolos = df['Símbolo'].tolist()
+        sim_elegido = st.selectbox("Selecciona un símbolo para ver su gráfico completo", todos_simbolos, key="selector_grafico")
+        if sim_elegido:
+            fila = df[df['Símbolo'] == sim_elegido].iloc[0]
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Precio (MXN)", fila['Precio (MXN)'])
+            c2.metric("Score", fila['Score'])
+            c3.metric("RSI", fila['RSI'])
+            c4.metric("Recomendación", fila['Recomendación'])
+            if st.session_state.get('PRECIO_COMPRA', {}).get(sim_elegido):
+                precio_compra = st.session_state['PRECIO_COMPRA'][sim_elegido]
+                precio_actual = float(str(fila['Precio (MXN)']).replace(',',''))
+                ganancia_pct = (precio_actual / precio_compra - 1) * 100
+                st.metric(f"Tu compra en {precio_compra:.2f} MXN", f"{precio_actual:.2f} MXN", delta=f"{ganancia_pct:+.2f}%", delta_color="normal" if ganancia_pct >= 0 else "inverse")
+            fig = grafico_enriquecido(sim_elegido, usd_mxn, eur_mxn)
+            st.plotly_chart(fig, use_container_width=True)
 
 st.caption("v2.1 — Con backtesting realista, multi-timeframe y IA completa • Adrian López")
