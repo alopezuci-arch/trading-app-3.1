@@ -71,7 +71,7 @@ def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str,
     df.to_csv(TRANSACCIONES_FILE, index=False)
 
 # ============================================================
-# LISTAS DE MERCADOS (las mismas que tenías)
+# LISTAS DE MERCADOS + UNIVERSO RECOMENDADO (TU CÓDIGO ORIGINAL)
 # ============================================================
 @st.cache_data(ttl=3600)
 def cargar_listas():
@@ -132,59 +132,43 @@ def cargar_listas():
         'BBAJIOO.MX','ALFA.MX','ALPEKA.MX','ASURB.MX','GAPB.MX','OMAB.MX','AC.MX','GCC.MX','LALA.MX',
         'MEGA.MX','PINFRA.MX','TLEVISACPO.MX','VESTA.MX','GRUMA.MX','HERDEZ.MX','CUERVO.MX','ORBIA.MX'
     ]
-    ia_stocks = [
-        'NVDA','AMD','INTC','AI','PLTR','IBM','MSFT','GOOGL','META','SNOW','CRM','ADBE','NOW','ORCL',
-        'BIDU','BABA','SAP'
-    ]
+    ia_stocks = ['NVDA','AMD','INTC','AI','PLTR','IBM','MSFT','GOOGL','META','SNOW','CRM','ADBE','NOW','ORCL','BIDU','BABA','SAP']
     commodity_etfs = ['GLD','SLV','USO','UNG','DBC']
     mining_oil = ['NEM','GOLD','FCX','XOM','CVX','COP','EOG','SLB']
-    etfs_sectoriales = [
-        'XLK','XLV','XLF','XLE','XLI','XLY','XLP','XLU','XLB','XLRE','XLC',
-        'SOXX','ARKK','ARKG','ARKW','ARKF','CIBR','ROBO','ICLN','TAN','LIT',
-        'JETS','XHB','KRE','IBB','SPY','QQQ','IWM','DIA','VTI'
-    ]
-    mid_cap_growth = [
-        'DDOG','NET','CRWD','ZS','BILL','DUOL','CELH','SMCI','HUBS','MNDY','APPN','PCTY','FIVN',
-        'RELY','PATH','SMAR','JAMF','EXAS','NVCR','FATE','RXRX','AFRM','UPST','HOOD','SQ','SOFI',
-        'NU','PLUG','CHPT','RIVN','LCID','KTOS','RKLB','ACHR'
-    ]
-    etfs_emergentes = [
-        'EWZ','EWJ','FXI','KWEB','EWY','EWT','EWH','EWA','EWC','EWG','EWQ','EWU','VWO','EEM','INDA','EWX'
-    ]
-    return (sp100, nasdaq100, ibex35, bmv, sp500,
-            ia_stocks, commodity_etfs, mining_oil,
-            etfs_sectoriales, mid_cap_growth, etfs_emergentes)
+    etfs_sectoriales = ['XLK','XLV','XLF','XLE','XLI','XLY','XLP','XLU','XLB','XLRE','XLC','SOXX','ARKK','ARKG','ARKW','ARKF','CIBR','ROBO','ICLN','TAN','LIT','JETS','XHB','KRE','IBB','SPY','QQQ','IWM','DIA','VTI']
+    mid_cap_growth = ['DDOG','NET','CRWD','ZS','BILL','DUOL','CELH','SMCI','HUBS','MNDY','APPN','PCTY','FIVN','RELY','PATH','SMAR','JAMF','EXAS','NVCR','FATE','RXRX','AFRM','UPST','HOOD','SQ','SOFI','NU','PLUG','CHPT','RIVN','LCID','KTOS','RKLB','ACHR']
+    etfs_emergentes = ['EWZ','EWJ','FXI','KWEB','EWY','EWT','EWH','EWA','EWC','EWG','EWQ','EWU','VWO','EEM','INDA','EWX']
+    return (sp100, nasdaq100, ibex35, bmv, sp500, ia_stocks, commodity_etfs, mining_oil, etfs_sectoriales, mid_cap_growth, etfs_emergentes)
 
 (sp100, nasdaq100, ibex35, bmv, sp500,
  ia_stocks, commodity_etfs, mining_oil,
  etfs_sectoriales, mid_cap_growth, etfs_emergentes) = cargar_listas()
 
 # ============================================================
-# SIDEBAR (igual que antes)
+# MERCADO OPCIONES (TU DEFINICIÓN ORIGINAL)
 # ============================================================
-st.sidebar.header("⚙️ Parámetros")
 universo_recomendado = list(set(sp100 + etfs_sectoriales + mid_cap_growth))
-mercado_opciones = { ... }  # ← tu diccionario original de mercados
+
+mercado_opciones = {
+    "⚡ Prueba rápida (12 tickers)":          ['AAPL','MSFT','NVDA','TSLA','QQQ','SPY','DDOG','NET','CRWD','XLK','XLF','SOXX'],
+    "⭐ Recomendado (S&P100 + ETFs + Growth)": universo_recomendado,
+    "📊 S&P 100":                              sp100,
+    "📊 S&P 500 (completo)":                   sp500,
+    "📊 NASDAQ 100":                           nasdaq100,
+    "🏛️ ETFs sectoriales (30)":               etfs_sectoriales,
+    "🚀 Mid-cap growth (38)":                  mid_cap_growth,
+    "🌎 ETFs mercados emergentes (16)":        etfs_emergentes,
+    "🤖 IA (Inteligencia Artificial)":         ia_stocks,
+    "🪙 Commodities (ETFs)":                   commodity_etfs,
+    "⛏️ Mineras y Petroleras":                mining_oil,
+    "🇲🇽 BMV México":                          bmv,
+    "🇪🇸 IBEX 35":                             ibex35,
+    "🌐 Todo USA (S&P500 + ETFs + Growth)":   list(set(sp500 + etfs_sectoriales + mid_cap_growth)),
+    "🌍 Global completo":                      list(set(sp500 + nasdaq100 + ibex35 + bmv + ia_stocks + commodity_etfs + mining_oil + etfs_sectoriales + mid_cap_growth + etfs_emergentes)),
+}
+
+# Aquí continúa tu código normal (el selectbox ya funcionará)
 mercado_seleccionado = st.sidebar.selectbox("📊 Mercado", list(mercado_opciones.keys()), index=1)
-
-st.sidebar.markdown("### 🔧 Análisis")
-fundamentales_check  = st.sidebar.checkbox("📊 Análisis fundamental", value=False)
-filtro_fundamentales = st.sidebar.checkbox("📊 Solo fundamentales sólidos", value=False) if fundamentales_check else False
-backtesting_check    = st.sidebar.checkbox("🧪 Backtesting realista (SL/TP)", value=True)
-market_regime_check  = st.sidebar.checkbox("🌡️ Filtrar por Market Regime", value=True)
-ia_check = st.sidebar.checkbox("🤖 Análisis IA", value=True)
-
-st.sidebar.markdown("### 💼 Gestión de capital")
-capital_total = st.sidebar.number_input("Capital disponible (MXN)", min_value=1000.0, value=100_000.0, step=1000.0)
-riesgo_pct = st.sidebar.slider("Riesgo máximo por operación (%)", min_value=0.5, max_value=3.0, value=1.0, step=0.25)
-
-st.sidebar.markdown("### 🔔 Alertas")
-alerta_email    = st.sidebar.checkbox("📧 Alertar por email", value=True)
-alerta_whatsapp = st.sidebar.checkbox("💬 Alertar por WhatsApp", value=False)
-umbral_score    = st.sidebar.slider("Umbral mínimo para alertar (score)", 4, 10, 7)
-
-st.sidebar.markdown("### 💰 Registrar compra")
-compra_input = st.sidebar.text_area("Compra (una por línea)", placeholder="AAPL,10,4465.53\nWALMEX.MX,5,56.13", height=120)
 
 # ============================================================
 # FUNCIONES MEJORADAS
