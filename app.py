@@ -463,26 +463,52 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
         return cache
 
     proveedores = [("Gemini", GEMINI_API_KEY), ("Groq", GROQ_API_KEY), ("Anthropic", ANTHROPIC_API_KEY)]
+    errores = []
     for nombre, key in proveedores:
         if not key:
             continue
         try:
             if nombre == "Gemini":
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
-                resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=30)
+                url  = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+                        f"gemini-1.5-flash:generateContent?key={key}")
+                resp = requests.post(
+                    url,
+                    json={"contents": [{"parts": [{"text": prompt}]}]},
+                    timeout=30
+                )
+                if resp.status_code != 200:
+                    errores.append(f"Gemini {resp.status_code}: {resp.text[:200]}")
+                    continue
                 texto = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+
             elif nombre == "Groq":
-                resp = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                    json={"model": "llama-3.1-70b-versatile", "messages": [{"role": "user", "content": prompt}], "max_tokens": 800}, timeout=30)
+                    json={
+                        "model":    "llama-3.3-70b-versatile",   # modelo actualizado
+                        "messages": [{"role": "user", "content": prompt}],
+                        "max_tokens": 800,
+                    },
+                    timeout=30,
+                )
+                if resp.status_code != 200:
+                    errores.append(f"Groq {resp.status_code}: {resp.text[:200]}")
+                    continue
                 texto = resp.json()["choices"][0]["message"]["content"]
+
             else:
                 continue
+
             _guardar_cache_ia(prompt, texto)
             return texto
-        except:
+
+        except Exception as e:
+            errores.append(f"{nombre}: {str(e)}")
             continue
-    return "**IA no disponible** — revisa tus API keys en GitHub Secrets."
+
+    detalle = " | ".join(errores) if errores else "sin keys configuradas"
+    return f"**IA no disponible** — {detalle}"
 
 # ============================================================
 # ALERTAS Y GRÁFICOS (mantengo tu versión original)
