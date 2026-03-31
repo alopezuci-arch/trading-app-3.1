@@ -396,28 +396,63 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
     prompt = _construir_prompt(oportunidades, regime, usd_mxn)
     cache = _obtener_cache_ia(prompt)
     if cache:
+        print("  ✅ IA: usando respuesta en caché")
         return cache
 
     proveedores = [("Gemini", GEMINI_API_KEY), ("Groq", GROQ_API_KEY), ("Anthropic", ANTHROPIC_API_KEY)]
     for nombre, key in proveedores:
         if not key:
+            print(f"  ⏭️  {nombre}: sin API key configurada")
             continue
+        print(f"  🔄 Intentando IA con {nombre}...")
         try:
             if nombre == "Gemini":
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
-                resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=30)
-                texto = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                url  = (f"https://generativelanguage.googleapis.com/v1beta/models/"
+                        f"gemini-1.5-flash:generateContent?key={key}")
+                resp = requests.post(
+                    url,
+                    json={"contents": [{"parts": [{"text": prompt}]}]},
+                    timeout=30
+                )
+                print(f"     Gemini status: {resp.status_code}")
+                if resp.status_code != 200:
+                    print(f"     Gemini error: {resp.text[:300]}")
+                    continue
+                data  = resp.json()
+                texto = data["candidates"][0]["content"]["parts"][0]["text"]
+
             elif nombre == "Groq":
-                resp = requests.post("https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                    json={"model": "llama-3.1-70b-versatile", "messages": [{"role": "user", "content": prompt}], "max_tokens": 800}, timeout=30)
+                resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {key}",
+                        "Content-Type":  "application/json",
+                    },
+                    json={
+                        "model":    "llama-3.3-70b-versatile",   # modelo actualizado
+                        "messages": [{"role": "user", "content": prompt}],
+                        "max_tokens": 800,
+                    },
+                    timeout=30,
+                )
+                print(f"     Groq status: {resp.status_code}")
+                if resp.status_code != 200:
+                    print(f"     Groq error: {resp.text[:300]}")
+                    continue
                 texto = resp.json()["choices"][0]["message"]["content"]
+
             else:
                 continue
+
+            print(f"  ✅ IA completada con {nombre} ({len(texto)} chars)")
             _guardar_cache_ia(prompt, texto)
             return texto
-        except:
+
+        except Exception as e:
+            print(f"  ❌ {nombre} excepción: {e}")
             continue
+
+    print("  ❌ Ningún proveedor de IA respondió correctamente")
     return "**IA no disponible** — revisa tus API keys en GitHub Secrets."
 
 # ============================================================
