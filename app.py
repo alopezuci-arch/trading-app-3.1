@@ -1063,7 +1063,13 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                f"${trade_cap * riesgo_pct / 100:,.0f} MXN máx. por trade")
     st.markdown("---")
 
-    lista_acciones = mercado_opciones[mercado_seleccionado]
+    lista_acciones = mercado_opciones[mercado_seleccionado].copy()  # copia para no modificar original
+    # 🔧 Añadir símbolos registrados en PRECIO_COMPRA (incluso si no están en la lista)
+    if PRECIO_COMPRA:
+        for sim in PRECIO_COMPRA.keys():
+            if sim not in lista_acciones:
+                lista_acciones.append(sim)
+
     total = len(lista_acciones)
 
     with st.spinner(f"Analizando {total} acciones en paralelo..."):
