@@ -1173,11 +1173,11 @@ if 'df' in st.session_state:
             st.info("Sin oportunidades de compra en este momento.")
     with tab2:
         if not ventas.empty:
-            st.dataframe(ventas[cols_base], use_container_width=True)
+            st.dataframe(ventas[[c for c in cols_base if c in ventas.columns]], use_container_width=True)
         else:
             st.info("Ninguna señal de venta para tus compras registradas.")
     with tab3:
-        st.dataframe(observar[cols_base], use_container_width=True)
+        st.dataframe(observar[[c for c in cols_base if c in observar.columns]], use_container_width=True)
     with tab4:
         st.dataframe(df, use_container_width=True)
     with tab5:
