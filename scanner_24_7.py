@@ -1,7 +1,7 @@
 # ============================================================
 # SCANNER DE TRADING AUTÓNOMO 24/7
-# Versión mejorada: universo ampliado (700+ activos) + análisis de posiciones desde CSV
-# Conserva la misma lógica estricta de filtros para compras.
+# Versión mejorada: universo ampliado (700+ activos)
+# Conserva la misma lógica estricta de filtros.
 # ============================================================
 
 import os
@@ -39,9 +39,6 @@ CACHE_DIR        = "cache_ia"
 CACHE_TTL        = 3600
 HISTORICO_FILE   = "historial_senales.csv"
 BACKTEST_WINDOW  = 5
-
-# Archivo con posiciones actuales (simbolo,precio_compra)
-POSICIONES_FILE = "posiciones.csv"
 
 # ============================================================
 # UNIVERSO AMPLIADO (más de 700 activos)
@@ -181,8 +178,14 @@ UNIVERSO = list(set(
     emergentes_acciones
 ))
 
+# Orden alfabético para mejor legibilidad (opcional)
+UNIVERSO.sort()
+
+print(f"✅ Universo configurado con {len(UNIVERSO)} activos.")
+
 # ============================================================
 # FUNCIONES DE INDICADORES, SCORING, MARKET REGIME, POSITION SIZING
+# (Se mantienen idénticas a la versión original)
 # ============================================================
 def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist = hist.copy()
@@ -295,11 +298,8 @@ def position_size(precio: float, atr: float) -> dict:
     unidades   = inversion / precio
     return {'unidades': round(unidades, 2), 'inversion': round(inversion, 2)}
 
-# ============================================================
-# FUNCIÓN DE ANÁLISIS (ahora también recibe diccionario de posiciones)
-# ============================================================
 def analizar(args: tuple) -> dict | None:
-    simbolo, usd_mxn, regime_bonus, posiciones = args
+    simbolo, usd_mxn, regime_bonus = args
     try:
         hist = yf.Ticker(simbolo).history(period="3mo")
         if hist.empty or len(hist) < 55:
@@ -313,50 +313,11 @@ def analizar(args: tuple) -> dict | None:
             return None
         r = hist.iloc[-1].to_dict()
         p = hist.iloc[-2].to_dict()
-        precio = r['Close']
-        atr    = r['ATR']
-
-        # Verificar si es una posición que tenemos
-        if simbolo in posiciones:
-            precio_compra = posiciones[simbolo]
-            ganancia = ((precio / precio_compra) - 1) * 100
-            if ganancia >= 15:
-                return {
-                    'Símbolo':      simbolo,
-                    'Precio MXN':   round(precio, 2),
-                    'Score':        0,
-                    'RSI':          round(r['RSI'], 1),
-                    'ATR':          round(atr, 2),
-                    'Stop Loss':    round(precio - 2 * atr, 2),
-                    'Take Profit':  round(precio + 3 * atr, 2),
-                    'Unidades':     0,
-                    'Inversión MXN':0,
-                    'Señales':      "",
-                    'Recomendación': "VENDER",
-                    'Motivo':       f"🎯 Take Profit +{ganancia:.1f}%"
-                }
-            elif ganancia <= -7:
-                return {
-                    'Símbolo':      simbolo,
-                    'Precio MXN':   round(precio, 2),
-                    'Score':        0,
-                    'RSI':          round(r['RSI'], 1),
-                    'ATR':          round(atr, 2),
-                    'Stop Loss':    round(precio - 2 * atr, 2),
-                    'Take Profit':  round(precio + 3 * atr, 2),
-                    'Unidades':     0,
-                    'Inversión MXN':0,
-                    'Señales':      "",
-                    'Recomendación': "VENDER",
-                    'Motivo':       f"🛑 Stop Loss {ganancia:.1f}%"
-                }
-            # Si no hay señal de venta, no devolvemos nada (se ignora)
-            return None
-
-        # Si no es posición, aplicar lógica de compra normal
         score_base, señales = calcular_score(r, p)
         score = max(0, score_base + regime_bonus)
-        ps = position_size(precio, atr)
+        precio = r['Close']
+        atr    = r['ATR']
+        ps     = position_size(precio, atr)
         if score >= 8:
             rec = "COMPRAR ★★★"
         elif score >= 6:
@@ -377,9 +338,8 @@ def analizar(args: tuple) -> dict | None:
             'Inversión MXN':ps['inversion'],
             'Señales':      " | ".join(señales),
             'Recomendación':rec,
-            'Motivo':       ""
         }
-    except Exception as e:
+    except:
         return None
 
 # ============================================================
@@ -442,7 +402,7 @@ def backtest_historial(df_hist: pd.DataFrame) -> dict:
     return {'win_rate': 0, 'ret_prom': 0, 'total': 0}
 
 # ============================================================
-# IA CON CACHÉ Y REINTENTOS
+# IA CON CACHÉ Y REINTENTOS (idéntico al original)
 # ============================================================
 def _calcular_hash_prompt(prompt: str) -> str:
     return hashlib.sha256(prompt.encode()).hexdigest()
@@ -586,7 +546,7 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
     return ""
 
 # ============================================================
-# ALERTAS (email, WhatsApp)
+# ALERTAS
 # ============================================================
 def enviar_email(asunto: str, html: str) -> bool:
     if not EMAIL_REMITENTE or not EMAIL_PASSWORD:
@@ -624,16 +584,12 @@ def enviar_whatsapp(mensaje: str) -> bool:
         print(f"❌ Error WhatsApp: {e}")
         return False
 
-def construir_email(ops_compras: list[dict], ops_ventas: list[dict], regime: dict, ia_texto: str, hora: str) -> str:
-    filas_compras = "".join([
+def construir_email(ops: list[dict], regime: dict, ia_texto: str, hora: str) -> str:
+    filas = "".join([
         f"<tr><td><b>{o['Símbolo']}</b></td><td>{o['Precio MXN']}</td>"
         f"<td>{o['Score']}</td><td>{o['Unidades']}</td>"
         f"<td>${o['Inversión MXN']:,.0f}</td><td>{o['Recomendación']}</td></tr>"
-        for o in ops_compras
-    ])
-    filas_ventas = "".join([
-        f"<tr><td><b>{o['Símbolo']}</b></td><td>{o['Precio MXN']}</td><td>{o['Motivo']}</td></tr>"
-        for o in ops_ventas
+        for o in ops
     ])
     bloque_ia = ""
     if ia_texto:
@@ -652,18 +608,13 @@ def construir_email(ops_compras: list[dict], ops_ventas: list[dict], regime: dic
       Ret. 1m: {regime['ret_1m']:+.1f}%
     </p>
     {bloque_ia}
-    <h3 style="color:#34a853">🟢 Oportunidades de COMPRA ({len(ops_compras)})</h3>
+    <h3 style="color:#34a853">🟢 Oportunidades de COMPRA ({len(ops)})</h3>
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:13px">
       <tr style="background:#e8f5e9">
         <th>Símbolo</th><th>Precio MXN</th><th>Score</th>
         <th>Unidades</th><th>Inversión</th><th>Recomendación</th>
-       </tr>
-      {filas_compras if filas_compras else '<tr><td colspan="6" style="text-align:center">Sin señales</td></tr>'}
-    </table>
-    <h3 style="color:#ea4335">🔴 Señales de VENTA ({len(ops_ventas)})</h3>
-    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:13px">
-      <tr style="background:#fce8e6"><th>Símbolo</th><th>Precio MXN</th><th>Motivo</th></tr>
-      {filas_ventas if filas_ventas else '<tr><td colspan="3" style="text-align:center">Sin señales</td></tr>'}
+      </tr>
+      {filas if filas else '<tr><td colspan="6" style="text-align:center">Sin señales</td></tr>'}
     </table>
     <p style="color:#999;font-size:11px;margin-top:20px">
       Scanner autónomo — análisis informativo, no asesoría financiera.<br>
@@ -697,58 +648,33 @@ def main():
     else:
         score_minimo_efectivo = SCORE_MINIMO
 
-    # 3. Leer posiciones actuales desde CSV
-    posiciones = {}
-    if os.path.exists(POSICIONES_FILE):
-        df_pos = pd.read_csv(POSICIONES_FILE)
-        if 'simbolo' in df_pos.columns and 'precio' in df_pos.columns:
-            posiciones = dict(zip(df_pos['simbolo'], df_pos['precio']))
-            print(f"📌 Posiciones cargadas: {len(posiciones)} activos")
-        else:
-            print("⚠️  Archivo posiciones.csv tiene formato incorrecto (se esperan columnas 'simbolo','precio')")
-    else:
-        print("ℹ️  No se encontró archivo posiciones.csv – solo se analizarán nuevas oportunidades")
-
-    # 4. Añadir posiciones al universo si no están ya
-    universo_final = list(set(UNIVERSO + list(posiciones.keys())))
-    print(f"✅ Universo final con {len(universo_final)} activos (incluye {len(posiciones)} posiciones)")
-
-    # 5. Análisis en paralelo
-    print(f"\nAnalizando {len(universo_final)} activos en paralelo ({MAX_WORKERS} hilos)...")
+    # 3. Análisis en paralelo
+    print(f"\nAnalizando {len(UNIVERSO)} activos en paralelo ({MAX_WORKERS} hilos)...")
     resultados = []
-    args_list = [(sim, usd_mxn, regime['score_bonus'], posiciones) for sim in universo_final]
+    args_list = [(sim, usd_mxn, regime['score_bonus']) for sim in UNIVERSO]
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
         futures = {ex.submit(analizar, a): a[0] for a in args_list}
         for i, f in enumerate(as_completed(futures), 1):
             res = f.result()
-            if res:
+            if res and res['Score'] >= score_minimo_efectivo:
                 resultados.append(res)
             if i % 20 == 0:
-                print(f"  {i}/{len(universo_final)} procesados...")
+                print(f"  {i}/{len(UNIVERSO)} procesados...")
 
-    # Separar compras y ventas
-    compras = [r for r in resultados if r['Recomendación'].startswith('COMPRAR')]
-    ventas  = [r for r in resultados if r['Recomendación'] == 'VENDER']
-
-    # Ordenar compras por score descendente
-    compras.sort(key=lambda x: x['Score'], reverse=True)
-
-    print(f"\nOportunidades de compra detectadas: {len(compras)}")
-    for r in compras[:10]:
+    resultados.sort(key=lambda x: x['Score'], reverse=True)
+    print(f"\nOportunidades detectadas: {len(resultados)}")
+    for r in resultados:
         print(f"  {r['Símbolo']:8s} Score:{r['Score']:2d}  RSI:{r['RSI']:5.1f}  "
               f"Precio:{r['Precio MXN']:>10.2f}  {r['Recomendación']}")
-    print(f"\nSeñales de venta detectadas: {len(ventas)}")
-    for r in ventas:
-        print(f"  {r['Símbolo']:8s} Precio:{r['Precio MXN']:>10.2f}  Motivo: {r['Motivo']}")
 
-    # 6. Guardar en historial (solo compras)
-    print("\nGuardando señales de compra en historial...")
+    # 4. Guardar en historial
+    print("\nGuardando señales en historial...")
     fecha_hoy = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    for senal in compras:
+    for senal in resultados:
         guardar_senal_en_historial(senal, fecha_hoy)
 
-    # 7. Backtesting sobre historial
+    # 5. Backtesting sobre historial
     print("\nEjecutando backtesting sobre señales previas...")
     hist_df = cargar_historial()
     metrics = backtest_historial(hist_df)
@@ -757,28 +683,25 @@ def main():
     print(f"    - Win rate: {metrics['win_rate']}%")
     print(f"    - Retorno promedio: {metrics['ret_prom']}%")
 
-    # 8. Análisis IA (solo sobre compras)
-    print("\nConsultando IA para análisis de compras...")
-    ia_texto = analisis_ia(compras, regime, usd_mxn)
+    # 6. Análisis IA
+    print("\nConsultando IA para análisis...")
+    ia_texto = analisis_ia(resultados, regime, usd_mxn)
     if ia_texto:
         print("\n--- ANÁLISIS IA ---")
         print(ia_texto[:500] + "..." if len(ia_texto) > 500 else ia_texto)
 
-    # 9. Alertas (si hay compras o ventas)
-    if compras or ventas:
-        html = construir_email(compras, ventas, regime, ia_texto, hora)
-        asunto = f"📈 Trading Alert {hora} — Compras: {len(compras)} | Ventas: {len(ventas)} | Mercado: {regime['regime']}"
+    # 7. Alertas
+    if resultados:
+        html = construir_email(resultados, regime, ia_texto, hora)
+        asunto = f"📈 Trading Alert {hora} — {len(resultados)} señales | Mercado: {regime['regime']}"
         enviar_email(asunto, html)
 
-        if compras:
-            top3 = ", ".join([r['Símbolo'] for r in compras[:3]])
-        else:
-            top3 = "ninguna"
+        top3 = ", ".join([r['Símbolo'] for r in resultados[:3]])
         confianza = "ALTA" if regime['regime'] == 'ALCISTA' else "MEDIA" if regime['regime'] == 'LATERAL' else "BAJA"
         msg_wa = (f"📈 *Scanner Trading* — {hora}\n"
                   f"Régimen: {regime['regime']} | USD/MXN: {usd_mxn:.2f}\n"
-                  f"🟢 Compras: {len(compras)} (Top: {top3})\n"
-                  f"🔴 Ventas: {len(ventas)}\n"
+                  f"🟢 {len(resultados)} oportunidades\n"
+                  f"Top 3: {top3}\n"
                   f"Confianza: {confianza}\n"
                   f"Ver detalles en tu email")
         enviar_whatsapp(msg_wa)
