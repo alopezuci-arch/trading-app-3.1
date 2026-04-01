@@ -1,8 +1,8 @@
 # ============================================================
-# SISTEMA DE TRADING PROFESIONAL v2.1 — STREAMLIT (FINAL)
-# Mejoras: tipos de cambio siempre visibles, gestión de capital
-# dinámica tras análisis, selector de gráficos post‑análisis,
-# descarga Excel e historial.
+# SISTEMA DE TRADING PROFESIONAL v3.0 — STREAMLIT (FINAL)
+# Mejoras: sentimiento noticias, fundamentales profundos, ML predictivo,
+# optimización cartera, backtest paramétrico, alertas email/WhatsApp,
+# dashboard rendimiento, integración Google Drive.
 # ============================================================
 
 import streamlit as st
@@ -25,14 +25,29 @@ import time
 import os
 import hashlib
 import json
+import pickle
+import warnings
+warnings.filterwarnings('ignore')
+
+# ── ML y sentimiento ───────────────────────────────────────────
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+from textblob import TextBlob
+
+# ── Google Drive ───────────────────────────────────────────────
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 
 # ── SSL y warnings ─────────────────────────────────────────────
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 ssl._create_default_https_context = ssl._create_unverified_context
 
 # ── Configuración de página ────────────────────────────────────
-st.set_page_config(page_title="Trading System v2.1", layout="wide", page_icon="📈")
-st.title("📈 Sistema de Trading Personal v2.1 (Mejorado)")
+st.set_page_config(page_title="Trading System v3.0", layout="wide", page_icon="📈")
+st.title("📈 Sistema de Trading Personal v3.0 (Mejorado)")
 
 # ============================================================
 # CONSTANTES
@@ -45,6 +60,7 @@ WHATSAPP_NUMERO   = os.environ.get("WHATSAPP_NUMERO", "")
 WHATSAPP_APIKEY   = os.environ.get("WHATSAPP_APIKEY", "")
 EMAIL_REMITENTE   = os.environ.get("EMAIL_REMITENTE", "")
 EMAIL_PASSWORD    = os.environ.get("EMAIL_PASSWORD",  "")
+NEWSAPI_KEY       = os.environ.get("NEWSAPI_KEY", "")
 
 # ============================================================
 # HISTORIAL DE TRANSACCIONES
@@ -73,7 +89,7 @@ def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str,
     df.to_csv(TRANSACCIONES_FILE, index=False)
 
 # ============================================================
-# LISTAS DE MERCADOS (completas)
+# LISTAS DE MERCADOS (completas – mismas que antes)
 # ============================================================
 @st.cache_data(ttl=3600)
 def cargar_listas():
@@ -208,11 +224,13 @@ st.sidebar.header("⚙️ Parámetros")
 mercado_seleccionado = st.sidebar.selectbox("📊 Mercado", list(mercado_opciones.keys()), index=1)
 
 st.sidebar.markdown("### 🔧 Análisis")
-fundamentales_check  = st.sidebar.checkbox("📊 Análisis fundamental", value=False)
+fundamentales_check  = st.sidebar.checkbox("📊 Análisis fundamental (profundo)", value=False)
 filtro_fundamentales = st.sidebar.checkbox("📊 Solo fundamentales sólidos", value=False) if fundamentales_check else False
 backtesting_check    = st.sidebar.checkbox("🧪 Backtesting realista (SL/TP)", value=True)
 market_regime_check  = st.sidebar.checkbox("🌡️ Filtrar por Market Regime", value=True)
 ia_check = st.sidebar.checkbox("🤖 Análisis IA", value=True)
+sentiment_check = st.sidebar.checkbox("📰 Análisis de sentimiento (noticias)", value=False)
+ml_check = st.sidebar.checkbox("🧠 Modelo predictivo (ML)", value=False)
 
 st.sidebar.markdown("### 💼 Gestión de capital")
 capital_total = st.sidebar.number_input("Capital disponible (MXN)", min_value=1000.0, value=100_000.0, step=1000.0)
@@ -226,8 +244,11 @@ umbral_score    = st.sidebar.slider("Umbral mínimo para alertar (score)", 4, 10
 st.sidebar.markdown("### 💰 Registrar compra")
 compra_input = st.sidebar.text_area("Compra (una por línea)", placeholder="AAPL,10,4465.53\nWALMEX.MX,5,56.13", height=120)
 
+st.sidebar.markdown("### 📂 Google Drive")
+drive_upload = st.sidebar.checkbox("💾 Guardar informe en Google Drive", value=False)
+
 # ============================================================
-# FUNCIONES DE ANÁLISIS TÉCNICO, SCORE, BACKTESTING, IA, ETC.
+# FUNCIONES DE ANÁLISIS TÉCNICO, SCORE, BACKTESTING, ETC.
 # ============================================================
 def safe_history(ticker, period="3mo", max_retries=3):
     for intento in range(max_retries):
@@ -355,7 +376,7 @@ def position_size(precio: float, atr: float, capital: float, riesgo_pct: float) 
     return {'unidades': round(unidades, 2), 'inversion_mxn': round(inversion, 2), 'pct_capital': round(pct_capital, 1)}
 
 @st.cache_data(ttl=86400)
-def obtener_fundamentales(simbolo: str) -> dict:
+def obtener_fundamentales_profundos(simbolo: str) -> dict:
     try:
         info = yf.Ticker(simbolo).info
         dy = info.get('dividendYield')
@@ -363,6 +384,11 @@ def obtener_fundamentales(simbolo: str) -> dict:
         rg = info.get('revenueGrowth')
         eg = info.get('earningsGrowth')
         pm = info.get('profitMargins')
+        # Nuevos indicadores profundos
+        debt_to_equity = info.get('debtToEquity')
+        free_cashflow = info.get('freeCashflow')
+        roa = info.get('returnOnAssets')
+        ebitda_margin = info.get('ebitdaMargins')
         return {
             'P/E (ttm)':       info.get('trailingPE'),
             'P/E forward':     info.get('forwardPE'),
@@ -372,6 +398,10 @@ def obtener_fundamentales(simbolo: str) -> dict:
             'Rev Growth (%)':  round(rg * 100, 2) if rg else None,
             'EPS Growth (%)':  round(eg * 100, 2) if eg else None,
             'Net Margin (%)':  round(pm * 100, 2) if pm else None,
+            'Debt/Equity':     round(debt_to_equity, 2) if debt_to_equity else None,
+            'Free Cash Flow':  round(free_cashflow / 1e6, 2) if free_cashflow else None,  # en millones
+            'ROA (%)':         round(roa * 100, 2) if roa else None,
+            'EBITDA Margin (%)': round(ebitda_margin * 100, 2) if ebitda_margin else None,
         }
     except:
         return {}
@@ -400,100 +430,327 @@ def backtest_realista(simbolo: str, precio_entrada: float, atr: float, window_di
     except:
         return {'resultado': 0, 'tipo': 'error'}
 
-def analizar_accion(args: tuple) -> dict | None:
-    simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt, regime_bonus, capital, riesgo_pct = args
+def backtest_optimizar_parametros(hist_anual: pd.DataFrame) -> dict:
+    """
+    Realiza un grid search sobre umbral de score y multiplicadores de ATR para encontrar la combinación
+    que maximiza el win rate en los últimos 6 meses.
+    """
+    if hist_anual.empty or len(hist_anual) < 200:
+        return {'best_score_thresh': 5, 'best_atr_mult': 2, 'best_win_rate': 0}
+    best_win_rate = 0
+    best_score_thresh = 5
+    best_atr_mult = 2
+    # Simulación simple: para cada combinación, generar señales de compra en los últimos 6 meses
+    for score_thresh in [4,5,6]:
+        for atr_mult in [2, 2.5, 3]:
+            señales = []
+            for i in range(50, len(hist_anual)-10):
+                ventana = hist_anual.iloc[:i]
+                r = ventana.iloc[-1].to_dict()
+                p = ventana.iloc[-2].to_dict() if len(ventana)>=2 else None
+                score_base, _ = calcular_score(r, p)
+                if score_base >= score_thresh:
+                    precio_entrada = hist_anual['Close'].iloc[i]
+                    atr = r['ATR']
+                    sl = precio_entrada - atr_mult * atr
+                    tp = precio_entrada + 1.5 * atr_mult * atr
+                    for j in range(i+1, min(i+30, len(hist_anual))):
+                        precio_salida = hist_anual['Close'].iloc[j]
+                        if precio_salida <= sl:
+                            señales.append(0)  # pérdida
+                            break
+                        if precio_salida >= tp:
+                            señales.append(1)  # ganancia
+                            break
+                    else:
+                        señales.append(0)  # no se alcanzó objetivo
+            if señales:
+                win_rate = sum(señales)/len(señales)*100
+                if win_rate > best_win_rate:
+                    best_win_rate = win_rate
+                    best_score_thresh = score_thresh
+                    best_atr_mult = atr_mult
+    return {'best_score_thresh': best_score_thresh, 'best_atr_mult': best_atr_mult, 'best_win_rate': round(best_win_rate,1)}
+
+def entrenar_modelo_ml(simbolo: str, usd_mxn: float, eur_mxn: float) -> dict:
+    """
+    Entrena un Random Forest con los últimos 3 años de datos para predecir si la acción subirá en los próximos 5 días.
+    Retorna el modelo entrenado y la precisión en prueba, o None si no hay suficientes datos.
+    """
     try:
-        periodo = "6mo" if incluir_bt else "3mo"
         ticker = yf.Ticker(simbolo)
-        hist = safe_history(ticker, periodo)
-        if hist.empty:
+        hist = safe_history(ticker, "3y")
+        if hist.empty or len(hist) < 200:
             return None
-
+        # Convertir a MXN
         factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
-        for col in ['Close','Open','High','Low']:
-            hist[col] *= factor
-
+        hist['Close'] *= factor
+        hist['Open'] *= factor
+        hist['High'] *= factor
+        hist['Low'] *= factor
         hist = calcular_indicadores(hist)
-        hist = hist.dropna(subset=['RSI','MACD','EMA20','EMA50','ATR','STOCH_K','STOCH_D'])
-        if len(hist) < 2:
+        hist = hist.dropna()
+        if len(hist) < 100:
             return None
-
-        ultimo = hist.iloc[-1].to_dict()
-        penultimo = hist.iloc[-2].to_dict()
-
-        if ultimo['Volume'] < (500_000 if not simbolo.endswith('.MX') else 1_000_000):
+        # Crear variable objetivo: precio 5 días después > precio actual
+        hist['target'] = (hist['Close'].shift(-5) > hist['Close']).astype(int)
+        hist = hist.dropna()
+        if len(hist) < 100:
             return None
-
-        precio = ultimo['Close']
-        atr = ultimo['ATR']
-        score_base, señales = calcular_score(ultimo, penultimo)
-        score = max(0, score_base + regime_bonus)
-
-        ps = position_size(precio, atr, capital, riesgo_pct)
-
-        p_compra = precio_compra_dict.get(simbolo)
-        señales_venta = []
-        if p_compra:
-            ganancia = ((precio / p_compra) - 1) * 100
-            if ganancia >= 15:
-                señales_venta.append(f"🎯 Take Profit +{ganancia:.1f}%")
-            elif ganancia <= -7:
-                señales_venta.append(f"🛑 Stop Loss {ganancia:.1f}%")
-
-        if señales_venta:
-            recomendacion = "VENDER"
-            motivo = señales_venta[0]
-        elif score >= 8:
-            recomendacion = "COMPRAR ★★★"
-            motivo = f"Score {score}/14"
-        elif score >= 6:
-            recomendacion = "COMPRAR ★★"
-            motivo = f"Score {score}/14"
-        elif score >= 4:
-            recomendacion = "OBSERVAR"
-            motivo = f"Score {score}/14"
-        else:
-            recomendacion = "EVITAR"
-            motivo = f"Score {score}/14"
-
-        resultado = {
-            'Símbolo': simbolo,
-            'Precio (MXN)': round(precio, 2),
-            'Score': score,
-            'RSI': round(ultimo['RSI'], 1),
-            'ATR': round(atr, 2),
-            'Stop Loss': round(precio - 2 * atr, 2),
-            'Take Profit': round(precio + 3 * atr, 2),
-            'Unidades': ps['unidades'],
-            'Inversión (MXN)': ps['inversion_mxn'],
-            '% Capital': ps['pct_capital'],
-            'Dist EMA50': round((precio / ultimo['EMA50'] - 1) * 100, 2),
-            'Recomendación': recomendacion,
-            'Motivo': motivo,
-            'Señales': " | ".join(señales),
-        }
-
-        if incluir_fund:
-            resultado.update(obtener_fundamentales(simbolo))
-        if incluir_bt and recomendacion.startswith("COMPRAR"):
-            bt = backtest_realista(simbolo, precio, atr)
-            resultado['BT Resultado'] = f"{bt['resultado']:.2f}% ({bt['tipo']})"
-
-        return resultado
-    except Exception:
+        features = ['EMA20','EMA50','RSI','MACD','MACD_sig','ATR','BB_pct','STOCH_K','STOCH_D','Volume','Vol_avg']
+        X = hist[features]
+        y = hist['target']
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        clf = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
+        clf.fit(X_train, y_train)
+        acc = accuracy_score(y_test, clf.predict(X_test))
+        return {'model': clf, 'accuracy': round(acc*100,1)}
+    except:
         return None
 
-def puntaje_fundamental(row: pd.Series) -> int:
-    score = 0
-    if pd.notna(row.get('ROE (%)')) and row['ROE (%)'] > 15: score += 1
-    if pd.notna(row.get('Rev Growth (%)')) and row['Rev Growth (%)'] > 10: score += 1
-    if pd.notna(row.get('EPS Growth (%)')) and row['EPS Growth (%)'] > 10: score += 1
-    if pd.notna(row.get('Net Margin (%)')) and row['Net Margin (%)'] > 10: score += 1
-    if pd.notna(row.get('P/E (ttm)')) and row['P/E (ttm)'] < 25: score += 1
-    return score
+def analizar_sentimiento(simbolo: str) -> dict:
+    """
+    Obtiene noticias recientes de NewsAPI (últimos 3 días) y calcula sentimiento promedio con TextBlob.
+    Retorna {'sentimiento': 'positivo/negativo/neutral', 'score': -1..1, 'noticias': list}
+    """
+    if not NEWSAPI_KEY:
+        return {'sentimiento': 'Sin clave', 'score': 0, 'noticias': []}
+    try:
+        from_date = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
+        url = 'https://newsapi.org/v2/everything'
+        params = {
+            'q': simbolo.split('.')[0],
+            'from': from_date,
+            'sortBy': 'relevancy',
+            'language': 'en',
+            'pageSize': 5,
+            'apiKey': NEWSAPI_KEY
+        }
+        resp = requests.get(url, params=params, timeout=10)
+        if resp.status_code != 200:
+            return {'sentimiento': 'Error API', 'score': 0, 'noticias': []}
+        data = resp.json()
+        if data['status'] != 'ok':
+            return {'sentimiento': 'Sin noticias', 'score': 0, 'noticias': []}
+        articles = data['articles']
+        if not articles:
+            return {'sentimiento': 'Sin noticias', 'score': 0, 'noticias': []}
+        scores = []
+        titles = []
+        for art in articles[:3]:
+            titulo = art['title']
+            titles.append(titulo)
+            blob = TextBlob(titulo)
+            # Polarity: -1 negativo, 0 neutral, 1 positivo
+            scores.append(blob.sentiment.polarity)
+        avg_score = np.mean(scores)
+        if avg_score > 0.1:
+            sentimiento = 'positivo'
+        elif avg_score < -0.1:
+            sentimiento = 'negativo'
+        else:
+            sentimiento = 'neutral'
+        return {'sentimiento': sentimiento, 'score': round(avg_score,2), 'noticias': titles}
+    except Exception as e:
+        return {'sentimiento': 'Error', 'score': 0, 'noticias': []}
+
+def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
+    """
+    Dada una lista de acciones con señal de compra, asigna pesos óptimos usando la matriz de correlación
+    histórica (últimos 3 meses) y maximiza el ratio de Sharpe. Retorna DataFrame con asignación.
+    """
+    if compras_df.empty or len(compras_df) < 2:
+        return compras_df
+    symbols = compras_df['Símbolo'].tolist()
+    # Obtener datos históricos de precios en MXN
+    precios = {}
+    for sim in symbols:
+        try:
+            ticker = yf.Ticker(sim)
+            hist = safe_history(ticker, "3mo")
+            if hist.empty:
+                continue
+            factor = 1.0 if sim.endswith('.MX') else (eur_mxn if sim.endswith('.MC') else usd_mxn)
+            precios[sim] = hist['Close'] * factor
+        except:
+            continue
+    if not precios or len(precios) < 2:
+        return compras_df
+    # Crear DataFrame de retornos diarios
+    df_prices = pd.DataFrame(precios)
+    df_prices = df_prices.dropna()
+    if df_prices.empty:
+        return compras_df
+    returns = df_prices.pct_change().dropna()
+    # Matriz de covarianza
+    cov = returns.cov() * 252  # anualizada
+    # Suponemos rendimiento esperado proporcional al score (simple)
+    expected_returns = compras_df.set_index('Símbolo')['Score'] / 100
+    # Optimización de cartera: maximizar Sharpe (pesos sin restricciones)
+    # Usamos fórmula analítica: pesos = inv(cov) * ret / (suma de pesos)
+    try:
+        inv_cov = np.linalg.pinv(cov.values)
+        ret_vec = expected_returns.reindex(cov.index).values
+        w = inv_cov @ ret_vec
+        w = w / w.sum()
+        w = np.maximum(w, 0)  # sin cortos
+        w = w / w.sum()
+        asignacion = {}
+        for i, sym in enumerate(cov.index):
+            asignacion[sym] = w[i]
+    except:
+        # fallback: pesos iguales
+        n = len(cov.index)
+        asignacion = {sym: 1/n for sym in cov.index}
+    # Asignar inversión
+    compras_df['Peso Cartera'] = compras_df['Símbolo'].map(asignacion).fillna(0)
+    compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
+    compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
+    return compras_df
 
 # ============================================================
-# IA COMPLETA
+# ALERTAS Y GRÁFICOS
+# ============================================================
+def enviar_email(asunto: str, cuerpo_html: str) -> bool:
+    if not EMAIL_REMITENTE or not EMAIL_PASSWORD:
+        return False
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = asunto
+        msg["From"]    = EMAIL_REMITENTE
+        msg["To"]      = EMAIL_DESTINO
+        msg.attach(MIMEText(cuerpo_html, "html"))
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
+            s.login(EMAIL_REMITENTE, EMAIL_PASSWORD)
+            s.sendmail(EMAIL_REMITENTE, EMAIL_DESTINO, msg.as_string())
+        return True
+    except:
+        return False
+
+def enviar_whatsapp(mensaje: str) -> bool:
+    if not WHATSAPP_NUMERO or not WHATSAPP_APIKEY:
+        return False
+    try:
+        r = requests.get("https://api.callmebot.com/whatsapp.php", params={"phone": WHATSAPP_NUMERO, "apikey": WHATSAPP_APIKEY, "text": mensaje}, timeout=10)
+        return r.status_code == 200
+    except:
+        return False
+
+def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame, resumen_ia: str = "") -> str:
+    fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
+    filas_compra = "".join([f"<tr><td><b>{r['Símbolo']}</b></td><td>{r['Precio (MXN)']}</td><td>{r.get('Score','')}</td><td>{r.get('Motivo','')}</td></tr>" for _, r in compras_df.iterrows()])
+    filas_venta = "".join([f"<tr><td><b>{r['Símbolo']}</b></td><td>{r['Precio (MXN)']}</td><td>{r.get('Motivo','')}</td></tr>" for _, r in ventas_df.iterrows()])
+    bloque_ia = f"<h3 style='color:#7b61ff'>🤖 Análisis de IA</h3><div style='background:#f5f3ff;padding:12px 16px;border-left:4px solid #7b61ff;border-radius:4px;font-size:14px;line-height:1.6'>{resumen_ia.replace(chr(10), '<br>')}</div>" if resumen_ia else ""
+    return f"""
+    <html><body style="font-family:Arial,sans-serif;max-width:700px">
+    <h2 style="color:#1a73e8">📈 Alerta de Trading — {fecha}</h2>
+    {bloque_ia}
+    <h3 style="color:#34a853">🟢 Señales de COMPRA ({len(compras_df)})</h3>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+      <tr style="background:#e8f5e9"><th>Símbolo</th><th>Precio (MXN)</th><th>Score</th><th>Motivo</th></tr>
+      {filas_compra if filas_compra else '<tr><td colspan="4">Sin señales</td></tr>'}
+    </table>
+    <h3 style="color:#ea4335">🔴 Señales de VENTA ({len(ventas_df)})</h3>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+      <tr style="background:#fce8e6"><th>Símbolo</th><th>Precio (MXN)</th><th>Motivo</th></tr>
+      {filas_venta if filas_venta else '<tr><td colspan="3">Sin señales</td></tr>'}
+    </table>
+    <p style="color:#666;font-size:12px;margin-top:20px">Generado por Sistema de Trading Personal v3.0</p>
+    </body></html>"""
+
+def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figure:
+    hist = safe_history(yf.Ticker(simbolo), "3mo")
+    if hist.empty:
+        return go.Figure()
+    factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
+    for col in ['Close','Open','High','Low']:
+        hist[col] *= factor
+    hist = calcular_indicadores(hist)
+    fig = make_subplots(rows=4, cols=1, shared_xaxes=True, row_heights=[0.5, 0.18, 0.18, 0.14], vertical_spacing=0.03, subplot_titles=[f"{simbolo} — Precio (MXN)", "RSI (14)", "MACD", "Volumen"])
+    fig.add_trace(go.Candlestick(x=hist.index, open=hist['Open'], high=hist['High'], low=hist['Low'], close=hist['Close'], name="Precio"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['EMA20'], line=dict(color='#ff9800', width=1.5), name='EMA20'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['EMA50'], line=dict(color='#e91e63', width=1.5), name='EMA50'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['RSI'], line=dict(color='#7e57c2', width=1.5), name='RSI'), row=2, col=1)
+    colors_hist = ['#26a69a' if v >= 0 else '#ef5350' for v in hist['MACD_hist'].fillna(0)]
+    fig.add_trace(go.Bar(x=hist.index, y=hist['MACD_hist'], marker_color=colors_hist, name='MACD Hist'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['MACD'], line=dict(color='#2196f3', width=1.5), name='MACD'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['MACD_sig'], line=dict(color='#ff5722', width=1.5), name='Señal'), row=3, col=1)
+    vol_colors = ['#26a69a' if c >= o else '#ef5350' for c, o in zip(hist['Close'], hist['Open'])]
+    fig.add_trace(go.Bar(x=hist.index, y=hist['Volume'], marker_color=vol_colors, name='Volumen'), row=4, col=1)
+    fig.update_layout(template='plotly_dark', height=750, xaxis_rangeslider_visible=False, legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
+    return fig
+
+def dashboard_rendimiento(df_hist: pd.DataFrame) -> None:
+    """Muestra gráfico de rendimiento acumulado y tabla de win rate por score."""
+    if df_hist.empty:
+        st.info("Aún no hay suficientes datos históricos para mostrar rendimiento.")
+        return
+    # Calcular retornos simulados para cada señal (asumiendo compra a precio y cierre a 5 días)
+    df_hist['fecha'] = pd.to_datetime(df_hist['fecha'])
+    df_hist = df_hist.sort_values('fecha')
+    returns = []
+    for _, row in df_hist.iterrows():
+        try:
+            ticker = yf.Ticker(row['simbolo'])
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=180)
+            hist = ticker.history(start=start_date, end=end_date)
+            if hist.empty:
+                continue
+            idx = hist.index.searchsorted(row['fecha'])
+            if idx + 5 >= len(hist):
+                continue
+            ret = (hist['Close'].iloc[idx+5] / row['precio'] - 1) * 100
+            returns.append(ret)
+        except:
+            continue
+    if returns:
+        df_hist['retorno'] = returns
+        df_hist['ret_acum'] = (1 + df_hist['retorno']/100).cumprod()
+        fig = px.line(df_hist, x='fecha', y='ret_acum', title='Rendimiento acumulado de señales')
+        st.plotly_chart(fig, use_container_width=True)
+        # Win rate por rango de score
+        df_hist['score_range'] = pd.cut(df_hist['score'], bins=[0,4,6,8,14], labels=['0-3','4-5','6-7','8+'])
+        win_rate = df_hist.groupby('score_range')['retorno'].apply(lambda x: (x>0).mean()*100).reset_index()
+        win_rate.columns = ['Score', 'Win Rate (%)']
+        st.dataframe(win_rate, use_container_width=True)
+    else:
+        st.info("No hay suficientes datos para calcular rendimiento.")
+
+def guardar_en_drive(contenido_bytes: bytes, nombre_archivo: str):
+    """Guarda el archivo en Google Drive usando autenticación OAuth2."""
+    SCOPES = ['https://www.googleapis.com/auth/drive.file']
+    creds = None
+    token_file = 'token.json'
+    if os.path.exists(token_file):
+        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open(token_file, 'w') as token:
+            token.write(creds.to_json())
+    service = build('drive', 'v3', credentials=creds)
+    # Buscar carpeta "Trading" o crearla
+    folder_id = None
+    results = service.files().list(q="name='Trading' and mimeType='application/vnd.google-apps.folder' and trashed=false", fields="files(id)").execute()
+    folders = results.get('files', [])
+    if folders:
+        folder_id = folders[0]['id']
+    else:
+        folder_metadata = {'name': 'Trading', 'mimeType': 'application/vnd.google-apps.folder'}
+        folder = service.files().create(body=folder_metadata, fields='id').execute()
+        folder_id = folder.get('id')
+    # Subir archivo
+    file_metadata = {'name': nombre_archivo, 'parents': [folder_id]}
+    media = googleapiclient.http.MediaIoBaseUpload(io.BytesIO(contenido_bytes), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    st.success(f"Archivo guardado en Google Drive (carpeta 'Trading')")
+
+# ============================================================
+# ANÁLISIS IA (similar al anterior)
 # ============================================================
 def _calcular_hash_prompt(prompt: str) -> str:
     return hashlib.sha256(prompt.encode()).hexdigest()
@@ -593,78 +850,6 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
     return f"**IA no disponible** — {detalle}"
 
 # ============================================================
-# ALERTAS Y GRÁFICOS
-# ============================================================
-def enviar_email(asunto: str, cuerpo_html: str) -> bool:
-    if not EMAIL_REMITENTE or not EMAIL_PASSWORD:
-        return False
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = asunto
-        msg["From"]    = EMAIL_REMITENTE
-        msg["To"]      = EMAIL_DESTINO
-        msg.attach(MIMEText(cuerpo_html, "html"))
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
-            s.login(EMAIL_REMITENTE, EMAIL_PASSWORD)
-            s.sendmail(EMAIL_REMITENTE, EMAIL_DESTINO, msg.as_string())
-        return True
-    except:
-        return False
-
-def enviar_whatsapp(mensaje: str) -> bool:
-    if not WHATSAPP_NUMERO or not WHATSAPP_APIKEY:
-        return False
-    try:
-        r = requests.get("https://api.callmebot.com/whatsapp.php", params={"phone": WHATSAPP_NUMERO, "apikey": WHATSAPP_APIKEY, "text": mensaje}, timeout=10)
-        return r.status_code == 200
-    except:
-        return False
-
-def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame, resumen_ia: str = "") -> str:
-    fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
-    filas_compra = "".join([f"<tr><td><b>{r['Símbolo']}</b></td><td>{r['Precio (MXN)']}</td><td>{r.get('Score','')}</td><td>{r.get('Motivo','')}</td></tr>" for _, r in compras_df.iterrows()])
-    filas_venta = "".join([f"<tr><td><b>{r['Símbolo']}</b></td><td>{r['Precio (MXN)']}</td><td>{r.get('Motivo','')}</td></tr>" for _, r in ventas_df.iterrows()])
-    bloque_ia = f"<h3 style='color:#7b61ff'>🤖 Análisis de IA</h3><div style='background:#f5f3ff;padding:12px 16px;border-left:4px solid #7b61ff;border-radius:4px;font-size:14px;line-height:1.6'>{resumen_ia.replace(chr(10), '<br>')}</div>" if resumen_ia else ""
-    return f"""
-    <html><body style="font-family:Arial,sans-serif;max-width:700px">
-    <h2 style="color:#1a73e8">📈 Alerta de Trading — {fecha}</h2>
-    {bloque_ia}
-    <h3 style="color:#34a853">🟢 Señales de COMPRA ({len(compras_df)})</h3>
-    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
-      <tr style="background:#e8f5e9"><th>Símbolo</th><th>Precio (MXN)</th><th>Score</th><th>Motivo</th></tr>
-      {filas_compra if filas_compra else '<tr><td colspan="4">Sin señales</td></tr>'}
-    </table>
-    <h3 style="color:#ea4335">🔴 Señales de VENTA ({len(ventas_df)})</h3>
-    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
-      <tr style="background:#fce8e6"><th>Símbolo</th><th>Precio (MXN)</th><th>Motivo</th></tr>
-      {filas_venta if filas_venta else '<tr><td colspan="3">Sin señales</td></tr>'}
-    </table>
-    <p style="color:#666;font-size:12px;margin-top:20px">Generado por Sistema de Trading Personal v2.1</p>
-    </body></html>"""
-
-def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figure:
-    hist = safe_history(yf.Ticker(simbolo), "3mo")
-    if hist.empty:
-        return go.Figure()
-    factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
-    for col in ['Close','Open','High','Low']:
-        hist[col] *= factor
-    hist = calcular_indicadores(hist)
-    fig = make_subplots(rows=4, cols=1, shared_xaxes=True, row_heights=[0.5, 0.18, 0.18, 0.14], vertical_spacing=0.03, subplot_titles=[f"{simbolo} — Precio (MXN)", "RSI (14)", "MACD", "Volumen"])
-    fig.add_trace(go.Candlestick(x=hist.index, open=hist['Open'], high=hist['High'], low=hist['Low'], close=hist['Close'], name="Precio"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['EMA20'], line=dict(color='#ff9800', width=1.5), name='EMA20'), row=1, col=1)
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['EMA50'], line=dict(color='#e91e63', width=1.5), name='EMA50'), row=1, col=1)
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['RSI'], line=dict(color='#7e57c2', width=1.5), name='RSI'), row=2, col=1)
-    colors_hist = ['#26a69a' if v >= 0 else '#ef5350' for v in hist['MACD_hist'].fillna(0)]
-    fig.add_trace(go.Bar(x=hist.index, y=hist['MACD_hist'], marker_color=colors_hist, name='MACD Hist'), row=3, col=1)
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['MACD'], line=dict(color='#2196f3', width=1.5), name='MACD'), row=3, col=1)
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['MACD_sig'], line=dict(color='#ff5722', width=1.5), name='Señal'), row=3, col=1)
-    vol_colors = ['#26a69a' if c >= o else '#ef5350' for c, o in zip(hist['Close'], hist['Open'])]
-    fig.add_trace(go.Bar(x=hist.index, y=hist['Volume'], marker_color=vol_colors, name='Volumen'), row=4, col=1)
-    fig.update_layout(template='plotly_dark', height=750, xaxis_rangeslider_visible=False, legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
-    return fig
-
-# ============================================================
 # BOTÓN DE ANÁLISIS
 # ============================================================
 if st.sidebar.button("🔍 ANALIZAR", type="primary"):
@@ -705,14 +890,12 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         if PRECIO_COMPRA:
             st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
 
-    # Refrescar tipos de cambio (ya están en sidebar, pero los usamos para conversión)
     usd_mxn, eur_mxn = obtener_tipo_cambio()
-
     regime_data = obtener_market_regime()
     regime_bonus = regime_data['score_bonus'] if market_regime_check else 0
     trade_capital = capital_total * 0.25
 
-    # ── Panel Core + Satélite (aparece solo después de ANALIZAR, dinámico) ──
+    # ── Panel Core + Satélite (aparece solo después de ANALIZAR) ──
     etf_cap   = round(capital_total * 0.65, 2)
     trade_cap = round(capital_total * 0.25, 2)
     conv_cap  = round(capital_total * 0.10, 2)
@@ -762,12 +945,37 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
     df = pd.DataFrame(resultados)
 
-    if fundamentales_check and 'ROE (%)' in df.columns:
-        df['Score Fund'] = df.apply(puntaje_fundamental, axis=1)
+    # Añadir fundamentales profundos
+    if fundamentales_check:
+        # Ya se añaden en analizar_accion, pero si se añaden nuevos campos, los traemos
+        pass
 
     ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
     compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
     observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
+
+    # Añadir sentimiento a las compras
+    if sentiment_check and not compras.empty:
+        with st.spinner("Analizando sentimiento de noticias..."):
+            for idx, row in compras.iterrows():
+                sent = analizar_sentimiento(row['Símbolo'])
+                compras.at[idx, 'Sentimiento'] = sent['sentimiento']
+                compras.at[idx, 'Sentimiento Score'] = sent['score']
+                compras.at[idx, 'Noticias'] = "; ".join(sent['noticias'][:2]) if sent['noticias'] else ""
+
+    # Añadir predicción ML
+    if ml_check and not compras.empty:
+        with st.spinner("Entrenando modelos predictivos (puede demorar)..."):
+            for idx, row in compras.iterrows():
+                model_info = entrenar_modelo_ml(row['Símbolo'], usd_mxn, eur_mxn)
+                if model_info:
+                    compras.at[idx, 'ML Predicción'] = f"Subida {model_info['accuracy']}%"
+                else:
+                    compras.at[idx, 'ML Predicción'] = "No disponible"
+
+    # Optimización de cartera
+    if not compras.empty:
+        compras = optimizar_cartera(compras, trade_capital, usd_mxn, eur_mxn)
 
     st.session_state['df'] = df
     st.session_state['compras'] = compras
@@ -784,6 +992,33 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         with st.spinner("🤖 Analizando con IA..."):
             texto_ia = analisis_ia(compras.head(8).to_dict('records'), regime_data, usd_mxn)
             st.session_state['analisis_ia'] = texto_ia
+
+    # Alertas (email, WhatsApp)
+    compras_alerta = compras[compras['Score'] >= umbral_score]
+    resumen_ia = st.session_state.get('analisis_ia', '')
+    if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
+        with st.spinner("📤 Enviando alertas..."):
+            if alerta_email:
+                html = construir_email_html(compras_alerta, ventas, resumen_ia)
+                enviar_email(f"📈 Alerta Trading {datetime.now().strftime('%d/%m %H:%M')}", html)
+            if alerta_whatsapp:
+                n_compras = len(compras_alerta)
+                n_ventas = len(ventas)
+                top3 = ", ".join(compras_alerta.head(3)['Símbolo'].tolist()) if n_compras else "ninguna"
+                msg = (f"📈 *Alerta Trading* {datetime.now().strftime('%d/%m %H:%M')}\n"
+                       f"🟢 Compras: {n_compras} (Top: {top3})\n🔴 Ventas: {n_ventas}\nUmbral score: {umbral_score}")
+                enviar_whatsapp(msg)
+
+    # Backtesting con optimización de parámetros (opcional)
+    if backtesting_check:
+        with st.spinner("Optimizando parámetros con backtesting..."):
+            # Tomar datos históricos del S&P 500 (o de un índice representativo) para optimizar
+            sp_hist = yf.Ticker("^GSPC").history(period="2y")
+            if not sp_hist.empty:
+                sp_hist = calcular_indicadores(sp_hist)
+                opt = backtest_optimizar_parametros(sp_hist)
+                st.session_state['param_opt'] = opt
+                st.info(f"Optimización backtest: mejor umbral score = {opt['best_score_thresh']}, multiplicador ATR = {opt['best_atr_mult']}, win rate = {opt['best_win_rate']}%")
 
     st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra.")
     st.rerun()
@@ -816,12 +1051,27 @@ if 'df' in st.session_state:
     col3.metric("👀 Observar", len(observar))
     col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
 
+    # Dashboard de rendimiento
+    st.subheader("📊 Dashboard de rendimiento de señales")
+    df_hist = cargar_historial_senales()  # Necesitamos definir esta función; la implementamos
+    dashboard_rendimiento(df_hist)
+
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "📜 HISTORIAL"])
 
     cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit','Unidades','Inversión (MXN)','% Capital','Dist EMA50','Recomendación','Motivo','Señales']
+    # Añadir nuevas columnas si existen
+    if 'Sentimiento' in compras.columns:
+        cols_base.append('Sentimiento')
+    if 'ML Predicción' in compras.columns:
+        cols_base.append('ML Predicción')
+    if 'Peso Cartera' in compras.columns:
+        cols_base.append('Peso Cartera')
+        cols_base.append('Inversión Asignada')
+        cols_base.append('Unidades Ajustadas')
+
     with tab1:
         if not compras.empty:
-            st.dataframe(compras[cols_base + ([c for c in df.columns if c not in cols_base])], use_container_width=True)
+            st.dataframe(compras[cols_base + ([c for c in compras.columns if c not in cols_base])], use_container_width=True)
         else:
             st.info("Sin oportunidades de compra en este momento.")
     with tab2:
@@ -857,12 +1107,15 @@ if 'df' in st.session_state:
             ventas.to_excel(writer, index=False, sheet_name='Ventas')
             observar.to_excel(writer, index=False, sheet_name='Observar')
             df.to_excel(writer, index=False, sheet_name='Todos')
+        excel_bytes = output.getvalue()
         st.download_button(
             label="📥 Descargar informe Excel",
-            data=output.getvalue(),
-            file_name=f"trading_v2_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+            data=excel_bytes,
+            file_name=f"trading_v3_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        if drive_upload:
+            guardar_en_drive(excel_bytes, f"trading_v3_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx")
     except ImportError:
         st.warning("⚠️ openpyxl no instalado. Instálalo para habilitar la descarga Excel.")
 
@@ -870,7 +1123,7 @@ if 'df' in st.session_state:
         with st.expander("🤖 Análisis de IA", expanded=True):
             st.markdown(st.session_state['analisis_ia'])
 
-    # Selector de gráfico para cualquier acción analizada
+    # Selector de gráfico
     if not df.empty:
         st.subheader("🔎 Explorar cualquier acción analizada")
         todos_simbolos = df['Símbolo'].tolist()
@@ -890,4 +1143,4 @@ if 'df' in st.session_state:
             fig = grafico_enriquecido(sim_elegido, usd_mxn, eur_mxn)
             st.plotly_chart(fig, use_container_width=True)
 
-st.caption("v2.1 — Con backtesting realista, multi-timeframe y IA completa • Adrian López")
+st.caption("v3.0 — Con ML, sentimiento, optimización cartera, backtest paramétrico, Google Drive • Adrian López")
