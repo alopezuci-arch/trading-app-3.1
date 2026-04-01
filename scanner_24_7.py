@@ -183,7 +183,6 @@ UNIVERSO = list(set(
 
 # ============================================================
 # FUNCIONES DE INDICADORES, SCORING, MARKET REGIME, POSITION SIZING
-# (Se mantienen idénticas a la versión original)
 # ============================================================
 def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist = hist.copy()
@@ -380,11 +379,11 @@ def analizar(args: tuple) -> dict | None:
             'Recomendación':rec,
             'Motivo':       ""
         }
-    except:
+    except Exception as e:
         return None
 
 # ============================================================
-# HISTORIAL Y BACKTESTING (igual al original)
+# HISTORIAL Y BACKTESTING
 # ============================================================
 def cargar_historial() -> pd.DataFrame:
     if os.path.exists(HISTORICO_FILE):
@@ -443,7 +442,7 @@ def backtest_historial(df_hist: pd.DataFrame) -> dict:
     return {'win_rate': 0, 'ret_prom': 0, 'total': 0}
 
 # ============================================================
-# IA CON CACHÉ Y REINTENTOS (idéntico al original)
+# IA CON CACHÉ Y REINTENTOS
 # ============================================================
 def _calcular_hash_prompt(prompt: str) -> str:
     return hashlib.sha256(prompt.encode()).hexdigest()
@@ -664,7 +663,7 @@ def construir_email(ops_compras: list[dict], ops_ventas: list[dict], regime: dic
     <h3 style="color:#ea4335">🔴 Señales de VENTA ({len(ops_ventas)})</h3>
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:13px">
       <tr style="background:#fce8e6"><th>Símbolo</th><th>Precio MXN</th><th>Motivo</th></tr>
-      {filas_ventas if filas_ventas else '<tr><td colspan="3">Sin señales</td></tr>'}
+      {filas_ventas if filas_ventas else '<tr><td colspan="3" style="text-align:center">Sin señales</td></tr>'}
     </table>
     <p style="color:#999;font-size:11px;margin-top:20px">
       Scanner autónomo — análisis informativo, no asesoría financiera.<br>
