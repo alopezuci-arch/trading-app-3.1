@@ -849,7 +849,7 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
     detalle = " | ".join(errores) if errores else "sin keys configuradas"
     return f"**IA no disponible** — {detalle}"
     
-def analizar_accion(args: tuple) -> dict | None:
+
 # ============================================================
 # BOTÓN DE ANÁLISIS
 # ============================================================
