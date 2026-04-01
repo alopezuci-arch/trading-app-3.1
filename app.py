@@ -40,6 +40,7 @@ from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+import googleapiclient.http
 
 # ── SSL y warnings ─────────────────────────────────────────────
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -63,6 +64,80 @@ EMAIL_PASSWORD    = os.environ.get("EMAIL_PASSWORD",  "")
 NEWSAPI_KEY       = os.environ.get("NEWSAPI_KEY", "")
 
 # ============================================================
+# HISTORIAL DE TRANSACCIONES (con campo ganancia_pct)
+# ============================================================
+TRANSACCIONES_FILE = "transacciones.csv"
+
+def cargar_transacciones() -> pd.DataFrame:
+    if os.path.exists(TRANSACCIONES_FILE):
+        df = pd.read_csv(TRANSACCIONES_FILE)
+        df['fecha'] = pd.to_datetime(df['fecha'])
+        # Si el archivo no tiene la columna ganancia_pct, la agregamos con NaN
+        if 'ganancia_pct' not in df.columns:
+            df['ganancia_pct'] = np.nan
+        return df
+    return pd.DataFrame(columns=['fecha', 'simbolo', 'cantidad', 'precio', 'tipo', 'total', 'notas', 'ganancia_pct'])
+
+def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str, notas: str = "", ganancia_pct: float = None):
+    df = cargar_transacciones()
+    nueva = pd.DataFrame([{
+        'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        'simbolo': simbolo.upper(),
+        'cantidad': cantidad,
+        'precio': precio,
+        'tipo': tipo,
+        'total': round(cantidad * precio, 2),
+        'notas': notas,
+        'ganancia_pct': ganancia_pct if ganancia_pct is not None else np.nan
+    }])
+    df = pd.concat([df, nueva], ignore_index=True)
+    df.to_csv(TRANSACCIONES_FILE, index=False)
+
+# ============================================================
+# PROCESAR VENTAS MANUALES
+# ============================================================
+def procesar_ventas(input_text: str):
+    """Procesa ventas ingresadas manualmente. Calcula ganancia/pérdida usando el precio de compra registrado."""
+    if not input_text or not input_text.strip():
+        st.sidebar.warning("No se ingresaron ventas.")
+        return
+    if 'PRECIO_COMPRA' not in st.session_state:
+        st.session_state['PRECIO_COMPRA'] = {}
+    PRECIO_COMPRA = st.session_state['PRECIO_COMPRA']
+    ventas_registradas = 0
+    errores = []
+    for linea in input_text.strip().split('\n'):
+        if not linea.strip():
+            continue
+        partes = linea.split(',')
+        if len(partes) != 3:
+            errores.append(f"Formato incorrecto: {linea}. Debe ser SÍMBOLO,CANTIDAD,PRECIO")
+            continue
+        simbolo = partes[0].strip().upper()
+        try:
+            cantidad = float(partes[1].strip())
+            precio_venta = float(partes[2].strip())
+        except:
+            errores.append(f"Cantidad o precio inválido: {linea}")
+            continue
+        if simbolo not in PRECIO_COMPRA:
+            errores.append(f"No hay compra registrada para {simbolo}. No se puede registrar la venta.")
+            continue
+        precio_compra = PRECIO_COMPRA[simbolo]
+        ganancia_pct = ((precio_venta / precio_compra) - 1) * 100
+        guardar_transaccion(simbolo, cantidad, precio_venta, "venta", notas="Venta manual", ganancia_pct=ganancia_pct)
+        # Eliminar la posición de PRECIO_COMPRA (se asume que se vende toda la posición)
+        del PRECIO_COMPRA[simbolo]
+        ventas_registradas += 1
+    if errores:
+        for err in errores:
+            st.sidebar.error(err)
+    if ventas_registradas:
+        st.sidebar.success(f"✅ {ventas_registradas} venta(s) registrada(s).")
+        st.session_state['PRECIO_COMPRA'] = PRECIO_COMPRA
+        st.rerun()
+
+# ============================================================
 # HISTORIAL DE SEÑALES (para el dashboard de rendimiento)
 # ============================================================
 def cargar_historial_senales() -> pd.DataFrame:
@@ -72,32 +147,6 @@ def cargar_historial_senales() -> pd.DataFrame:
         df['fecha'] = pd.to_datetime(df['fecha'])
         return df
     return pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales'])
-
-# ============================================================
-# HISTORIAL DE TRANSACCIONES
-# ============================================================
-TRANSACCIONES_FILE = "transacciones.csv"
-
-def cargar_transacciones() -> pd.DataFrame:
-    if os.path.exists(TRANSACCIONES_FILE):
-        df = pd.read_csv(TRANSACCIONES_FILE)
-        df['fecha'] = pd.to_datetime(df['fecha'])
-        return df
-    return pd.DataFrame(columns=['fecha', 'simbolo', 'cantidad', 'precio', 'tipo', 'total', 'notas'])
-
-def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str, notas: str = ""):
-    df = cargar_transacciones()
-    nueva = pd.DataFrame([{
-        'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        'simbolo': simbolo.upper(),
-        'cantidad': cantidad,
-        'precio': precio,
-        'tipo': tipo,
-        'total': round(cantidad * precio, 2),
-        'notas': notas
-    }])
-    df = pd.concat([df, nueva], ignore_index=True)
-    df.to_csv(TRANSACCIONES_FILE, index=False)
 
 # ============================================================
 # LISTAS DE MERCADOS (completas – mismas que antes)
@@ -254,6 +303,11 @@ umbral_score    = st.sidebar.slider("Umbral mínimo para alertar (score)", 4, 10
 
 st.sidebar.markdown("### 💰 Registrar compra")
 compra_input = st.sidebar.text_area("Compra (una por línea)", placeholder="AAPL,10,4465.53\nWALMEX.MX,5,56.13", height=120)
+
+st.sidebar.markdown("### 💰 Registrar venta")
+venta_input = st.sidebar.text_area("Venta (una por línea)", placeholder="AAPL,10,4750.00\nWALMEX.MX,5,60.00", height=120)
+if st.sidebar.button("📉 REGISTRAR VENTA", type="secondary"):
+    procesar_ventas(venta_input)
 
 st.sidebar.markdown("### 📂 Google Drive")
 drive_upload = st.sidebar.checkbox("💾 Guardar informe en Google Drive", value=False)
@@ -552,7 +606,6 @@ def analizar_sentimiento(simbolo: str) -> dict:
             titulo = art['title']
             titles.append(titulo)
             blob = TextBlob(titulo)
-            # Polarity: -1 negativo, 0 neutral, 1 positivo
             scores.append(blob.sentiment.polarity)
         avg_score = np.mean(scores)
         if avg_score > 0.1:
@@ -760,92 +813,8 @@ def guardar_en_drive(contenido_bytes: bytes, nombre_archivo: str):
     service.files().create(body=file_metadata, media_body=media, fields='id').execute()
     st.success(f"Archivo guardado en Google Drive (carpeta 'Trading')")
 
-def analizar_accion(args: tuple) -> dict | None:
-    simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt, regime_bonus, capital, riesgo_pct = args
-    try:
-        periodo = "6mo" if incluir_bt else "3mo"
-        ticker = yf.Ticker(simbolo)
-        hist = safe_history(ticker, periodo)
-        if hist.empty:
-            return None
-
-        factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
-        for col in ['Close','Open','High','Low']:
-            hist[col] *= factor
-
-        hist = calcular_indicadores(hist)
-        hist = hist.dropna(subset=['RSI','MACD','EMA20','EMA50','ATR','STOCH_K','STOCH_D'])
-        if len(hist) < 2:
-            return None
-
-        ultimo = hist.iloc[-1].to_dict()
-        penultimo = hist.iloc[-2].to_dict()
-
-        if ultimo['Volume'] < (500_000 if not simbolo.endswith('.MX') else 1_000_000):
-            return None
-
-        precio = ultimo['Close']
-        atr = ultimo['ATR']
-        score_base, señales = calcular_score(ultimo, penultimo)
-        score = max(0, score_base + regime_bonus)
-
-        ps = position_size(precio, atr, capital, riesgo_pct)
-
-        p_compra = precio_compra_dict.get(simbolo)
-        señales_venta = []
-        if p_compra:
-            ganancia = ((precio / p_compra) - 1) * 100
-            if ganancia >= 15:
-                señales_venta.append(f"🎯 Take Profit +{ganancia:.1f}%")
-            elif ganancia <= -7:
-                señales_venta.append(f"🛑 Stop Loss {ganancia:.1f}%")
-
-        if señales_venta:
-            recomendacion = "VENDER"
-            motivo = señales_venta[0]
-        elif score >= 8:
-            recomendacion = "COMPRAR ★★★"
-            motivo = f"Score {score}/14"
-        elif score >= 6:
-            recomendacion = "COMPRAR ★★"
-            motivo = f"Score {score}/14"
-        elif score >= 4:
-            recomendacion = "OBSERVAR"
-            motivo = f"Score {score}/14"
-        else:
-            recomendacion = "EVITAR"
-            motivo = f"Score {score}/14"
-
-        resultado = {
-            'Símbolo': simbolo,
-            'Precio (MXN)': round(precio, 2),
-            'Score': score,
-            'RSI': round(ultimo['RSI'], 1),
-            'ATR': round(atr, 2),
-            'Stop Loss': round(precio - 2 * atr, 2),
-            'Take Profit': round(precio + 3 * atr, 2),
-            'Unidades': ps['unidades'],
-            'Inversión (MXN)': ps['inversion_mxn'],
-            '% Capital': ps['pct_capital'],
-            'Dist EMA50': round((precio / ultimo['EMA50'] - 1) * 100, 2),
-            'Recomendación': recomendacion,
-            'Motivo': motivo,
-            'Señales': " | ".join(señales),
-        }
-
-        if incluir_fund:
-            resultado.update(obtener_fundamentales_profundos(simbolo))
-
-        if incluir_bt and recomendacion.startswith("COMPRAR"):
-            bt = backtest_realista(simbolo, precio, atr)
-            resultado['BT Resultado'] = f"{bt['resultado']:.2f}% ({bt['tipo']})"
-
-        return resultado
-    except Exception:
-        return None
-
 # ============================================================
-# ANÁLISIS IA (similar al anterior)
+# ANÁLISIS IA
 # ============================================================
 def _calcular_hash_prompt(prompt: str) -> str:
     return hashlib.sha256(prompt.encode()).hexdigest()
@@ -943,12 +912,97 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
 
     detalle = " | ".join(errores) if errores else "sin keys configuradas"
     return f"**IA no disponible** — {detalle}"
-    
+
+# ============================================================
+# FUNCIÓN ANALIZAR ACCIÓN (DEFINICIÓN COMPLETA)
+# ============================================================
+def analizar_accion(args: tuple) -> dict | None:
+    simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt, regime_bonus, capital, riesgo_pct = args
+    try:
+        periodo = "6mo" if incluir_bt else "3mo"
+        ticker = yf.Ticker(simbolo)
+        hist = safe_history(ticker, periodo)
+        if hist.empty:
+            return None
+
+        factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
+        for col in ['Close','Open','High','Low']:
+            hist[col] *= factor
+
+        hist = calcular_indicadores(hist)
+        hist = hist.dropna(subset=['RSI','MACD','EMA20','EMA50','ATR','STOCH_K','STOCH_D'])
+        if len(hist) < 2:
+            return None
+
+        ultimo = hist.iloc[-1].to_dict()
+        penultimo = hist.iloc[-2].to_dict()
+
+        if ultimo['Volume'] < (500_000 if not simbolo.endswith('.MX') else 1_000_000):
+            return None
+
+        precio = ultimo['Close']
+        atr = ultimo['ATR']
+        score_base, señales = calcular_score(ultimo, penultimo)
+        score = max(0, score_base + regime_bonus)
+
+        ps = position_size(precio, atr, capital, riesgo_pct)
+
+        p_compra = precio_compra_dict.get(simbolo)
+        señales_venta = []
+        if p_compra:
+            ganancia = ((precio / p_compra) - 1) * 100
+            if ganancia >= 15:
+                señales_venta.append(f"🎯 Take Profit +{ganancia:.1f}%")
+            elif ganancia <= -7:
+                señales_venta.append(f"🛑 Stop Loss {ganancia:.1f}%")
+
+        if señales_venta:
+            recomendacion = "VENDER"
+            motivo = señales_venta[0]
+        elif score >= 8:
+            recomendacion = "COMPRAR ★★★"
+            motivo = f"Score {score}/14"
+        elif score >= 6:
+            recomendacion = "COMPRAR ★★"
+            motivo = f"Score {score}/14"
+        elif score >= 4:
+            recomendacion = "OBSERVAR"
+            motivo = f"Score {score}/14"
+        else:
+            recomendacion = "EVITAR"
+            motivo = f"Score {score}/14"
+
+        resultado = {
+            'Símbolo': simbolo,
+            'Precio (MXN)': round(precio, 2),
+            'Score': score,
+            'RSI': round(ultimo['RSI'], 1),
+            'ATR': round(atr, 2),
+            'Stop Loss': round(precio - 2 * atr, 2),
+            'Take Profit': round(precio + 3 * atr, 2),
+            'Unidades': ps['unidades'],
+            'Inversión (MXN)': ps['inversion_mxn'],
+            '% Capital': ps['pct_capital'],
+            'Dist EMA50': round((precio / ultimo['EMA50'] - 1) * 100, 2),
+            'Recomendación': recomendacion,
+            'Motivo': motivo,
+            'Señales': " | ".join(señales),
+        }
+
+        if incluir_fund:
+            resultado.update(obtener_fundamentales_profundos(simbolo))
+
+        if incluir_bt and recomendacion.startswith("COMPRAR"):
+            bt = backtest_realista(simbolo, precio, atr)
+            resultado['BT Resultado'] = f"{bt['resultado']:.2f}% ({bt['tipo']})"
+
+        return resultado
+    except Exception:
+        return None
 
 # ============================================================
 # BOTÓN DE ANÁLISIS
 # ============================================================
-
 if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     PRECIO_COMPRA = {}
     if compra_input and compra_input.strip():
@@ -1150,36 +1204,39 @@ if 'df' in st.session_state:
 
     # Dashboard de rendimiento
     st.subheader("📊 Dashboard de rendimiento de señales")
-    df_hist = cargar_historial_senales()  # Necesitamos definir esta función; la implementamos
+    df_hist = cargar_historial_senales()
     dashboard_rendimiento(df_hist)
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "📜 HISTORIAL"])
+    # Tabs (ahora 6)
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "📜 HISTORIAL", "📊 VENTAS HISTÓRICAS"])
 
     cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit','Unidades','Inversión (MXN)','% Capital','Dist EMA50','Recomendación','Motivo','Señales']
-    # Añadir nuevas columnas si existen
-    if 'Sentimiento' in compras.columns:
-        cols_base.append('Sentimiento')
-    if 'ML Predicción' in compras.columns:
-        cols_base.append('ML Predicción')
-    if 'Peso Cartera' in compras.columns:
-        cols_base.append('Peso Cartera')
-        cols_base.append('Inversión Asignada')
-        cols_base.append('Unidades Ajustadas')
 
     with tab1:
         if not compras.empty:
-            st.dataframe(compras[cols_base + ([c for c in compras.columns if c not in cols_base])], use_container_width=True)
+            available_base = [col for col in cols_base if col in compras.columns]
+            extra_cols = [col for col in compras.columns if col not in cols_base]
+            st.dataframe(compras[available_base + extra_cols], use_container_width=True)
         else:
             st.info("Sin oportunidades de compra en este momento.")
+
     with tab2:
         if not ventas.empty:
-            st.dataframe(ventas[[c for c in cols_base if c in ventas.columns]], use_container_width=True)
+            available_base = [col for col in cols_base if col in ventas.columns]
+            st.dataframe(ventas[available_base], use_container_width=True)
         else:
             st.info("Ninguna señal de venta para tus compras registradas.")
+
     with tab3:
-        st.dataframe(observar[[c for c in cols_base if c in observar.columns]], use_container_width=True)
+        if not observar.empty:
+            available_base = [col for col in cols_base if col in observar.columns]
+            st.dataframe(observar[available_base], use_container_width=True)
+        else:
+            st.info("No hay acciones en observación.")
+
     with tab4:
         st.dataframe(df, use_container_width=True)
+
     with tab5:
         df_trans = cargar_transacciones()
         if not df_trans.empty:
@@ -1193,6 +1250,32 @@ if 'df' in st.session_state:
             )
         else:
             st.info("Aún no hay transacciones registradas.")
+
+    with tab6:
+        st.subheader("📊 Historial de ventas mensual")
+        df_trans = cargar_transacciones()
+        if not df_trans.empty:
+            ventas_df = df_trans[df_trans['tipo'] == 'venta'].copy()
+            if not ventas_df.empty:
+                ventas_df['mes'] = ventas_df['fecha'].dt.to_period('M')
+                resumen_mensual = ventas_df.groupby('mes').agg(
+                    ventas=('tipo', 'count'),
+                    ganancia_promedio=('ganancia_pct', 'mean'),
+                    ganancia_total=('ganancia_pct', lambda x: x.sum()),
+                    aciertos=('ganancia_pct', lambda x: (x > 0).sum())
+                ).reset_index()
+                resumen_mensual['win_rate'] = (resumen_mensual['aciertos'] / resumen_mensual['ventas'] * 100).round(1)
+                st.dataframe(resumen_mensual, use_container_width=True)
+
+                st.subheader("Detalle de ventas")
+                st.dataframe(ventas_df[['fecha','simbolo','cantidad','precio','ganancia_pct']].sort_values('fecha', ascending=False), use_container_width=True)
+
+                win_rate_total = (ventas_df['ganancia_pct'] > 0).mean() * 100
+                st.metric("Win rate global", f"{win_rate_total:.1f}%")
+            else:
+                st.info("Aún no hay ventas registradas.")
+        else:
+            st.info("No hay transacciones aún.")
 
     # Descarga de Excel
     st.divider()
