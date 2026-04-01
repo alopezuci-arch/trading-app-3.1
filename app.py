@@ -63,6 +63,17 @@ EMAIL_PASSWORD    = os.environ.get("EMAIL_PASSWORD",  "")
 NEWSAPI_KEY       = os.environ.get("NEWSAPI_KEY", "")
 
 # ============================================================
+# HISTORIAL DE SEÑALES (para el dashboard de rendimiento)
+# ============================================================
+def cargar_historial_senales() -> pd.DataFrame:
+    """Carga el archivo de historial de señales (CSV) si existe."""
+    if os.path.exists("historial_senales.csv"):
+        df = pd.read_csv("historial_senales.csv")
+        df['fecha'] = pd.to_datetime(df['fecha'])
+        return df
+    return pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales'])
+
+# ============================================================
 # HISTORIAL DE TRANSACCIONES
 # ============================================================
 TRANSACCIONES_FILE = "transacciones.csv"
@@ -748,6 +759,90 @@ def guardar_en_drive(contenido_bytes: bytes, nombre_archivo: str):
     media = googleapiclient.http.MediaIoBaseUpload(io.BytesIO(contenido_bytes), mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     service.files().create(body=file_metadata, media_body=media, fields='id').execute()
     st.success(f"Archivo guardado en Google Drive (carpeta 'Trading')")
+
+def analizar_accion(args: tuple) -> dict | None:
+    simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt, regime_bonus, capital, riesgo_pct = args
+    try:
+        periodo = "6mo" if incluir_bt else "3mo"
+        ticker = yf.Ticker(simbolo)
+        hist = safe_history(ticker, periodo)
+        if hist.empty:
+            return None
+
+        factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
+        for col in ['Close','Open','High','Low']:
+            hist[col] *= factor
+
+        hist = calcular_indicadores(hist)
+        hist = hist.dropna(subset=['RSI','MACD','EMA20','EMA50','ATR','STOCH_K','STOCH_D'])
+        if len(hist) < 2:
+            return None
+
+        ultimo = hist.iloc[-1].to_dict()
+        penultimo = hist.iloc[-2].to_dict()
+
+        if ultimo['Volume'] < (500_000 if not simbolo.endswith('.MX') else 1_000_000):
+            return None
+
+        precio = ultimo['Close']
+        atr = ultimo['ATR']
+        score_base, señales = calcular_score(ultimo, penultimo)
+        score = max(0, score_base + regime_bonus)
+
+        ps = position_size(precio, atr, capital, riesgo_pct)
+
+        p_compra = precio_compra_dict.get(simbolo)
+        señales_venta = []
+        if p_compra:
+            ganancia = ((precio / p_compra) - 1) * 100
+            if ganancia >= 15:
+                señales_venta.append(f"🎯 Take Profit +{ganancia:.1f}%")
+            elif ganancia <= -7:
+                señales_venta.append(f"🛑 Stop Loss {ganancia:.1f}%")
+
+        if señales_venta:
+            recomendacion = "VENDER"
+            motivo = señales_venta[0]
+        elif score >= 8:
+            recomendacion = "COMPRAR ★★★"
+            motivo = f"Score {score}/14"
+        elif score >= 6:
+            recomendacion = "COMPRAR ★★"
+            motivo = f"Score {score}/14"
+        elif score >= 4:
+            recomendacion = "OBSERVAR"
+            motivo = f"Score {score}/14"
+        else:
+            recomendacion = "EVITAR"
+            motivo = f"Score {score}/14"
+
+        resultado = {
+            'Símbolo': simbolo,
+            'Precio (MXN)': round(precio, 2),
+            'Score': score,
+            'RSI': round(ultimo['RSI'], 1),
+            'ATR': round(atr, 2),
+            'Stop Loss': round(precio - 2 * atr, 2),
+            'Take Profit': round(precio + 3 * atr, 2),
+            'Unidades': ps['unidades'],
+            'Inversión (MXN)': ps['inversion_mxn'],
+            '% Capital': ps['pct_capital'],
+            'Dist EMA50': round((precio / ultimo['EMA50'] - 1) * 100, 2),
+            'Recomendación': recomendacion,
+            'Motivo': motivo,
+            'Señales': " | ".join(señales),
+        }
+
+        if incluir_fund:
+            resultado.update(obtener_fundamentales_profundos(simbolo))
+
+        if incluir_bt and recomendacion.startswith("COMPRAR"):
+            bt = backtest_realista(simbolo, precio, atr)
+            resultado['BT Resultado'] = f"{bt['resultado']:.2f}% ({bt['tipo']})"
+
+        return resultado
+    except Exception:
+        return None
 
 # ============================================================
 # ANÁLISIS IA (similar al anterior)
