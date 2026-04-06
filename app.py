@@ -872,8 +872,8 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
             continue
         try:
             if nombre == "Gemini":
-                url  = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-                        f"gemini-1.5-flash:generateContent?key={key}")
+                url = (f"https://generativelanguage.googleapis.com/v1/models/"
+                        f"gemini-2.5-flash:generateContent?key={key}")
                 resp = requests.post(
                     url,
                     json={"contents": [{"parts": [{"text": prompt}]}]},
