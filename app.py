@@ -1003,7 +1003,10 @@ def analizar_accion(args: tuple) -> dict | None:
 # BOTÓN DE ANÁLISIS
 # ============================================================
 if st.sidebar.button("🔍 ANALIZAR", type="primary"):
-    PRECIO_COMPRA = {}
+    # ── Cargar compras previas del session_state (persisten entre reruns) ──
+    PRECIO_COMPRA = dict(st.session_state.get('PRECIO_COMPRA', {}))
+
+    # ── Agregar/actualizar con lo que el usuario escribió ahora ──
     if compra_input and compra_input.strip():
         for linea in compra_input.strip().split('\n'):
             if not linea.strip():
