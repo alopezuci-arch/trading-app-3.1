@@ -697,17 +697,37 @@ def main():
     else:
         score_minimo_efectivo = SCORE_MINIMO
 
-    # 3. Leer posiciones actuales desde CSV
+    # 3. Leer posiciones actuales desde transacciones.csv
+    # (el mismo archivo que escribe el app — no posiciones.csv que nunca se crea)
     posiciones = {}
-    if os.path.exists(POSICIONES_FILE):
-        df_pos = pd.read_csv(POSICIONES_FILE)
-        if 'simbolo' in df_pos.columns and 'precio' in df_pos.columns:
-            posiciones = dict(zip(df_pos['simbolo'], df_pos['precio']))
-            print(f"📌 Posiciones cargadas: {len(posiciones)} activos")
-        else:
-            print("⚠️  Archivo posiciones.csv tiene formato incorrecto (se esperan columnas 'simbolo','precio')")
+    TRANSACCIONES_FILE = "transacciones.csv"
+    if os.path.exists(TRANSACCIONES_FILE):
+        try:
+            df_trans = pd.read_csv(TRANSACCIONES_FILE)
+            df_trans['simbolo'] = df_trans['simbolo'].str.upper()
+            # Posiciones abiertas = compras sin venta posterior
+            compradas = set(df_trans[df_trans['tipo'] == 'compra']['simbolo'])
+            vendidas  = set(df_trans[df_trans['tipo'] == 'venta']['simbolo'])
+            abiertas  = compradas - vendidas
+            for sim in abiertas:
+                ultimo = df_trans[
+                    (df_trans['simbolo'] == sim) & (df_trans['tipo'] == 'compra')
+                ].sort_values('fecha').iloc[-1]
+                posiciones[sim] = float(ultimo['precio'])
+            print(f"📌 Posiciones cargadas desde transacciones.csv: {len(posiciones)} activos → {list(posiciones.keys())}")
+        except Exception as e:
+            print(f"⚠️  Error leyendo transacciones.csv: {e}")
+    elif os.path.exists(POSICIONES_FILE):
+        # Fallback: intentar posiciones.csv si existe
+        try:
+            df_pos = pd.read_csv(POSICIONES_FILE)
+            if 'simbolo' in df_pos.columns and 'precio' in df_pos.columns:
+                posiciones = dict(zip(df_pos['simbolo'].str.upper(), df_pos['precio']))
+                print(f"📌 Posiciones cargadas desde posiciones.csv: {len(posiciones)} activos")
+        except Exception as e:
+            print(f"⚠️  Error leyendo posiciones.csv: {e}")
     else:
-        print("ℹ️  No se encontró archivo posiciones.csv – solo se analizarán nuevas oportunidades")
+        print("ℹ️  No se encontró transacciones.csv ni posiciones.csv — solo se analizarán nuevas oportunidades")
 
     # 4. Añadir posiciones al universo si no están ya
     universo_final = list(set(UNIVERSO + list(posiciones.keys())))
