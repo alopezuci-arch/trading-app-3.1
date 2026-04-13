@@ -32,8 +32,8 @@ GROQ_API_KEY      = os.environ.get("GROQ_API_KEY",      "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ── Persistencia compartida con el app (mismo Gist) ─────────
-GITHUB_GIST_TOKEN = os.environ.get("GITHUB_GIST_TOKEN", "")
-GITHUB_GIST_ID    = os.environ.get("GITHUB_GIST_ID",    "")
+GHU_GIST_TOKEN = os.environ.get("GHU_GIST_TOKEN", "")
+GHUB_GIST_ID    = os.environ.get("GHUB_GIST_ID",    "")
 
 SCORE_MINIMO     = 7
 CAPITAL_TRADING  = 25_000
@@ -52,12 +52,12 @@ POSICIONES_FILE  = "posiciones.csv"
 # correctos sin importar que GitHub Actions use máquinas limpias.
 # ============================================================
 _GIST_HEADERS = {
-    "Authorization": f"token {GITHUB_GIST_TOKEN}",
+    "Authorization": f"token {GHU_GIST_TOKEN}",
     "Accept": "application/vnd.github+json",
 }
 
 def gist_disponible() -> bool:
-    return bool(GITHUB_GIST_TOKEN and GITHUB_GIST_ID)
+    return bool(GHU_GIST_TOKEN and GHUB_GIST_ID)
 
 def gist_leer(nombre_archivo: str) -> str:
     """Lee un archivo del Gist. Devuelve '' si falla."""
@@ -65,7 +65,7 @@ def gist_leer(nombre_archivo: str) -> str:
         return ""
     try:
         r = requests.get(
-            f"https://api.github.com/gists/{GITHUB_GIST_ID}",
+            f"https://api.github.com/gists/{GHUB_GIST_ID}",
             headers=_GIST_HEADERS,
             timeout=15,
         )
@@ -83,7 +83,7 @@ def gist_escribir(nombre_archivo: str, contenido: str) -> bool:
         return False
     try:
         r = requests.patch(
-            f"https://api.github.com/gists/{GITHUB_GIST_ID}",
+            f"https://api.github.com/gists/{GHUB_GIST_ID}",
             headers=_GIST_HEADERS,
             json={"files": {nombre_archivo: {"content": contenido or " "}}},
             timeout=15,
