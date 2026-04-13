@@ -31,7 +31,11 @@ GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY",    "")
 GROQ_API_KEY      = os.environ.get("GROQ_API_KEY",      "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-SCORE_MINIMO     = 7          # mantiene el umbral estricto
+# ── Persistencia compartida con el app (mismo Gist) ─────────
+GITHUB_GIST_TOKEN = os.environ.get("GITHUB_GIST_TOKEN", "")
+GITHUB_GIST_ID    = os.environ.get("GITHUB_GIST_ID",    "")
+
+SCORE_MINIMO     = 7
 CAPITAL_TRADING  = 25_000
 RIESGO_PCT       = 1.0
 MAX_WORKERS      = 20
@@ -39,9 +43,190 @@ CACHE_DIR        = "cache_ia"
 CACHE_TTL        = 3600
 HISTORICO_FILE   = "historial_senales.csv"
 BACKTEST_WINDOW  = 5
+POSICIONES_FILE  = "posiciones.csv"
 
-# Archivo con posiciones actuales (simbolo,precio_compra)
-POSICIONES_FILE = "posiciones.csv"
+# ============================================================
+# CAPA DE PERSISTENCIA — GitHub Gist (compartido con el app)
+# Todos los archivos críticos se leen y escriben aquí,
+# garantizando que cada ejecución del scanner tenga los datos
+# correctos sin importar que GitHub Actions use máquinas limpias.
+# ============================================================
+_GIST_HEADERS = {
+    "Authorization": f"token {GITHUB_GIST_TOKEN}",
+    "Accept": "application/vnd.github+json",
+}
+
+def gist_disponible() -> bool:
+    return bool(GITHUB_GIST_TOKEN and GITHUB_GIST_ID)
+
+def gist_leer(nombre_archivo: str) -> str:
+    """Lee un archivo del Gist. Devuelve '' si falla."""
+    if not gist_disponible():
+        return ""
+    try:
+        r = requests.get(
+            f"https://api.github.com/gists/{GITHUB_GIST_ID}",
+            headers=_GIST_HEADERS,
+            timeout=15,
+        )
+        if r.status_code == 200:
+            files = r.json().get("files", {})
+            if nombre_archivo in files:
+                return files[nombre_archivo].get("content", "")
+    except Exception as e:
+        print(f"⚠️  Gist leer '{nombre_archivo}': {e}")
+    return ""
+
+def gist_escribir(nombre_archivo: str, contenido: str) -> bool:
+    """Escribe un archivo en el Gist. Devuelve True si tuvo éxito."""
+    if not gist_disponible():
+        return False
+    try:
+        r = requests.patch(
+            f"https://api.github.com/gists/{GITHUB_GIST_ID}",
+            headers=_GIST_HEADERS,
+            json={"files": {nombre_archivo: {"content": contenido or " "}}},
+            timeout=15,
+        )
+        ok = r.status_code == 200
+        if not ok:
+            print(f"⚠️  Gist escribir '{nombre_archivo}': HTTP {r.status_code}")
+        return ok
+    except Exception as e:
+        print(f"⚠️  Gist escribir '{nombre_archivo}': {e}")
+        return False
+
+def cargar_posiciones_gist() -> dict:
+    """
+    Carga posiciones abiertas desde Gist (posiciones.json).
+    Fallback a transacciones.csv del Gist si posiciones.json está vacío.
+    """
+    # 1. Intentar posiciones.json (fuente directa del app)
+    contenido = gist_leer("posiciones.json")
+    if contenido and contenido.strip() not in ("", "{}"):
+        try:
+            posiciones = json.loads(contenido)
+            if posiciones:
+                print(f"📌 Posiciones desde Gist (posiciones.json): "
+                      f"{len(posiciones)} activos → {list(posiciones.keys())}")
+                return posiciones
+        except:
+            pass
+
+    # 2. Fallback: reconstruir desde transacciones.csv del Gist
+    csv_contenido = gist_leer("transacciones.csv")
+    if csv_contenido and len(csv_contenido) > 50:
+        try:
+            from io import StringIO
+            df = pd.read_csv(StringIO(csv_contenido))
+            df['simbolo'] = df['simbolo'].str.upper()
+            compradas = set(df[df['tipo'] == 'compra']['simbolo'])
+            vendidas  = set(df[df['tipo'] == 'venta']['simbolo'])
+            abiertas  = compradas - vendidas
+            posiciones = {}
+            for sim in abiertas:
+                ultimo = df[
+                    (df['simbolo'] == sim) & (df['tipo'] == 'compra')
+                ].sort_values('fecha').iloc[-1]
+                posiciones[sim] = float(ultimo['precio'])
+            if posiciones:
+                print(f"📌 Posiciones reconstruidas desde transacciones.csv (Gist): "
+                      f"{len(posiciones)} activos → {list(posiciones.keys())}")
+            return posiciones
+        except Exception as e:
+            print(f"⚠️  Error reconstruyendo posiciones desde CSV del Gist: {e}")
+
+    # 3. Último fallback: archivo local (si existe de una ejecución anterior en el mismo runner)
+    if os.path.exists(POSICIONES_FILE):
+        try:
+            df_pos = pd.read_csv(POSICIONES_FILE)
+            posiciones = dict(zip(df_pos['simbolo'].str.upper(), df_pos['precio']))
+            print(f"📌 Posiciones desde archivo local: {len(posiciones)} activos")
+            return posiciones
+        except:
+            pass
+
+    print("ℹ️  Sin posiciones abiertas — solo se analizarán nuevas oportunidades")
+    return {}
+
+def cargar_historial_gist() -> pd.DataFrame:
+    """
+    Descarga historial_senales.csv desde Gist al inicio de cada ejecución.
+    Garantiza que el backtesting tenga datos históricos aunque Actions use máquina limpia.
+    """
+    columnas = ['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales']
+    contenido = gist_leer("historial_senales.csv")
+    if contenido and len(contenido) > 50:
+        try:
+            from io import StringIO
+            df = pd.read_csv(StringIO(contenido))
+            df['fecha'] = pd.to_datetime(df['fecha'])
+            # Escribir localmente para que cargar_historial() lo encuentre
+            df.to_csv(HISTORICO_FILE, index=False)
+            print(f"📊 Historial cargado desde Gist: {len(df)} señales previas")
+            return df
+        except Exception as e:
+            print(f"⚠️  Error cargando historial desde Gist: {e}")
+    return pd.DataFrame(columns=columnas)
+
+def sincronizar_historial_gist():
+    """Sube historial_senales.csv actualizado al Gist al final de cada ejecución."""
+    if not gist_disponible() or not os.path.exists(HISTORICO_FILE):
+        return
+    try:
+        with open(HISTORICO_FILE, 'r', encoding='utf-8') as f:
+            contenido = f.read()
+        if gist_escribir("historial_senales.csv", contenido):
+            print("☁️  Historial sincronizado con Gist")
+        else:
+            print("⚠️  No se pudo sincronizar historial con Gist")
+    except Exception as e:
+        print(f"⚠️  Error sincronizando historial: {e}")
+
+def cargar_cache_ia_gist():
+    """
+    Descarga el índice de caché de IA desde Gist al inicio.
+    Evita llamadas redundantes a la API si el mismo análisis ya se hizo hoy.
+    """
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    contenido = gist_leer("cache_ia_index.json")
+    if contenido:
+        try:
+            cache_index = json.loads(contenido)
+            ahora = time.time()
+            for key, entry in cache_index.items():
+                # Solo restaurar entradas válidas (dentro del TTL)
+                if ahora - entry.get('timestamp', 0) < CACHE_TTL:
+                    ruta = f"{CACHE_DIR}/{key}.json"
+                    with open(ruta, 'w', encoding='utf-8') as f:
+                        json.dump(entry, f, ensure_ascii=False)
+            validos = sum(1 for e in cache_index.values()
+                          if ahora - e.get('timestamp', 0) < CACHE_TTL)
+            if validos:
+                print(f"🧠 Caché IA restaurado desde Gist: {validos} entradas válidas")
+        except:
+            pass
+
+def sincronizar_cache_ia_gist():
+    """Sube el caché de IA al Gist para reutilizarlo en la próxima ejecución."""
+    if not gist_disponible() or not os.path.exists(CACHE_DIR):
+        return
+    try:
+        cache_index = {}
+        for fname in os.listdir(CACHE_DIR):
+            if fname.endswith('.json'):
+                ruta = f"{CACHE_DIR}/{fname}"
+                with open(ruta, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                # Solo guardar si es reciente
+                if time.time() - data.get('timestamp', 0) < CACHE_TTL:
+                    key = fname.replace('.json', '')
+                    cache_index[key] = data
+        if cache_index:
+            gist_escribir("cache_ia_index.json", json.dumps(cache_index, ensure_ascii=False))
+            print(f"☁️  Caché IA sincronizado con Gist: {len(cache_index)} entradas")
+    except Exception as e:
+        print(f"⚠️  Error sincronizando caché IA: {e}")
 
 # ============================================================
 # UNIVERSO AMPLIADO (más de 700 activos)
@@ -697,41 +882,25 @@ def main():
     else:
         score_minimo_efectivo = SCORE_MINIMO
 
-    # 3. Leer posiciones actuales desde transacciones.csv
-    # (el mismo archivo que escribe el app — no posiciones.csv que nunca se crea)
-    posiciones = {}
-    TRANSACCIONES_FILE = "transacciones.csv"
-    if os.path.exists(TRANSACCIONES_FILE):
-        try:
-            df_trans = pd.read_csv(TRANSACCIONES_FILE)
-            df_trans['simbolo'] = df_trans['simbolo'].str.upper()
-            # Posiciones abiertas = compras sin venta posterior
-            compradas = set(df_trans[df_trans['tipo'] == 'compra']['simbolo'])
-            vendidas  = set(df_trans[df_trans['tipo'] == 'venta']['simbolo'])
-            abiertas  = compradas - vendidas
-            for sim in abiertas:
-                ultimo = df_trans[
-                    (df_trans['simbolo'] == sim) & (df_trans['tipo'] == 'compra')
-                ].sort_values('fecha').iloc[-1]
-                posiciones[sim] = float(ultimo['precio'])
-            print(f"📌 Posiciones cargadas desde transacciones.csv: {len(posiciones)} activos → {list(posiciones.keys())}")
-        except Exception as e:
-            print(f"⚠️  Error leyendo transacciones.csv: {e}")
-    elif os.path.exists(POSICIONES_FILE):
-        # Fallback: intentar posiciones.csv si existe
-        try:
-            df_pos = pd.read_csv(POSICIONES_FILE)
-            if 'simbolo' in df_pos.columns and 'precio' in df_pos.columns:
-                posiciones = dict(zip(df_pos['simbolo'].str.upper(), df_pos['precio']))
-                print(f"📌 Posiciones cargadas desde posiciones.csv: {len(posiciones)} activos")
-        except Exception as e:
-            print(f"⚠️  Error leyendo posiciones.csv: {e}")
-    else:
-        print("ℹ️  No se encontró transacciones.csv ni posiciones.csv — solo se analizarán nuevas oportunidades")
+    # 3. Cargar datos persistentes desde Gist
+    # (garantiza que cada ejecución en GitHub Actions tenga los datos correctos)
+    print("\n── Cargando datos persistentes desde Gist ──")
+
+    # 3a. Posiciones abiertas (fuente compartida con el app)
+    posiciones = cargar_posiciones_gist()
+
+    # 3b. Historial de señales para backtesting
+    cargar_historial_gist()
+
+    # 3c. Caché de IA (evita llamadas redundantes)
+    cargar_cache_ia_gist()
+
+    print(f"── Datos cargados ──\n")
 
     # 4. Añadir posiciones al universo si no están ya
     universo_final = list(set(UNIVERSO + list(posiciones.keys())))
-    print(f"✅ Universo final con {len(universo_final)} activos (incluye {len(posiciones)} posiciones)")
+    print(f"✅ Universo final: {len(universo_final)} activos "
+          f"(incluye {len(posiciones)} posiciones propias)")
 
     # 5. Análisis en paralelo
     print(f"\nAnalizando {len(universo_final)} activos en paralelo ({MAX_WORKERS} hilos)...")
@@ -750,8 +919,6 @@ def main():
     # Separar compras y ventas
     compras = [r for r in resultados if r['Recomendación'].startswith('COMPRAR')]
     ventas  = [r for r in resultados if r['Recomendación'] == 'VENDER']
-
-    # Ordenar compras por score descendente
     compras.sort(key=lambda x: x['Score'], reverse=True)
 
     print(f"\nOportunidades de compra detectadas: {len(compras)}")
@@ -762,7 +929,7 @@ def main():
     for r in ventas:
         print(f"  {r['Símbolo']:8s} Precio:{r['Precio MXN']:>10.2f}  Motivo: {r['Motivo']}")
 
-    # 6. Guardar en historial (solo compras)
+    # 6. Guardar señales en historial local
     print("\nGuardando señales de compra en historial...")
     fecha_hoy = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     for senal in compras:
@@ -777,24 +944,24 @@ def main():
     print(f"    - Win rate: {metrics['win_rate']}%")
     print(f"    - Retorno promedio: {metrics['ret_prom']}%")
 
-    # 8. Análisis IA (solo sobre compras)
+    # 8. Análisis IA
     print("\nConsultando IA para análisis de compras...")
     ia_texto = analisis_ia(compras, regime, usd_mxn)
     if ia_texto:
         print("\n--- ANÁLISIS IA ---")
         print(ia_texto[:500] + "..." if len(ia_texto) > 500 else ia_texto)
 
-    # 9. Alertas (si hay compras o ventas)
+    # 9. Alertas
     if compras or ventas:
         html = construir_email(compras, ventas, regime, ia_texto, hora)
-        asunto = f"📈 Trading Alert {hora} — Compras: {len(compras)} | Ventas: {len(ventas)} | Mercado: {regime['regime']}"
+        asunto = (f"📈 Trading Alert {hora} — "
+                  f"Compras: {len(compras)} | Ventas: {len(ventas)} | "
+                  f"Mercado: {regime['regime']}")
         enviar_email(asunto, html)
 
-        if compras:
-            top3 = ", ".join([r['Símbolo'] for r in compras[:3]])
-        else:
-            top3 = "ninguna"
-        confianza = "ALTA" if regime['regime'] == 'ALCISTA' else "MEDIA" if regime['regime'] == 'LATERAL' else "BAJA"
+        top3 = ", ".join([r['Símbolo'] for r in compras[:3]]) if compras else "ninguna"
+        confianza = ("ALTA" if regime['regime'] == 'ALCISTA'
+                     else "MEDIA" if regime['regime'] == 'LATERAL' else "BAJA")
         msg_wa = (f"📈 *Scanner Trading* — {hora}\n"
                   f"Régimen: {regime['regime']} | USD/MXN: {usd_mxn:.2f}\n"
                   f"🟢 Compras: {len(compras)} (Top: {top3})\n"
@@ -804,6 +971,13 @@ def main():
         enviar_whatsapp(msg_wa)
     else:
         print("Sin oportunidades que superen el umbral. No se envían alertas.")
+
+    # 10. Sincronizar todo con Gist al finalizar
+    # (garantiza que la próxima ejecución tenga los datos actualizados)
+    print("\n── Sincronizando datos con Gist ──")
+    sincronizar_historial_gist()
+    sincronizar_cache_ia_gist()
+    print("── Sincronización completada ──")
 
     print(f"\n✅ Scanner completado — {datetime.now().strftime('%H:%M:%S')}\n")
 
