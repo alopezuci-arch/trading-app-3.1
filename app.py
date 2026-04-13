@@ -63,6 +63,166 @@ EMAIL_REMITENTE   = os.environ.get("EMAIL_REMITENTE", "")
 EMAIL_PASSWORD    = os.environ.get("EMAIL_PASSWORD",  "")
 NEWSAPI_KEY       = os.environ.get("NEWSAPI_KEY", "")
 
+# ── Persistencia con GitHub Gist ────────────────────────────────
+# Agrega en Streamlit Cloud → Settings → Secrets:
+#   GITHUB_GIST_TOKEN = "ghp_..."  (token con scope 'gist')
+#   GITHUB_GIST_ID    = ""         (se crea automáticamente la primera vez)
+GITHUB_GIST_TOKEN = os.environ.get("GITHUB_GIST_TOKEN", "")
+GITHUB_GIST_ID    = os.environ.get("GITHUB_GIST_ID",    "")
+
+# ============================================================
+# CAPA DE PERSISTENCIA — GitHub Gist como mini base de datos
+# Sobrevive suspensiones, reinicios y redeploys de Streamlit Cloud.
+# ============================================================
+_GIST_HEADERS = lambda: {
+    "Authorization": f"token {GITHUB_GIST_TOKEN}",
+    "Accept": "application/vnd.github+json",
+}
+
+def _gist_disponible() -> bool:
+    return bool(GITHUB_GIST_TOKEN)
+
+def _crear_gist_si_no_existe() -> str:
+    """Crea el Gist la primera vez y devuelve su ID. Lo guarda en session_state."""
+    if st.session_state.get('_gist_id'):
+        return st.session_state['_gist_id']
+
+    # Si viene de secrets, usarlo directamente
+    if GITHUB_GIST_ID:
+        st.session_state['_gist_id'] = GITHUB_GIST_ID
+        return GITHUB_GIST_ID
+
+    # Crear nuevo Gist
+    try:
+        r = requests.post(
+            "https://api.github.com/gists",
+            headers=_GIST_HEADERS(),
+            json={
+                "description": "Trading App — posiciones y modelos ML",
+                "public": False,
+                "files": {
+                    "posiciones.json":     {"content": "{}"},
+                    "transacciones.csv":   {"content": "fecha,simbolo,cantidad,precio,tipo,total,notas,ganancia_pct\n"},
+                    "ml_modelos_meta.json":{"content": "{}"},
+                }
+            },
+            timeout=15,
+        )
+        if r.status_code == 201:
+            gist_id = r.json()["id"]
+            st.session_state['_gist_id'] = gist_id
+            st.info(f"✅ Gist de persistencia creado. Agrega este ID a tus Secrets como `GITHUB_GIST_ID = '{gist_id}'`")
+            return gist_id
+    except Exception as e:
+        st.warning(f"No se pudo crear el Gist: {e}")
+    return ""
+
+def gist_leer(nombre_archivo: str) -> str:
+    """Lee el contenido de un archivo del Gist. Devuelve string vacío si falla."""
+    if not _gist_disponible():
+        return ""
+    gist_id = _crear_gist_si_no_existe()
+    if not gist_id:
+        return ""
+    try:
+        r = requests.get(
+            f"https://api.github.com/gists/{gist_id}",
+            headers=_GIST_HEADERS(),
+            timeout=10,
+        )
+        if r.status_code == 200:
+            files = r.json().get("files", {})
+            if nombre_archivo in files:
+                return files[nombre_archivo].get("content", "")
+    except:
+        pass
+    return ""
+
+def gist_escribir(nombre_archivo: str, contenido: str) -> bool:
+    """Escribe contenido en un archivo del Gist. Devuelve True si tuvo éxito."""
+    if not _gist_disponible():
+        return False
+    gist_id = _crear_gist_si_no_existe()
+    if not gist_id:
+        return False
+    try:
+        r = requests.patch(
+            f"https://api.github.com/gists/{gist_id}",
+            headers=_GIST_HEADERS(),
+            json={"files": {nombre_archivo: {"content": contenido}}},
+            timeout=15,
+        )
+        return r.status_code == 200
+    except:
+        return False
+
+def cargar_posiciones_persistentes() -> dict:
+    """
+    Carga PRECIO_COMPRA desde GitHub Gist.
+    Fallback a transacciones.csv local si Gist no disponible.
+    """
+    # 1. Intentar desde Gist
+    contenido = gist_leer("posiciones.json")
+    if contenido:
+        try:
+            return json.loads(contenido)
+        except:
+            pass
+
+    # 2. Fallback: reconstruir desde transacciones.csv local
+    try:
+        df = cargar_transacciones()
+        if df.empty:
+            return {}
+        compradas = set(df[df['tipo'] == 'compra']['simbolo'].str.upper())
+        vendidas  = set(df[df['tipo'] == 'venta']['simbolo'].str.upper())
+        abiertas  = compradas - vendidas
+        posiciones = {}
+        for sim in abiertas:
+            ultimo = df[
+                (df['simbolo'].str.upper() == sim) & (df['tipo'] == 'compra')
+            ].sort_values('fecha').iloc[-1]
+            posiciones[sim] = float(ultimo['precio'])
+        return posiciones
+    except:
+        return {}
+
+def guardar_posiciones_persistentes(posiciones: dict):
+    """Guarda PRECIO_COMPRA en GitHub Gist de forma asíncrona (no bloquea la UI)."""
+    if _gist_disponible():
+        gist_escribir("posiciones.json", json.dumps(posiciones, indent=2))
+
+def cargar_transacciones_persistentes() -> pd.DataFrame:
+    """Carga transacciones desde Gist primero, luego desde archivo local."""
+    contenido = gist_leer("transacciones.csv")
+    if contenido and len(contenido) > 50:
+        try:
+            from io import StringIO
+            df = pd.read_csv(StringIO(contenido))
+            df['fecha'] = pd.to_datetime(df['fecha'])
+            if 'ganancia_pct' not in df.columns:
+                df['ganancia_pct'] = np.nan
+            # Sincronizar con archivo local
+            df.to_csv(TRANSACCIONES_FILE, index=False)
+            return df
+        except:
+            pass
+    # Fallback a archivo local
+    return cargar_transacciones()
+
+def guardar_transaccion_persistente(simbolo: str, cantidad: float, precio: float,
+                                     tipo: str, notas: str = "", ganancia_pct: float = None):
+    """Guarda transacción en local + Gist."""
+    guardar_transaccion(simbolo, cantidad, precio, tipo, notas, ganancia_pct)
+    # Sincronizar CSV completo con Gist
+    if _gist_disponible():
+        try:
+            with open(TRANSACCIONES_FILE, 'r', encoding='utf-8') as f:
+                contenido = f.read()
+            gist_escribir("transacciones.csv", contenido)
+        except:
+            pass
+
 # ============================================================
 # HISTORIAL DE TRANSACCIONES (con campo ganancia_pct)
 # ============================================================
@@ -125,8 +285,8 @@ def procesar_ventas(input_text: str):
             continue
         precio_compra = PRECIO_COMPRA[simbolo]
         ganancia_pct = ((precio_venta / precio_compra) - 1) * 100
-        guardar_transaccion(simbolo, cantidad, precio_venta, "venta", notas="Venta manual", ganancia_pct=ganancia_pct)
-        # Eliminar la posición de PRECIO_COMPRA (se asume que se vende toda la posición)
+        guardar_transaccion_persistente(simbolo, cantidad, precio_venta, "venta",
+                                         notas="Venta manual", ganancia_pct=ganancia_pct)
         del PRECIO_COMPRA[simbolo]
         ventas_registradas += 1
     if errores:
@@ -135,6 +295,8 @@ def procesar_ventas(input_text: str):
     if ventas_registradas:
         st.sidebar.success(f"✅ {ventas_registradas} venta(s) registrada(s).")
         st.session_state['PRECIO_COMPRA'] = PRECIO_COMPRA
+        # Persistir el nuevo estado de posiciones (sin las vendidas)
+        guardar_posiciones_persistentes(PRECIO_COMPRA)
         st.rerun()
 
 # ============================================================
@@ -276,6 +438,26 @@ st.sidebar.markdown("### 💱 Tipos de cambio")
 st.sidebar.metric("USD/MXN", f"{usd_mxn:.2f}")
 st.sidebar.metric("EUR/MXN", f"{eur_mxn:.2f}")
 st.sidebar.markdown("---")
+
+# ============================================================
+# RESTAURAR POSICIONES AL INICIAR (sobrevive suspensión de Streamlit)
+# Se ejecuta UNA vez por sesión, cargando desde Gist si está disponible.
+# ============================================================
+if 'posiciones_cargadas' not in st.session_state:
+    posiciones_recuperadas = cargar_posiciones_persistentes()
+    if posiciones_recuperadas:
+        st.session_state['PRECIO_COMPRA'] = posiciones_recuperadas
+        st.session_state['posiciones_cargadas'] = True
+        n = len(posiciones_recuperadas)
+        simbolos = ", ".join(list(posiciones_recuperadas.keys())[:5])
+        st.sidebar.success(f"✅ {n} posición(es) restaurada(s): {simbolos}{'...' if n > 5 else ''}")
+    else:
+        st.session_state['PRECIO_COMPRA'] = {}
+        st.session_state['posiciones_cargadas'] = True
+        if _gist_disponible():
+            st.sidebar.info("📂 Persistencia activa — sin posiciones abiertas guardadas.")
+        else:
+            st.sidebar.warning("⚠️ Sin persistencia — agrega GITHUB_GIST_TOKEN en Secrets para no perder compras.")
 
 # ============================================================
 # SIDEBAR (parámetros)
@@ -537,27 +719,100 @@ def backtest_optimizar_parametros(hist_anual: pd.DataFrame) -> dict:
                     best_atr_mult = atr_mult
     return {'best_score_thresh': best_score_thresh, 'best_atr_mult': best_atr_mult, 'best_win_rate': round(best_win_rate,1)}
 
+# ── Cache de modelos ML en memoria (persiste entre reruns de la misma sesión) ─
+@st.cache_resource
+def _get_ml_cache() -> dict:
+    """
+    Almacén en memoria de modelos ML entrenados.
+    st.cache_resource persiste mientras el servidor no reinicie.
+    Los modelos también se serializan en Gist para recuperarse tras reinicios.
+    """
+    return {}
+
+def _cargar_modelo_ml_gist(simbolo: str):
+    """Intenta cargar un modelo ML serializado desde Gist. Devuelve el modelo o None."""
+    try:
+        contenido = gist_leer(f"ml_{simbolo.replace('.','_')}.pkl.b64")
+        if contenido:
+            import base64
+            model_bytes = base64.b64decode(contenido.encode())
+            return pickle.loads(model_bytes)
+    except:
+        pass
+    return None
+
+def _guardar_modelo_ml_gist(simbolo: str, clf, accuracy: float):
+    """Serializa y guarda el modelo ML en Gist."""
+    if not _gist_disponible():
+        return
+    try:
+        import base64
+        model_bytes = pickle.dumps(clf)
+        contenido_b64 = base64.b64encode(model_bytes).decode()
+        gist_escribir(f"ml_{simbolo.replace('.','_')}.pkl.b64", contenido_b64)
+        # Actualizar metadatos
+        meta_str = gist_leer("ml_modelos_meta.json")
+        try:
+            meta = json.loads(meta_str) if meta_str else {}
+        except:
+            meta = {}
+        meta[simbolo] = {
+            'accuracy': accuracy,
+            'fecha':    datetime.now().strftime("%Y-%m-%d %H:%M"),
+        }
+        gist_escribir("ml_modelos_meta.json", json.dumps(meta, indent=2))
+    except:
+        pass
+
 def entrenar_modelo_ml(simbolo: str, usd_mxn: float, eur_mxn: float) -> dict:
     """
-    Entrena un Random Forest con los últimos 3 años de datos para predecir si la acción subirá en los próximos 5 días.
-    Retorna el modelo entrenado y la precisión en prueba, o None si no hay suficientes datos.
+    Entrena un Random Forest con los últimos 3 años de datos.
+    Orden de prioridad:
+      1. Cache en memoria (st.cache_resource) — instantáneo
+      2. Modelo serializado en GitHub Gist   — segundos
+      3. Reentrenar desde yfinance           — lento, solo si necesario
+    El modelo se actualiza si tiene más de 24 horas.
     """
+    cache = _get_ml_cache()
+
+    # 1. Cache en memoria (mismo servidor, sin reinicio)
+    if simbolo in cache:
+        entrada = cache[simbolo]
+        horas = (datetime.now() - entrada['fecha']).total_seconds() / 3600
+        if horas < 24:
+            return {'model': entrada['model'], 'accuracy': entrada['accuracy'],
+                    'fuente': 'cache_memoria'}
+
+    # 2. Modelo en Gist (sobrevive reinicios del servidor)
+    modelo_gist = _cargar_modelo_ml_gist(simbolo)
+    if modelo_gist is not None:
+        meta_str = gist_leer("ml_modelos_meta.json")
+        try:
+            meta = json.loads(meta_str) if meta_str else {}
+            acc = meta.get(simbolo, {}).get('accuracy', 0)
+            fecha_str = meta.get(simbolo, {}).get('fecha', '')
+            if fecha_str:
+                fecha_modelo = datetime.strptime(fecha_str, "%Y-%m-%d %H:%M")
+                horas = (datetime.now() - fecha_modelo).total_seconds() / 3600
+                if horas < 24:
+                    cache[simbolo] = {'model': modelo_gist, 'accuracy': acc, 'fecha': datetime.now()}
+                    return {'model': modelo_gist, 'accuracy': acc, 'fuente': 'gist'}
+        except:
+            pass
+
+    # 3. Reentrenar desde cero
     try:
         ticker = yf.Ticker(simbolo)
         hist = safe_history(ticker, "3y")
         if hist.empty or len(hist) < 200:
             return None
-        # Convertir a MXN
         factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
-        hist['Close'] *= factor
-        hist['Open'] *= factor
-        hist['High'] *= factor
-        hist['Low'] *= factor
+        for col in ['Close','Open','High','Low']:
+            hist[col] *= factor
         hist = calcular_indicadores(hist)
         hist = hist.dropna()
         if len(hist) < 100:
             return None
-        # Crear variable objetivo: precio 5 días después > precio actual
         hist['target'] = (hist['Close'].shift(-5) > hist['Close']).astype(int)
         hist = hist.dropna()
         if len(hist) < 100:
@@ -568,8 +823,13 @@ def entrenar_modelo_ml(simbolo: str, usd_mxn: float, eur_mxn: float) -> dict:
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         clf = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
         clf.fit(X_train, y_train)
-        acc = accuracy_score(y_test, clf.predict(X_test))
-        return {'model': clf, 'accuracy': round(acc*100,1)}
+        acc = round(accuracy_score(y_test, clf.predict(X_test)) * 100, 1)
+
+        # Guardar en cache y en Gist
+        cache[simbolo] = {'model': clf, 'accuracy': acc, 'fecha': datetime.now()}
+        _guardar_modelo_ml_gist(simbolo, clf, acc)
+
+        return {'model': clf, 'accuracy': acc, 'fuente': 'reentrenado'}
     except:
         return None
 
@@ -1038,10 +1298,12 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                         continue
                 else:
                     continue
-            guardar_transaccion(sim, cantidad, precio, "compra")
+            guardar_transaccion_persistente(sim, cantidad, precio, "compra")
             PRECIO_COMPRA[sim] = precio
         if PRECIO_COMPRA:
-            st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
+            # Persistir posiciones en Gist inmediatamente
+            guardar_posiciones_persistentes(PRECIO_COMPRA)
+            st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s) y guardada(s).")
 
     usd_mxn, eur_mxn = obtener_tipo_cambio()
     regime_data = obtener_market_regime()
@@ -1124,11 +1386,13 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
     # Añadir predicción ML
     if ml_check and not compras.empty:
-        with st.spinner("Entrenando modelos predictivos (puede demorar)..."):
+        with st.spinner("🧠 Cargando modelos predictivos..."):
             for idx, row in compras.iterrows():
                 model_info = entrenar_modelo_ml(row['Símbolo'], usd_mxn, eur_mxn)
                 if model_info:
-                    compras.at[idx, 'ML Predicción'] = f"Subida {model_info['accuracy']}%"
+                    fuente_icon = {'cache_memoria': '⚡', 'gist': '☁️', 'reentrenado': '🔄'}.get(
+                        model_info.get('fuente', ''), '🔄')
+                    compras.at[idx, 'ML Predicción'] = f"{fuente_icon} Subida {model_info['accuracy']}%"
                 else:
                     compras.at[idx, 'ML Predicción'] = "No disponible"
 
@@ -1146,6 +1410,10 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.session_state['regime'] = regime_data
     st.session_state['capital'] = capital_total
     st.session_state['ultima_actualizacion'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+    # Persistir posiciones en Gist para sobrevivir suspensiones
+    if PRECIO_COMPRA:
+        guardar_posiciones_persistentes(PRECIO_COMPRA)
 
     if ia_check and not compras.empty:
         with st.spinner("🤖 Analizando con IA..."):
