@@ -45,8 +45,8 @@ jobs:
           EMAIL_PASSWORD:       ${{ secrets.EMAIL_PASSWORD }}
           WHATSAPP_NUMERO:      ${{ secrets.WHATSAPP_NUMERO }}
           WHATSAPP_APIKEY:      ${{ secrets.WHATSAPP_APIKEY }}
-          GITHUB_GIST_TOKEN:    ${{ secrets.GITHUB_GIST_TOKEN }}
-          GITHUB_GIST_ID:       ${{ secrets.GITHUB_GIST_ID }}
+          GHU_GIST_TOKEN:    ${{ secrets.GHU_GIST_TOKEN }}
+          GHUB_GIST_ID:       ${{ secrets.GHUB_GIST_ID }}
         run: python scanner_24_7.py
 
       - name: Subir historial de señales como artefacto
