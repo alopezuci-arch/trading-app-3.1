@@ -65,22 +65,22 @@ NEWSAPI_KEY       = os.environ.get("NEWSAPI_KEY", "")
 
 # ── Persistencia con GitHub Gist ────────────────────────────────
 # Agrega en Streamlit Cloud → Settings → Secrets:
-#   GITHUB_GIST_TOKEN = "ghp_..."  (token con scope 'gist')
-#   GITHUB_GIST_ID    = ""         (se crea automáticamente la primera vez)
-GITHUB_GIST_TOKEN = os.environ.get("GITHUB_GIST_TOKEN", "")
-GITHUB_GIST_ID    = os.environ.get("GITHUB_GIST_ID",    "")
+#   GHU_GIST_TOKEN = "ghp_..."  (token con scope 'gist')
+#   GHUB_GIST_ID    = ""         (se crea automáticamente la primera vez)
+GHU_GIST_TOKEN = os.environ.get("GHU_GIST_TOKEN", "")
+GHUB_GIST_ID    = os.environ.get("GHUB_GIST_ID",    "")
 
 # ============================================================
 # CAPA DE PERSISTENCIA — GitHub Gist como mini base de datos
 # Sobrevive suspensiones, reinicios y redeploys de Streamlit Cloud.
 # ============================================================
 _GIST_HEADERS = lambda: {
-    "Authorization": f"token {GITHUB_GIST_TOKEN}",
+    "Authorization": f"token {GHU_GIST_TOKEN}",
     "Accept": "application/vnd.github+json",
 }
 
 def _gist_disponible() -> bool:
-    return bool(GITHUB_GIST_TOKEN)
+    return bool(GHU_GIST_TOKEN)
 
 def _crear_gist_si_no_existe() -> str:
     """Crea el Gist la primera vez y devuelve su ID. Lo guarda en session_state."""
@@ -88,9 +88,9 @@ def _crear_gist_si_no_existe() -> str:
         return st.session_state['_gist_id']
 
     # Si viene de secrets, usarlo directamente
-    if GITHUB_GIST_ID:
-        st.session_state['_gist_id'] = GITHUB_GIST_ID
-        return GITHUB_GIST_ID
+    if GHUB_GIST_ID:
+        st.session_state['_gist_id'] = GHUB_GIST_ID
+        return GHUB_GIST_ID
 
     # Crear nuevo Gist
     try:
@@ -111,7 +111,7 @@ def _crear_gist_si_no_existe() -> str:
         if r.status_code == 201:
             gist_id = r.json()["id"]
             st.session_state['_gist_id'] = gist_id
-            st.info(f"✅ Gist de persistencia creado. Agrega este ID a tus Secrets como `GITHUB_GIST_ID = '{gist_id}'`")
+            st.info(f"✅ Gist de persistencia creado. Agrega este ID a tus Secrets como `GHUB_GIST_ID = '{gist_id}'`")
             return gist_id
     except Exception as e:
         st.warning(f"No se pudo crear el Gist: {e}")
@@ -457,7 +457,7 @@ if 'posiciones_cargadas' not in st.session_state:
         if _gist_disponible():
             st.sidebar.info("📂 Persistencia activa — sin posiciones abiertas guardadas.")
         else:
-            st.sidebar.warning("⚠️ Sin persistencia — agrega GITHUB_GIST_TOKEN en Secrets para no perder compras.")
+            st.sidebar.warning("⚠️ Sin persistencia — agrega GHU_GIST_TOKEN en Secrets para no perder compras.")
 
 # ============================================================
 # SIDEBAR (parámetros)
