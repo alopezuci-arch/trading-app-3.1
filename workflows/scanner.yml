@@ -1,1 +1,56 @@
+name: Scanner Trading 24/7
+
+on:
+  schedule:
+    # Horarios en UTC — equivalentes a hora de México (UTC-6):
+    - cron: '30 14 * * 1-5'   # 8:30 AM MX  — pre-apertura mercado NY
+    - cron: '0 16 * * 1-5'    # 10:00 AM MX — media mañana
+    - cron: '30 19 * * 1-5'   # 1:30 PM MX  — tarde
+  workflow_dispatch:            # permite ejecutarlo manualmente desde GitHub
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    env:
+      # Forzar Node 24 para evitar warnings (opcional pero recomendado)
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Descargar código del repo
+        uses: actions/checkout@v4
+
+      - name: Verificar archivos descargados
+        run: ls -la
+
+      - name: Verificar contenido del archivo scanner
+        run: |
+          echo "===== PRIMERAS 5 LÍNEAS ====="
+          head -5 scanner_24_7.py || echo "El archivo no existe o está vacío"
+          echo "===== TAMAÑO DEL ARCHIVO ====="
+          ls -lh scanner_24_7.py || echo "No se encontró scanner_24_7.py"
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install yfinance pandas numpy requests textblob scikit-learn
+
+      - name: Ejecutar scanner
+        env:
+          GEMINI_API_KEY:    ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY:      ${{ secrets.GROQ_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          EMAIL_REMITENTE:   ${{ secrets.EMAIL_REMITENTE }}
+          EMAIL_PASSWORD:    ${{ secrets.EMAIL_PASSWORD }}
+          WHATSAPP_NUMERO:   ${{ secrets.WHATSAPP_NUMERO }}
+          WHATSAPP_APIKEY:   ${{ secrets.WHATSAPP_APIKEY }}
+          GHU_GIST_TOKEN:    ${{ secrets.GHU_GIST_TOKEN }}
+        run: python scanner_24_7.py
+
+      - name: Subir historial de señales como artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: historial_senales
+          path: historial_senales.csv
 
