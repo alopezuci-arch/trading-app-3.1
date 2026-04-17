@@ -881,6 +881,22 @@ def construir_email(ops_compras: list[dict], ops_ventas: list[dict], regime: dic
     </body></html>"""
 
 # ============================================================
+# OBTENER NOTICIAS POR SI CAE LA ACCIÓN
+# ============================================================
+def obtener_noticias_recientes(ticker):
+    """Obtiene los titulares de noticias más recientes de una acción."""
+    try:
+        asset = yf.Ticker(ticker)
+        news = asset.news
+        if not news:
+            return "No se encontraron noticias recientes."
+        
+        titulares = [n['title'] for n in news[:5]]  # Tomamos las 5 más recientes
+        return " | ".join(titulares)
+    except Exception as e:
+        return f"Error obteniendo noticias: {e}"
+
+# ============================================================
 # MAIN
 # ============================================================
 def main():
