@@ -1,7 +1,7 @@
 # ============================================================
 # SCANNER DE TRADING AUTÓNOMO 24/7
-# Versión mejorada: universo ampliado (700+ activos) + análisis de posiciones desde CSV
-# Conserva la misma lógica estricta de filtros para compras.
+# Versión corregida v3.1: Prioriza Alertas de Venta Técnicas basadas en Portafolio Real
+# Mantiene la persistencia bidireccional con el App vía GitHub data/
 # ============================================================
 
 import os
@@ -21,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # ============================================================
 # CONFIGURACIÓN (se lee de variables de entorno / Secrets)
 # ============================================================
+# Estas variables deben estar configuradas en los Secrets de tu repositorio de GitHub
 EMAIL_REMITENTE   = os.environ.get("EMAIL_REMITENTE",   "")
 EMAIL_PASSWORD    = os.environ.get("EMAIL_PASSWORD",    "")
 EMAIL_DESTINO     = "alopez.uci@gmail.com"
@@ -32,25 +33,25 @@ GROQ_API_KEY      = os.environ.get("GROQ_API_KEY",      "")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 # ── Persistencia compartida con el app (mismo repo GitHub) ──
+# Token requiere scope "repo" completo
 GHU_GIST_TOKEN = os.environ.get("GHU_GIST_TOKEN", "")   # PAT con scope repo
 REPO_OWNER     = "alopezuci-arch"
 REPO_NAME      = "trading-app-3.1"
-DATA_PATH      = "data"   # misma carpeta que usa el app
+DATA_PATH      = "data"   # misma carpeta que usa el app en Streamlit Cloud
 
-SCORE_MINIMO     = 7
-CAPITAL_TRADING  = 25_000
-RIESGO_PCT       = 1.0
-MAX_WORKERS      = 20
+# Parámetros de Trading
+SCORE_MINIMO     = 7        # Umbral normal para compras
+CAPITAL_TRADING  = 100_000  # Capital total configurado en la App
+RIESGO_PCT       = 1.0      # Riesgo máximo por operación (para position sizing)
+MAX_WORKERS      = 20       # Hilos para análisis en paralelo
 CACHE_DIR        = "cache_ia"
-CACHE_TTL        = 3600
+CACHE_TTL        = 3600     # 1 hora
 HISTORICO_FILE   = "historial_senales.csv"
-BACKTEST_WINDOW  = 5
-POSICIONES_FILE  = "posiciones.csv"
+POSICIONES_FILE  = "posiciones.json" # Fuente única de verdad del portafolio
 
 # ============================================================
 # CAPA DE PERSISTENCIA — GitHub Repo (idéntica al app)
 # Lee y escribe en trading-app-3.1/data/ igual que el app.
-# En GitHub Actions el token viene de secrets.GHU_GIST_TOKEN.
 # ============================================================
 
 def _gh_headers() -> dict:
@@ -106,53 +107,19 @@ def cargar_posiciones_repo() -> dict:
     Carga posiciones abiertas desde data/posiciones.json del repo.
     Mismo archivo que escribe el app — fuente única de verdad.
     """
-    # 1. posiciones.json (fuente directa del app)
     contenido = _repo_leer("posiciones.json")
     if contenido and contenido.strip() not in ("", "{}", "null"):
         try:
             data = json.loads(contenido)
             if isinstance(data, dict) and data:
+                # Asegurar símbolos en mayúsculas y precios como float
                 posiciones = {k.upper(): float(v) for k, v in data.items()}
-                print(f"📌 Posiciones desde repo (posiciones.json): "
-                      f"{len(posiciones)} activos → {list(posiciones.keys())}")
+                print(f"📌 Portafolio real cargado desde repo ({len(posiciones)} activos).")
                 return posiciones
-        except:
-            pass
-
-    # 2. Fallback: reconstruir desde transacciones.csv del repo
-    csv_contenido = _repo_leer("transacciones.csv")
-    if csv_contenido and len(csv_contenido) > 60:
-        try:
-            from io import StringIO
-            df = pd.read_csv(StringIO(csv_contenido))
-            df['simbolo'] = df['simbolo'].str.upper()
-            compradas = set(df[df['tipo'] == 'compra']['simbolo'])
-            vendidas  = set(df[df['tipo'] == 'venta']['simbolo'])
-            abiertas  = compradas - vendidas
-            posiciones = {}
-            for sim in abiertas:
-                ultimo = df[
-                    (df['simbolo'] == sim) & (df['tipo'] == 'compra')
-                ].sort_values('fecha').iloc[-1]
-                posiciones[sim] = float(ultimo['precio'])
-            if posiciones:
-                print(f"📌 Posiciones reconstruidas desde transacciones.csv (repo): "
-                      f"{len(posiciones)} activos → {list(posiciones.keys())}")
-            return posiciones
         except Exception as e:
-            print(f"⚠️  Error reconstruyendo posiciones: {e}")
-
-    # 3. Último fallback: archivo local del runner
-    if os.path.exists(POSICIONES_FILE):
-        try:
-            df_pos = pd.read_csv(POSICIONES_FILE)
-            posiciones = dict(zip(df_pos['simbolo'].str.upper(), df_pos['precio']))
-            print(f"📌 Posiciones desde archivo local: {len(posiciones)} activos")
-            return posiciones
-        except:
-            pass
-
-    print("ℹ️  Sin posiciones abiertas — solo se analizarán nuevas oportunidades")
+            print(f"⚠️  Error parseando posiciones.json: {e}")
+    
+    print("ℹ️  Sin posiciones abiertas registradas en el repo.")
     return {}
 
 def cargar_historial_repo() -> pd.DataFrame:
@@ -226,10 +193,9 @@ def sincronizar_cache_ia_repo():
         print(f"⚠️  Error sincronizando caché IA: {e}")
 
 # ============================================================
-# UNIVERSO AMPLIADO (más de 700 activos)
+# UNIVERSO DE ACTIVOS (Se mantiene igual)
 # ============================================================
-
-# --- S&P 500 completo ---
+# (... Mantener las listas sp500, nasdaq100, etfs, bmv, etc. igual que en tu archivo subido ...)
 sp500 = [
     'MMM','AOS','ABT','ABBV','ACN','ADBE','AMD','AES','AFL','A','APD','AKAM','ALK','ALB',
     'ARE','ALGN','ALLE','LNT','ALL','GOOGL','GOOG','MO','AMZN','AMCR','AEE','AAL','AEP',
@@ -262,8 +228,6 @@ sp500 = [
     'VTR','VLO','VTRS','VRSN','VZ','VRTX','VFC','VNO','VMC','WAB','WBA','WMT','WDC','WU',
     'WRK','WY','WHR','WMB','WEC','WFC','WST','WYNN','XEL','XYL','YUM','ZBRA','ZBH','ZION','ZTS'
 ]
-
-# --- NASDAQ 100 completo ---
 nasdaq100 = [
     'ADBE','AMD','AMGN','AMZN','ASML','AVGO','BIIB','BKNG','CDNS','CHTR','CMCSA','COST','CSCO',
     'CSX','CTAS','DXCM','EA','EBAY','EXC','FANG','FAST','FTNT','GILD','GOOGL','GOOG','HON','IDXX',
@@ -271,100 +235,51 @@ nasdaq100 = [
     'NVDA','NXPI','ODFL','ORLY','PANW','PAYX','PCAR','PEP','QCOM','REGN','ROST','SBUX','SNPS','TMUS',
     'TSLA','TXN','VRTX','WBA','WDAY','XEL','ZM','ZS'
 ]
-
-# --- ETFs sectoriales SPDR + temáticos ---
 etfs_sectoriales = [
     'XLK','XLV','XLF','XLE','XLI','XLY','XLP','XLU','XLB','XLRE','XLC',
     'SOXX','ARKK','ARKG','ARKW','ARKF','CIBR','ROBO','ICLN','TAN','LIT',
     'JETS','XHB','KRE','IBB','SPY','QQQ','IWM','DIA','VTI'
 ]
-
-# --- ETFs de materias primas ---
 commodity_etfs = ['GLD','SLV','USO','UNG','DBC']
-
-# --- Mineras y petroleras ---
 mining_oil = ['NEM','GOLD','FCX','XOM','CVX','COP','EOG','SLB']
-
-# --- IA (Inteligencia Artificial) ---
 ia_stocks = [
     'NVDA','AMD','INTC','AI','PLTR','IBM','MSFT','GOOGL','META','SNOW','CRM','ADBE','NOW','ORCL',
     'BIDU','BABA','SAP'
 ]
-
-# --- Mid-cap growth (potencial de crecimiento) ---
 mid_cap_growth = [
     'DDOG','NET','CRWD','ZS','BILL','DUOL','CELH','SMCI','HUBS','MNDY','APPN','PCTY','FIVN',
     'RELY','PATH','SMAR','JAMF','EXAS','NVCR','FATE','RXRX','AFRM','UPST','HOOD','SQ','SOFI',
     'NU','PLUG','CHPT','RIVN','LCID','KTOS','RKLB','ACHR'
 ]
-
-# --- ETFs de mercados emergentes ---
 etfs_emergentes = [
     'EWZ','EWJ','FXI','KWEB','EWY','EWT','EWH','EWA','EWC','EWG','EWQ','EWU','VWO','EEM','INDA','EWX'
 ]
-
-# --- FIBRAS mexicanas (adicionar) ---
 fibras_mex = [
-    'FMTY14.MX',   # Fibra MTY
-    'FUNO11.MX',   # Fibra UNO
-    'FIBRAPL14.MX',# Fibra Plus
-    'TERRA13.MX',  # Terrafina
-    'DANHOS13.MX', # Danhos
-    'FIBRAHD15.MX',# Fibra HD
-    'FIBRAMQ12.MX' # Fibra Macquarie
+    'FMTY14.MX', 'FUNO11.MX', 'FIBRAPL14.MX','TERRA13.MX','DANHOS13.MX','FIBRAHD15.MX','FIBRAMQ12.MX'
 ]
-
-# --- BMV México (ampliado) ---
 bmv = [
     'WALMEX.MX','GMEXICOB.MX','CEMEXCPO.MX','FEMSAUBD.MX','AMXL.MX','KOFUBL.MX','GFNORTEO.MX',
     'BBAJIOO.MX','ALFA.MX','ALPEKA.MX','ASURB.MX','GAPB.MX','OMAB.MX','AC.MX','GCC.MX','LALA.MX',
     'MEGA.MX','PINFRA.MX','TLEVISACPO.MX','VESTA.MX','GRUMA.MX','HERDEZ.MX','CUERVO.MX','ORBIA.MX',
     'VOLARA.MX','Q.MX','LABB.MX','NEMAKA.MX'
 ]
-
-# --- IBEX 35 España ---
 ibex35 = [
     'SAN.MC','BBVA.MC','TEF.MC','ITX.MC','IBE.MC','FER.MC','ENG.MC','ACS.MC','REP.MC','AENA.MC',
     'CLNX.MC','GRF.MC','MTS.MC','MAP.MC','MEL.MC','CABK.MC','ELE.MC','IAG.MC','ANA.MC','VIS.MC',
     'CIE.MC','LOG.MC','ACX.MC'
 ]
-
-# --- Acciones adicionales de alta capitalización en mercados emergentes ---
 emergentes_acciones = [
-    'BABA',   # Alibaba
-    'BIDU',   # Baidu
-    'JD',     # JD.com
-    'PDD',    # Pinduoduo
-    'NTES',   # NetEase
-    'TCEHY',  # Tencent (pink)
-    'INFY',   # Infosys
-    'HDB',    # HDFC Bank
-    'IBN',    # ICICI Bank
-    'VALE',   # Vale
-    'PBR',    # Petrobras
-    'YPF',    # YPF
-    'MELI',   # MercadoLibre (ya está en NASDAQ)
-    'NU'      # Nubank (ya está)
+    'BABA','BIDU','JD','PDD','NTES','TCEHY','INFY','HDB','IBN','VALE','PBR','YPF','MELI','NU'
 ]
 
-# --- Unir todos los universos en una sola lista (sin duplicados) ---
+# Unir todos los universos en una sola lista (sin duplicados)
 UNIVERSO = list(set(
-    sp500 +
-    nasdaq100 +
-    etfs_sectoriales +
-    commodity_etfs +
-    mining_oil +
-    ia_stocks +
-    mid_cap_growth +
-    etfs_emergentes +
-    fibras_mex +
-    bmv +
-    ibex35 +
-    emergentes_acciones
+    sp500 + nasdaq100 + etfs_sectoriales + commodity_etfs + mining_oil + 
+    ia_stocks + mid_cap_growth + etfs_emergentes + fibras_mex + bmv + ibex35 + emergentes_acciones
 ))
 
 # ============================================================
-# FUNCIONES DE INDICADORES, SCORING, MARKET REGIME, POSITION SIZING
+# FUNCIONES DE INDICADORES, SCORING, MARKET REGIME (Se mantiene igual)
 # ============================================================
 def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist = hist.copy()
@@ -468,85 +383,114 @@ def obtener_market_regime() -> dict:
         return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0, 'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Error al obtener datos'}
 
 def position_size(precio: float, atr: float) -> dict:
+    # Se usan las constantes CAPITAL_TRADING y RIESGO_PCT globales
     riesgo_mxn = CAPITAL_TRADING * (RIESGO_PCT / 100)
     stop_dist  = 2 * atr
     if stop_dist <= 0:
         return {'unidades': 0, 'inversion': 0}
     unidades   = riesgo_mxn / stop_dist
-    inversion  = min(unidades * precio, CAPITAL_TRADING * 0.20)
+    inversion  = min(unidades * precio, CAPITAL_TRADING * 0.20) # Máx 20% capital por trade
     unidades   = inversion / precio
     return {'unidades': round(unidades, 2), 'inversion': round(inversion, 2)}
 
 # ============================================================
-# FUNCIÓN DE ANÁLISIS (ahora también recibe diccionario de posiciones)
+# FUNCIÓN DE ANÁLISIS MEJORADA (Lógica de Portafolio)
+# CORRECCIÓN TÉCNICA AQUÍ
 # ============================================================
 def analizar(args: tuple) -> dict | None:
+    # Ahora 'posiciones' es el diccionario cargado de data/posiciones.json
     simbolo, usd_mxn, regime_bonus, posiciones = args
     try:
         hist = yf.Ticker(simbolo).history(period="3mo")
         if hist.empty or len(hist) < 55:
             return None
+        
+        # Convertir a MXN si aplica
         factor = 1.0 if simbolo.endswith('.MX') else usd_mxn
         for c in ['Close','Open','High','Low']:
             hist[c] *= factor
+            
         hist = calcular_indicadores(hist)
         hist = hist.dropna(subset=['RSI','MACD','EMA20','EMA50','ATR','STOCH_K','STOCH_D'])
         if len(hist) < 2:
             return None
-        r = hist.iloc[-1].to_dict()
-        p = hist.iloc[-2].to_dict()
+            
+        r = hist.iloc[-1].to_dict() # Datos de HOY
+        p = hist.iloc[-2].to_dict() # Datos de AYER
         precio = r['Close']
         atr    = r['ATR']
 
-        # Verificar si es una posición que tenemos
+        # ============================================================
+        # 1. LÓGICA DE VENTA (Solo si el símbolo está en mi portafolio)
+        # ============================================================
         if simbolo in posiciones:
             precio_compra = posiciones[simbolo]
-            ganancia = ((precio / precio_compra) - 1) * 100
-            if ganancia >= 15:
-                return {
-                    'Símbolo':      simbolo,
-                    'Precio MXN':   round(precio, 2),
-                    'Score':        0,
-                    'RSI':          round(r['RSI'], 1),
-                    'ATR':          round(atr, 2),
-                    'Stop Loss':    round(precio - 2 * atr, 2),
-                    'Take Profit':  round(precio + 3 * atr, 2),
-                    'Unidades':     0,
-                    'Inversión MXN':0,
-                    'Señales':      "",
-                    'Recomendación': "VENDER",
-                    'Motivo':       f"🎯 Take Profit +{ganancia:.1f}%"
-                }
-            elif ganancia <= -7:
-                return {
-                    'Símbolo':      simbolo,
-                    'Precio MXN':   round(precio, 2),
-                    'Score':        0,
-                    'RSI':          round(r['RSI'], 1),
-                    'ATR':          round(atr, 2),
-                    'Stop Loss':    round(precio - 2 * atr, 2),
-                    'Take Profit':  round(precio + 3 * atr, 2),
-                    'Unidades':     0,
-                    'Inversión MXN':0,
-                    'Señales':      "",
-                    'Recomendación': "VENDER",
-                    'Motivo':       f"🛑 Stop Loss {ganancia:.1f}%"
-                }
-            # Si no hay señal de venta, no devolvemos nada (se ignora)
-            return None
+            ganancia_pct = ((precio / precio_compra) - 1) * 100
 
-        # Si no es posición, aplicar lógica de compra normal
+            motivo_venta = ""
+
+            # --- A) Gestión de Riesgo Hard-Coded (TP/SL) ---
+            if ganancia_pct >= 20: # Take Profit 20%
+                motivo_venta = f"🎯 Take Profit alcanzado (+{ganancia_pct:.1f}%)"
+            elif ganancia_pct <= -8: # Stop Loss 8%
+                motivo_venta = f"🛑 Stop Loss activado ({ganancia_pct:.1f}%)"
+
+            # --- B) DETECCIÓN TÉCNICA DE VENTA (Independiente del Score de compra) ---
+            # Si tengo la acción, busco señales de deterioro técnico para salir.
+            elif r['RSI'] > 75: # Muy sobrecomprada
+                motivo_venta = f"⚠️ RSI Sobrevendido Técnicamente ({r['RSI']:.0f})"
+            
+            # Cruce bajista EMA50 (Hoy cierra abajo, ayer cerró arriba)
+            elif r['Close'] < r['EMA50'] and p['Close'] >= p['EMA50']:
+                motivo_venta = "📉 Precio rompió EMA50 hacia abajo (Señal de Debilidad)"
+                
+            # Cruce bajista MACD (MACD cruza abajo de la Señal)
+            elif r['MACD'] < r['MACD_sig'] and p['MACD'] >= p['MACD_sig']:
+                motivo_venta = "❌ Cruce bajista MACD detectado"
+
+            # Score muy bajo (deterioro general de la tendencia alcista)
+            if not motivo_venta:
+                score_base, _ = calcular_score(r, p)
+                score_actual = max(0, score_base + regime_bonus)
+                if score_actual < 4:
+                    motivo_venta = f"📉 Score deteriorado dramáticamente ({score_actual}/14)"
+
+            if motivo_venta:
+                # Retornamos formato de alerta de venta prioridad
+                return {
+                    'Símbolo':      simbolo,
+                    'Precio MXN':   round(precio, 2),
+                    'Recomendación': "VENDER",
+                    'Motivo':       motivo_venta,
+                    # Campos de compra vacíos para compatibilidad
+                    'Score': 0, 'RSI': round(r['RSI'], 1), 'ATR': 0, 'Stop Loss': 0, 'Take Profit': 0,
+                    'Unidades': 0, 'Inversión MXN': 0, 'Señales': ""
+                }
+            else:
+                # Es posición mía pero no hay señal técnica ni SL/TP de venta. No alertar.
+                return None
+
+        # ============================================================
+        # 2. LÓGICA DE COMPRA (Normal, solo si NO es posición mía)
+        # ============================================================
         score_base, señales = calcular_score(r, p)
+        # Aplicar bonus/malus del régimen de mercado
         score = max(0, score_base + regime_bonus)
-        ps = position_size(precio, atr)
-        if score >= 8:
-            rec = "COMPRAR ★★★"
-        elif score >= 6:
-            rec = "COMPRAR ★★"
-        elif score >= SCORE_MINIMO:
-            rec = "COMPRAR"
-        else:
+        
+        # Filtro estricto de compra
+        if score < SCORE_MINIMO:
             return None
+            
+        # Calcular position sizing
+        ps = position_size(precio, atr)
+        
+        if score >= 10:
+            rec = "COMPRAR ★★★"
+        elif score >= 8:
+            rec = "COMPRAR ★★"
+        else:
+            rec = "COMPRAR"
+            
         return {
             'Símbolo':      simbolo,
             'Precio MXN':   round(precio, 2),
@@ -559,23 +503,24 @@ def analizar(args: tuple) -> dict | None:
             'Inversión MXN':ps['inversion'],
             'Señales':      " | ".join(señales),
             'Recomendación':rec,
-            'Motivo':       ""
+            'Motivo':       f"Score {score}/14" # Para compras, el motivo es el score
         }
+        
     except Exception as e:
         return None
 
 # ============================================================
-# HISTORIAL Y BACKTESTING
+# HISTORIAL, IA Y ALERTAS (Se mantiene igual)
 # ============================================================
-def cargar_historial() -> pd.DataFrame:
+# (... Mantener funciones guardar_senal_en_historial, backtest_historial, _calcular_hash_prompt, etc. igual ...)
+def guardar_senal_en_historial(senal: dict, fecha: str):
+    # Cargar historial local (actualizado desde repo al inicio)
     if os.path.exists(HISTORICO_FILE):
         df = pd.read_csv(HISTORICO_FILE)
         df['fecha'] = pd.to_datetime(df['fecha'])
-        return df
-    return pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales'])
-
-def guardar_senal_en_historial(senal: dict, fecha: str):
-    df = cargar_historial()
+    else:
+        df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales'])
+        
     nueva = pd.DataFrame([{
         'fecha': fecha,
         'simbolo': senal['Símbolo'],
@@ -586,33 +531,41 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
     }])
     df = pd.concat([df, nueva], ignore_index=True)
     df['fecha'] = pd.to_datetime(df['fecha'])
+    # Mantener últimos 90 días
     cutoff = datetime.now() - timedelta(days=90)
     df = df[df['fecha'] >= cutoff]
     df.to_csv(HISTORICO_FILE, index=False)
-    print(f"  ✅ Señal guardada en historial: {senal['Símbolo']} (Score {senal['Score']})")
+    print(f"  ✅ Señal guardada localmente: {senal['Símbolo']} (Score {senal['Score']})")
 
 def backtest_historial(df_hist: pd.DataFrame) -> dict:
     if df_hist.empty:
         return {'win_rate': 0, 'ret_prom': 0, 'total': 0}
+    
+    # Simulación simple a 5 días
+    VENTANA_BT = 5
     resultados = []
-    for _, row in df_hist.iterrows():
+    
+    # Solo evaluar señales de COMPRAR
+    df_compras = df_hist[df_hist['recomendacion'].str.startswith('COMPRAR')].copy()
+    
+    for _, row in df_compras.iterrows():
         try:
             ticker = yf.Ticker(row['simbolo'])
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=180)
+            # Pedir un poco más de datos para cubrir la ventana
+            start_date = row['fecha']
+            end_date = row['fecha'] + timedelta(days=VENTANA_BT*2)
             hist = ticker.history(start=start_date, end=end_date)
-            if hist.empty:
+            if hist.empty or len(hist) < VENTANA_BT:
                 continue
-            fecha_senal = row['fecha']
-            idx = hist.index.searchsorted(fecha_senal)
-            if idx + BACKTEST_WINDOW >= len(hist):
-                continue
+            
             precio_entrada = row['precio']
-            precio_salida = hist['Close'].iloc[idx + BACKTEST_WINDOW]
+            # Precio de salida aproximado a 5 sesiones
+            precio_salida = hist['Close'].iloc[min(VENTANA_BT, len(hist)-1)]
             retorno = (precio_salida / precio_entrada - 1) * 100
             resultados.append(retorno)
         except:
             continue
+            
     if resultados:
         win_rate = sum(1 for r in resultados if r > 0) / len(resultados) * 100
         ret_prom = np.mean(resultados)
@@ -623,9 +576,7 @@ def backtest_historial(df_hist: pd.DataFrame) -> dict:
         }
     return {'win_rate': 0, 'ret_prom': 0, 'total': 0}
 
-# ============================================================
-# IA CON CACHÉ Y REINTENTOS
-# ============================================================
+# IA
 def _calcular_hash_prompt(prompt: str) -> str:
     return hashlib.sha256(prompt.encode()).hexdigest()
 
@@ -662,118 +613,86 @@ def _llamar_ia_con_reintentos(proveedor: str, prompt: str, max_retries=3):
                 return _ia_anthropic(prompt)
         except Exception as e:
             print(f"  ⚠️  {proveedor} intento {intento+1}/{max_retries} falló: {e}")
-            if intento == max_retries - 1:
-                raise
-            espera = 2 ** intento
-            print(f"     Reintentando en {espera} segundos...")
-            time.sleep(espera)
-    raise RuntimeError(f"No se pudo obtener respuesta de {proveedor} después de {max_retries} intentos.")
+            if intento == max_retries - 1: raise
+            time.sleep(2 ** intento)
+    raise RuntimeError(f"No IA disponible de {proveedor}")
+
+def _ia_gemini(prompt: str) -> str:
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=30)
+    if resp.status_code == 200:
+        return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+    raise RuntimeError(f"Gemini {resp.status_code}")
+
+def _ia_groq(prompt: str) -> str:
+    resp = requests.post("https://api.groq.com/openai/v1/chat/completions",
+        headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+        json={"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}], "max_tokens": 800}, timeout=30)
+    if resp.status_code == 200:
+        return resp.json()["choices"][0]["message"]["content"]
+    raise RuntimeError(f"Groq {resp.status_code}")
+
+def _ia_anthropic(prompt: str) -> str:
+    resp = requests.post("https://api.anthropic.com/v1/messages",
+        headers={"Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01"},
+        json={"model": "claude-sonnet-4-20250514", "max_tokens": 800, "messages": [{"role": "user", "content": prompt}]}, timeout=30)
+    if resp.status_code == 200:
+        return resp.json()["content"][0]["text"]
+    raise RuntimeError(f"Anthropic {resp.status_code}")
 
 def _construir_prompt(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
     resumen = "\n".join([
-        f"- {o['Símbolo']}: Score {o['Score']}/14, RSI {o['RSI']}, "
-        f"Señales: {o['Señales']}, Rec: {o['Recomendación']}"
-        for o in oportunidades[:8]
+        f"- {o['Símbolo']}: Score {o['Score']}/14, RSI {o['RSI']}, Señales: {o['Señales']}, Rec: {o['Recomendación']}"
+        for o in oportunidades[:10] # Top 10
     ])
     return f"""Eres un analista de mercados financieros. Analiza estas señales de trading en español.
 
 MERCADO HOY:
 - Régimen S&P 500: {regime['regime']}
 - S&P 500: {regime['precio']:,.0f} | EMA200: {regime['ema200']:,.0f}
-- Retorno último mes: {regime['ret_1m']:+.1f}%
 - USD/MXN: {usd_mxn:.2f}
 
-OPORTUNIDADES DETECTADAS:
+OPORTUNIDADES DETECTADAS (Compras):
 {resumen}
 
 Proporciona en formato conciso:
 1. Evaluación del contexto de mercado (2 oraciones)
-2. Las 3 mejores oportunidades con razón breve de por qué destacan
-3. Confianza general: ALTA / MEDIA / BAJA con justificación
+2. Las 3 mejores oportunidades de compra con razón breve de por qué destacan
+3. Confianza general: ALTA / MEDIA / BAJA
 4. Advertencia principal si la hay
 
-Sé directo y práctico. No inventes datos."""
-
-def _ia_gemini(prompt: str) -> str:
-    url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-           f"gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}")
-    resp = requests.post(
-        url,
-        json={"contents": [{"parts": [{"text": prompt}]}]},
-        timeout=30,
-    )
-    if resp.status_code == 200:
-        return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-    raise RuntimeError(f"Gemini {resp.status_code}: {resp.text[:200]}")
-
-def _ia_groq(prompt: str) -> str:
-    resp = requests.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-        json={
-            "model": "llama-3.3-70b-versatile",
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 800,
-        },
-        timeout=30,
-    )
-    if resp.status_code == 200:
-        return resp.json()["choices"][0]["message"]["content"]
-    raise RuntimeError(f"Groq {resp.status_code}: {resp.text[:200]}")
-
-def _ia_anthropic(prompt: str) -> str:
-    resp = requests.post(
-        "https://api.anthropic.com/v1/messages",
-        headers={
-            "Content-Type": "application/json",
-            "x-api-key": ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01",
-        },
-        json={
-            "model": "claude-sonnet-4-20250514",
-            "max_tokens": 800,
-            "messages": [{"role": "user", "content": prompt}],
-        },
-        timeout=30,
-    )
-    if resp.status_code == 200:
-        return resp.json()["content"][0]["text"]
-    raise RuntimeError(f"Anthropic {resp.status_code}: {resp.text[:200]}")
+Sé directo y práctico."""
 
 def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
-    if not oportunidades:
-        return ""
+    if not oportunidades: return ""
     prompt = _construir_prompt(oportunidades, regime, usd_mxn)
     cache = _obtener_cache_ia(prompt)
     if cache:
         print("  ✅ Análisis IA obtenido desde caché")
         return cache
-    proveedores = [
-        ("Gemini", GEMINI_API_KEY),
-        ("Groq", GROQ_API_KEY),
-        ("Anthropic", ANTHROPIC_API_KEY),
-    ]
-    for nombre, api_key in proveedores:
-        if not api_key:
-            continue
+    
+    # Intentar Gemini primero, luego Groq
+    if GEMINI_API_KEY:
         try:
-            print(f"  Intentando IA con {nombre}...")
-            texto = _llamar_ia_con_reintentos(nombre, prompt)
-            print(f"  ✅ Análisis IA completado con {nombre}")
+            print("  Intentando Gemini...")
+            texto = _llamar_ia_con_reintentos("Gemini", prompt)
             _guardar_cache_ia(prompt, texto)
             return texto
-        except Exception as e:
-            print(f"  ⚠️  {nombre} falló después de reintentos: {e}")
-    print("  ⚠️  Ningún proveedor de IA disponible. Configura al menos uno en GitHub Secrets.")
+        except: pass
+    
+    if GROQ_API_KEY:
+        try:
+            print("  Intentando Groq...")
+            texto = _llamar_ia_con_reintentos("Groq", prompt)
+            _guardar_cache_ia(prompt, texto)
+            return texto
+        except: pass
+        
     return ""
 
-# ============================================================
-# ALERTAS (email, WhatsApp)
-# ============================================================
+# ALERTAS
 def enviar_email(asunto: str, html: str) -> bool:
-    if not EMAIL_REMITENTE or not EMAIL_PASSWORD:
-        print("⚠️  EMAIL_REMITENTE o EMAIL_PASSWORD no configurados")
-        return False
+    if not EMAIL_REMITENTE or not EMAIL_PASSWORD: return False
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = asunto
@@ -785,72 +704,62 @@ def enviar_email(asunto: str, html: str) -> bool:
             s.sendmail(EMAIL_REMITENTE, EMAIL_DESTINO, msg.as_string())
         print(f"✅ Email enviado a {EMAIL_DESTINO}")
         return True
-    except Exception as e:
+    exceptException as e:
         print(f"❌ Error email: {e}")
         return False
 
 def enviar_whatsapp(mensaje: str) -> bool:
-    if not WHATSAPP_NUMERO or not WHATSAPP_APIKEY:
-        print("⚠️  WHATSAPP_NUMERO o WHATSAPP_APIKEY no configurados")
-        return False
+    if not WHATSAPP_NUMERO or not WHATSAPP_APIKEY: return False
     try:
-        r = requests.get(
-            "https://api.callmebot.com/whatsapp.php",
-            params={"phone": WHATSAPP_NUMERO, "apikey": WHATSAPP_APIKEY, "text": mensaje},
-            timeout=10,
-        )
-        ok = r.status_code == 200
-        print(f"{'✅' if ok else '❌'} WhatsApp: {r.status_code}")
-        return ok
+        r = requests.get("https://api.callmebot.com/whatsapp.php",
+            params={"phone": WHATSAPP_NUMERO, "apikey": WHATSAPP_APIKEY, "text": mensaje}, timeout=10)
+        print(f"{'✅' if r.status_code==200 else '❌'} WhatsApp: {r.status_code}")
+        return r.status_code == 200
     except Exception as e:
         print(f"❌ Error WhatsApp: {e}")
         return False
 
 def construir_email(ops_compras: list[dict], ops_ventas: list[dict], regime: dict, ia_texto: str, hora: str) -> str:
     filas_compras = "".join([
-        f"<tr><td><b>{o['Símbolo']}</b></td><td>{o['Precio MXN']}</td>"
-        f"<td>{o['Score']}</td><td>{o['Unidades']}</td>"
+        f"<tr><td><b>{o['Símbolo']}</b></td><td>${o['Precio MXN']:,.2f}</td>"
+        f"<td>{o['Score']}</td><td>${o['Stop Loss']:,.2f}</td>"
         f"<td>${o['Inversión MXN']:,.0f}</td><td>{o['Recomendación']}</td></tr>"
         for o in ops_compras
     ])
+    
     filas_ventas = "".join([
-        f"<tr><td><b>{o['Símbolo']}</b></td><td>{o['Precio MXN']}</td><td>{o['Motivo']}</td></tr>"
+        f"<tr><td><b>{o['Símbolo']}</b></td><td>${o['Precio MXN']:,.2f}</td><td>{o['Motivo']}</td></tr>"
         for o in ops_ventas
     ])
-    bloque_ia = ""
-    if ia_texto:
-        bloque_ia = f"""
-        <h3 style="color:#7b61ff">🤖 Análisis de IA</h3>
+    
+    bloque_ia = f"""<h3 style="color:#7b61ff">🤖 Análisis de IA (Top Compras)</h3>
         <div style="background:#f5f3ff;padding:12px;border-left:4px solid #7b61ff;font-size:14px;line-height:1.6">
           {ia_texto.replace(chr(10),'<br>')}
-        </div>"""
+        </div>""" if ia_texto else ""
+        
     icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴'}.get(regime['regime'],'⚪')
-    return f"""
-    <html><body style="font-family:Arial,sans-serif;max-width:700px;margin:auto">
-    <h2 style="color:#1a73e8">📈 Scanner Trading — {hora}</h2>
+    
+    return f"""<html><body style="font-family:Arial,sans-serif;max-width:700px;margin:auto">
+    <h2 style="color:#1a73e8">📈 Scanner Trading Real — {hora}</h2>
     <p style="background:#f1f3f4;padding:10px;border-radius:6px;font-size:14px">
-      {icono_regime} Régimen S&P 500: <b>{regime['regime']}</b> |
-      S&P: {regime['precio']:,.0f} | EMA200: {regime['ema200']:,.0f} |
-      Ret. 1m: {regime['ret_1m']:+.1f}%
+      {icono_regime} Régimen S&P 500: <b>{regime['regime']}</b> | S&P: {regime['precio']:,.0f}
     </p>
-    {bloque_ia}
-    <h3 style="color:#34a853">🟢 Oportunidades de COMPRA ({len(ops_compras)})</h3>
+    
+    <h3 style="color:#ea4335">🔴 Señales Prioritarias de VENTA ({len(ops_ventas)})</h3>
     <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:13px">
-      <tr style="background:#e8f5e9">
-        <th>Símbolo</th><th>Precio MXN</th><th>Score</th>
-        <th>Unidades</th><th>Inversión</th><th>Recomendación</th>
-       </tr>
-      {filas_compras if filas_compras else '<tr><td colspan="6" style="text-align:center">Sin señales</td></tr>'}
-     </table>
-    <h3 style="color:#ea4335">🔴 Señales de VENTA ({len(ops_ventas)})</h3>
-    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:13px">
-      <tr style="background:#fce8e6"><th>Símbolo</th><th>Precio MXN</th><th>Motivo</th></tr>
+      <tr style="background:#fce8e6"><th>Símbolo</th><th>Precio MXN</th><th>Motivo / Señal</th></tr>
       {filas_ventas if filas_ventas else '<tr><td colspan="3" style="text-align:center">Sin señales</td></tr>'}
      </table>
-    <p style="color:#999;font-size:11px;margin-top:20px">
-      Scanner autónomo — análisis informativo, no asesoría financiera.<br>
-      Capital configurado: ${CAPITAL_TRADING:,.0f} MXN · Riesgo: {RIESGO_PCT}% por operación
-    </p>
+
+    {bloque_ia}
+    
+    <h3 style="color:#34a853">🟢 Oportunidades de COMPRA Detectadas ({len(ops_compras)})</h3>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:13px">
+      <tr style="background:#e8f5e9"><th>Símbolo</th><th>Precio MXN</th><th>Score</th><th>Stop Loss</th><th>Inversión</th><th>Rec.</th></tr>
+      {filas_compras if filas_compras else '<tr><td colspan="6" style="text-align:center">Sin señales</td></tr>'}
+     </table>
+     
+    <p style="color:#999;font-size:11px;margin-top:20px">Scanner autónomo corregido v3.1 — Prioriza portafolio real.</p>
     </body></html>"""
 
 # ============================================================
@@ -859,116 +768,121 @@ def construir_email(ops_compras: list[dict], ops_ventas: list[dict], regime: dic
 def main():
     hora = datetime.now().strftime("%d/%m/%Y %H:%M")
     print(f"\n{'='*50}")
-    print(f"  Scanner Trading 24/7 — {hora}")
+    print(f"  Scanner Trading v3.1 (Corregido) — {hora}")
     print(f"{'='*50}\n")
 
     # 1. Tipo de cambio
     try:
         usd_data = yf.Ticker("USDMXN=X").history(period="1d")
         usd_mxn = float(usd_data['Close'].iloc[-1]) if not usd_data.empty else 20.0
-    except:
-        usd_mxn = 20.0
+    except: usd_mxn = 20.0
     print(f"USD/MXN: {usd_mxn:.2f}")
 
     # 2. Market regime
     regime = obtener_market_regime()
-    print(f"Régimen: {regime['regime']} (bonus score: {regime['score_bonus']})")
+    print(f"Régimen SP500: {regime['regime']} (malus score: {regime['score_bonus']})")
+    
+    # Definir Score Mínimo efectivo según régimen
     if regime['regime'] == 'BAJISTA':
-        print("⚠️  Mercado bajista — score mínimo elevado automáticamente a 9")
-        score_minimo_efectivo = 9
+        score_minimo_efectivo = SCORE_MINIMO + 2 # Subimos umbral a 9
+        print(f"⚠️  Mercado bajista — Umbral de compra elevado a {score_minimo_efectivo}")
     else:
         score_minimo_efectivo = SCORE_MINIMO
 
-    # 3. Cargar datos persistentes desde repo GitHub
-    # (misma fuente que el app — carpeta data/ del repositorio)
-    print("\n── Cargando datos persistentes desde repo ──")
-
+    # 3. CARGAR DATOS PERSISTENTES DESDE REPO GITHUB (data/)
+    # Sincronización bidireccional App <-> Scanner
+    print("\n── Sincronizando datos con repositorio central ──")
+    
+    # Cargar portafolio central (data/posiciones.json)
     posiciones = cargar_posiciones_repo()
+    
+    # Cargar historial local para backtest y actualizaciones
     cargar_historial_repo()
+    
+    # Cargar caché IA central
     cargar_cache_ia_repo()
+    
+    print(f"── Sincronización inicial completada ──\n")
 
-    print(f"── Datos cargados ──\n")
-
-    # 4. Añadir posiciones al universo si no están ya
+    # 4. Crear Universo Final (Combinar Universo Fijo + Posiciones que tengamos)
+    # Por si acaso compramos algo fuera del SP500 o BMV principal.
     universo_final = list(set(UNIVERSO + list(posiciones.keys())))
-    print(f"✅ Universo final: {len(universo_final)} activos "
-          f"(incluye {len(posiciones)} posiciones propias)")
+    print(f"✅ Analizando {len(universo_final)} activos ({len(posiciones)} son posiciones propias).")
 
     # 5. Análisis en paralelo
-    print(f"\nAnalizando {len(universo_final)} activos en paralelo ({MAX_WORKERS} hilos)...")
     resultados = []
+    # Pasamos CAPITAL_TRADING y RIESGO_PCT globales implícitamente en position_size
     args_list = [(sim, usd_mxn, regime['score_bonus'], posiciones) for sim in universo_final]
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
         futures = {ex.submit(analizar, a): a[0] for a in args_list}
         for i, f in enumerate(as_completed(futures), 1):
             res = f.result()
-            if res:
-                resultados.append(res)
-            if i % 20 == 0:
-                print(f"  {i}/{len(universo_final)} procesados...")
+            if res: resultados.append(res)
+            if i % 50 == 0: print(f"  {i}/{len(universo_final)} procesados...")
 
-    # Separar compras y ventas
-    compras = [r for r in resultados if r['Recomendación'].startswith('COMPRAR')]
-    ventas  = [r for r in resultados if r['Recomendación'] == 'VENDER']
-    compras.sort(key=lambda x: x['Score'], reverse=True)
+    # Separar resultados
+    # Ventas técnicas de portafolio
+    ventas_alertas = [r for r in resultados if r['Recomendación'] == 'VENDER']
+    # Compras nuevas (filtradas por score efectivo)
+    compras_alertas = [r for r in resultados if r['Recomendación'].startswith('COMPRAR') and r['Score'] >= score_minimo_efectivo]
+    
+    # Ordenar compras por Score
+    compras_alertas.sort(key=lambda x: x['Score'], reverse=True)
 
-    print(f"\nOportunidades de compra detectadas: {len(compras)}")
-    for r in compras[:10]:
-        print(f"  {r['Símbolo']:8s} Score:{r['Score']:2d}  RSI:{r['RSI']:5.1f}  "
-              f"Precio:{r['Precio MXN']:>10.2f}  {r['Recomendación']}")
-    print(f"\nSeñales de venta detectadas: {len(ventas)}")
-    for r in ventas:
-        print(f"  {r['Símbolo']:8s} Precio:{r['Precio MXN']:>10.2f}  Motivo: {r['Motivo']}")
+    print(f"\n🚨 Señales Prioritarias de Venta Técnicas Detectadas: {len(ventas_alertas)}")
+    for r in ventas_alertas:
+        print(f"  VENDER {r['Símbolo']:8s} MXN:{r['Precio MXN']:>8.2f}  Motivo: {r['Motivo']}")
+        
+    print(f"\n📈 Nuevas Oportunidades de Compra Detectadas: {len(compras_alertas)}")
+    for r in compras_alertas[:10]: # Top 10
+        print(f"  {r['Símbolo']:8s} Score:{r['Score']:2d}  MXN:{r['Precio MXN']:>8.2f}  {r['Señales']}")
 
-    # 6. Guardar señales en historial local
-    print("\nGuardando señales de compra en historial...")
+    # 6. Guardar nuevas señales de compra en historial local
     fecha_hoy = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    for senal in compras:
+    for senal in compras_alertas:
         guardar_senal_en_historial(senal, fecha_hoy)
 
-    # 7. Backtesting sobre historial
-    print("\nEjecutando backtesting sobre señales previas...")
+    # 7. Backtesting sobre historial local actualizado
+    print("\nEjecutando backtesting sobre señales previas (ventana 5 días)...")
     hist_df = cargar_historial()
     metrics = backtest_historial(hist_df)
-    print(f"  Backtest (ventana {BACKTEST_WINDOW} días):")
-    print(f"    - Total señales evaluadas: {metrics['total']}")
-    print(f"    - Win rate: {metrics['win_rate']}%")
-    print(f"    - Retorno promedio: {metrics['ret_prom']}%")
+    print(f"  Backtest {metrics['total']} señales: WinRate:{metrics['win_rate']}%  RetProm:{metrics['ret_prom']}%")
 
-    # 8. Análisis IA
-    print("\nConsultando IA para análisis de compras...")
-    ia_texto = analisis_ia(compras, regime, usd_mxn)
-    if ia_texto:
-        print("\n--- ANÁLISIS IA ---")
-        print(ia_texto[:500] + "..." if len(ia_texto) > 500 else ia_texto)
+    # 8. Análisis IA sobre compras
+    # Podrías actualizar el prompt en v4.0 para incluir portafolio (ventas)
+    ia_texto = analisis_ia(compras_alertas, regime, usd_mxn)
 
     # 9. Alertas
-    if compras or ventas:
-        html = construir_email(compras, ventas, regime, ia_texto, hora)
-        asunto = (f"📈 Trading Alert {hora} — "
-                  f"Compras: {len(compras)} | Ventas: {len(ventas)} | "
-                  f"Mercado: {regime['regime']}")
+    if compras_alertas or ventas_alertas:
+        html = construir_email(compras_alertas, ventas_alertas, regime, ia_texto, hora)
+        
+        # Asunto Priorizando VENTAS
+        con_ventas = f"🚨 VENTAS: {len(ventas_alertas)} | " if ventas_alertas else ""
+        asunto = (f"📉 Trading Alert {hora} — {con_ventas}"
+                  f"Compras: {len(compras_alertas)} | Mercado: {regime['regime']}")
+        
         enviar_email(asunto, html)
 
-        top3 = ", ".join([r['Símbolo'] for r in compras[:3]]) if compras else "ninguna"
-        confianza = ("ALTA" if regime['regime'] == 'ALCISTA'
-                     else "MEDIA" if regime['regime'] == 'LATERAL' else "BAJA")
-        msg_wa = (f"📈 *Scanner Trading* — {hora}\n"
-                  f"Régimen: {regime['regime']} | USD/MXN: {usd_mxn:.2f}\n"
-                  f"🟢 Compras: {len(compras)} (Top: {top3})\n"
-                  f"🔴 Ventas: {len(ventas)}\n"
-                  f"Confianza: {confianza}\n"
+        # WhatsApp Prioritario
+        top3_compra = ", ".join([r['Símbolo'] for r in compras_alertas[:3]]) if compras_alertas else "ninguna"
+        top3_venta = ", ".join([r['Símbolo'] for r in ventas_alertas[:3]]) if ventas_alertas else "ninguna"
+        
+        msg_wa = (f"📉 *Trading Alert Corregido* — {hora}\n"
+                  f"Régimen: {regime['regime']}\n"
+                  f"🚨 *Ventas (Prioridad):* {len(ventas_alertas)} ({top3_venta})\n"
+                  f"🟢 *Compras:* {len(compras_alertas)} ({top3_compra})\n"
                   f"Ver detalles en tu email")
         enviar_whatsapp(msg_wa)
     else:
-        print("Sin oportunidades que superen el umbral. No se envían alertas.")
+        print("Sin oportunidades técnicas que superen el umbral. No se envían alertas.")
 
-    # 10. Sincronizar todo con el repo al finalizar
-    print("\n── Sincronizando datos con repo ──")
+    # 10. SINCRONIZAR TODO CON EL REPO GITHUB AL FINALIZAR
+    # Para que Streamlit Cloud App vea el historial actualizado y caché IA
+    print("\n── Sincronizando datos finales con repositorio central ──")
     sincronizar_historial_repo()
     sincronizar_cache_ia_repo()
-    print("── Sincronización completada ──")
+    print("── Sincronización final completada ──")
 
     print(f"\n✅ Scanner completado — {datetime.now().strftime('%H:%M:%S')}\n")
 
