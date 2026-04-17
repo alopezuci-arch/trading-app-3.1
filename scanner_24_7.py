@@ -738,12 +738,32 @@ def _ia_anthropic(prompt: str) -> str:
         return resp.json()["content"][0]["text"]
     raise RuntimeError(f"Anthropic {resp.status_code}")
 
-def _construir_prompt(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
-    resumen = "\n".join([
-        f"- {o['Símbolo']}: Score {o['Score']}/14, RSI {o['RSI']}, Señales: {o['Señales']}, Rec: {o['Recomendación']}"
-        for o in oportunidades[:10] # Top 10
-    ])
-    return f"""Eres un analista de mercados financieros. Analiza estas señales de trading en español.
+    def _construir_prompt(oportunidades: list[dict], regime: dict, usd_mxn: float, posiciones: dict) -> str:
+    # Convertimos el portafolio a un formato legible para la IA
+    portfolio_str = ""
+    if posiciones:
+        portfolio_str = "\\n".join([f"- {sym}: Comprado a {px}" for sym, px in posiciones.items()])
+    else:
+        portfolio_str = "Sin posiciones abiertas actualmente."
+
+    prompt = f"""
+    Eres un estratega de fondos de inversión cuantitativos. 
+    Contexto de Mercado: Régimen {regime['regime']} (VIX: {regime['vix']:.2f}, USD/MXN: {usd_mxn:.2f}).
+    
+    MI PORTAFOLIO ACTUAL:
+    {portfolio_str}
+    
+    NUEVAS OPORTUNIDADES DETECTADAS:
+    {json.dumps(oportunidades[:10], indent=2)}
+    
+    TAREA:
+    1. Analiza si las nuevas oportunidades complementan mi portafolio actual o si generan demasiado riesgo (por ejemplo, si ya tengo muchas acciones del mismo sector).
+    2. Si mi portafolio tiene acciones, dime si alguna de las NUEVAS es tan superior que justifica vender una posición actual para rotar el capital.
+    3. Dame un 'Plan de Acción' concreto para hoy.
+    
+    Responde de forma ejecutiva, breve y en español profesional.
+    """
+    return prompt
 
 MERCADO HOY:
 - Régimen S&P 500: {regime['regime']}
