@@ -884,17 +884,17 @@ def construir_email(ops_compras: list[dict], ops_ventas: list[dict], regime: dic
 # OBTENER NOTICIAS POR SI CAE LA ACCIÓN
 # ============================================================
 def obtener_noticias_recientes(ticker):
-    """Obtiene los titulares de noticias más recientes de una acción."""
+    """Obtiene titulares de noticias para darle contexto a la IA."""
     try:
         asset = yf.Ticker(ticker)
         news = asset.news
         if not news:
-            return "No se encontraron noticias recientes."
-        
-        titulares = [n['title'] for n in news[:5]]  # Tomamos las 5 más recientes
+            return "Sin noticias relevantes recientemente."
+        # Tomamos los 3 titulares más nuevos
+        titulares = [n['title'] for n in news[:3]]
         return " | ".join(titulares)
     except Exception as e:
-        return f"Error obteniendo noticias: {e}"
+        return f"No se pudieron cargar noticias: {e}"
 
 # ============================================================
 # MAIN
@@ -937,58 +937,67 @@ def main():
     # Sincronización bidireccional App <-> Scanner
     print("\n── Sincronizando datos con repositorio central ──")
     
-    # 4. ANALIZAR POSICIONES ACTUALES (VENTAS)
+   # ==========================================================
+    # 4. ANALIZAR POSICIONES ACTUALES (VENTAS CON NOTICIAS)
+    # ==========================================================
     posiciones = cargar_posiciones_repo()
     ventas_alertas = []
 
     if posiciones:
-        print(f"🔍 Evaluando {len(posiciones)} posiciones del portafolio...")
+        print(f"🔍 Evaluando {len(posiciones)} posiciones para posibles ventas...")
         for sim, precio_compra in posiciones.items():
             try:
-                hist = yf.download(sim, period="1mo", interval="1d", progress=False)
-                if hist.empty: continue
+                # Descargamos 3 meses para asegurar que el RSI tenga datos suficientes
+                hist = yf.download(sim, period="3mo", interval="1d", progress=False)
+                if hist.empty:
+                    print(f"⚠️ No se obtuvieron datos para {sim}")
+                    continue
                 
-                precio_actual = hist['Close'].iloc[-1]
-                variacion = (precio_actual / precio_compra) - 1
+                # Aseguramos que los precios sean tratados como números decimales (float)
+                precio_actual = float(hist['Close'].iloc[-1])
+                precio_compra_f = float(precio_compra)
                 
-                # Cálculo de RSI para la posición
+                # Cálculo de variación: 0.15 = 15%
+                variacion = (precio_actual / precio_compra_f) - 1
+                
+                # Cálculo de RSI (14 días)
                 delta = hist['Close'].diff()
                 gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
                 loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
                 rs = gain / loss
-                rsi = 100 - (100 / (1 + rs.iloc[-1]))
+                rsi_val = 100 - (100 / (1 + rs.iloc[-1]))
 
-                # LÓGICA DE ALERTA (Aquí es donde pegas el código que preguntaste)
-                # Alerta si: RSI > 70 (Sobrecompra), Baja -7% (Stop Loss) o Sube +15% (Take Profit)
-                # --- LÓGICA DE ALERTA TÉCNICA MÁS SENSIBLE ---
-                # RSI > 65 (Sobrecompra temprana)
-                # variacion <= -0.05 (Stop Loss al 5%)
-                # variacion >= 0.10 (Take Profit al 10%)
-                
+                # --- CONDICIÓN TÉCNICA CORREGIDA ---
+                # Se activa si: RSI > 65 OR caída > 5% (-0.05) OR ganancia > 10% (0.10)
                 if rsi_val > 65 or variacion <= -0.05 or variacion >= 0.10:
-                    print(f"⚠️ Alerta técnica detectada en {sim}. Buscando noticias...")
+                    print(f"⚠️ Alerta en {sim}: Retorno {variacion*100:+.2f}% | RSI: {rsi_val:.2f}")
                     
-                    # Ejecuta la búsqueda de noticias (esto alimentará a la IA)
+                    # Buscamos noticias para que la IA decida
                     noticias_contexto = obtener_noticias_recientes(sim)
                     
+                    # Definimos el motivo para el correo
+                    if variacion >= 0.10: 
+                        motivo = "Take Profit (Ganancia)"
+                    elif variacion <= -0.05: 
+                        motivo = "Stop Loss (Pérdida)"
+                    else: 
+                        motivo = "Sobrecompra Técnica (RSI)"
+
                     ventas_alertas.append({
                         'Símbolo': sim,
-                        'Precio Compra': precio_compra,
+                        'Precio Compra': precio_compra_f,
                         'Precio Actual': precio_actual,
                         'Retorno': f"{variacion*100:+.2f}%",
                         'RSI': round(rsi_val, 2),
                         'Noticias': noticias_contexto,
-                        'Motivo': "Sobrecompra" if rsi_val > 65 else "Umbral de Precio"
+                        'Motivo': motivo
                     })
             except Exception as e:
-                print(f"❌ Error evaluando {sim}: {e}")
-    
-    # Cargar historial local para backtest y actualizaciones
+                print(f"❌ Error analizando {sim}: {e}")
+
+    # Continuar con el resto del script...
     cargar_historial_repo()
-    
-    # Cargar caché IA central
     cargar_cache_ia_repo()
-    
     print(f"── Sincronización inicial completada ──\n")
 
     # 4. Crear Universo Final (Combinar Universo Fijo + Posiciones que tengamos)
