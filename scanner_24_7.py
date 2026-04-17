@@ -937,8 +937,44 @@ def main():
     # Sincronización bidireccional App <-> Scanner
     print("\n── Sincronizando datos con repositorio central ──")
     
-    # Cargar portafolio central (data/posiciones.json)
+    # 4. ANALIZAR POSICIONES ACTUALES (VENTAS)
     posiciones = cargar_posiciones_repo()
+    ventas_alertas = []
+
+    if posiciones:
+        print(f"🔍 Evaluando {len(posiciones)} posiciones del portafolio...")
+        for sim, precio_compra in posiciones.items():
+            try:
+                hist = yf.download(sim, period="1mo", interval="1d", progress=False)
+                if hist.empty: continue
+                
+                precio_actual = hist['Close'].iloc[-1]
+                variacion = (precio_actual / precio_compra) - 1
+                
+                # Cálculo de RSI para la posición
+                delta = hist['Close'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+                rs = gain / loss
+                rsi = 100 - (100 / (1 + rs.iloc[-1]))
+
+                # LÓGICA DE ALERTA (Aquí es donde pegas el código que preguntaste)
+                # Alerta si: RSI > 70 (Sobrecompra), Baja -7% (Stop Loss) o Sube +15% (Take Profit)
+                if rsi > 70 or variacion <= -0.07 or variacion >= 0.15:
+                    print(f"⚠️ Alerta técnica en {sim}")
+                    noticias = obtener_noticias_recientes(sim) # <--- Llamada a la nueva función
+                    
+                    ventas_alertas.append({
+                        'Símbolo': sim,
+                        'Precio Compra': precio_compra,
+                        'Precio Actual': precio_actual,
+                        'Retorno': f"{variacion:+.2f}%",
+                        'RSI': round(rsi, 2),
+                        'Noticias': noticias, # <--- Se envía a la IA
+                        'Motivo': "Sobrecompra" if rsi > 70 else "Límite de pérdida/ganancia"
+                    })
+            except Exception as e:
+                print(f"❌ Error evaluando {sim}: {e}")
     
     # Cargar historial local para backtest y actualizaciones
     cargar_historial_repo()
