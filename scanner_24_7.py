@@ -922,7 +922,17 @@ def main():
         print(f"⚠️  Mercado bajista — Umbral de compra elevado a {score_minimo_efectivo}")
     else:
         score_minimo_efectivo = SCORE_MINIMO
-
+    
+    def obtener_noticias_recientes(ticker):
+    """Obtiene titulares de noticias para darle contexto a la IA."""
+    try:
+        asset = yf.Ticker(ticker)
+        news = asset.news
+        if not news: return "Sin noticias relevantes recientemente."
+        return " | ".join([n['title'] for n in news[:3]]) # Solo las 3 más nuevas
+    except:
+        return "No se pudieron cargar noticias."
+        
     # 3. CARGAR DATOS PERSISTENTES DESDE REPO GITHUB (data/)
     # Sincronización bidireccional App <-> Scanner
     print("\n── Sincronizando datos con repositorio central ──")
