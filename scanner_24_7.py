@@ -960,18 +960,25 @@ def main():
 
                 # LÓGICA DE ALERTA (Aquí es donde pegas el código que preguntaste)
                 # Alerta si: RSI > 70 (Sobrecompra), Baja -7% (Stop Loss) o Sube +15% (Take Profit)
-                if rsi > 70 or variacion <= -0.07 or variacion >= 0.15:
-                    print(f"⚠️ Alerta técnica en {sim}")
-                    noticias = obtener_noticias_recientes(sim) # <--- Llamada a la nueva función
+                # --- LÓGICA DE ALERTA TÉCNICA MÁS SENSIBLE ---
+                # RSI > 65 (Sobrecompra temprana)
+                # variacion <= -0.05 (Stop Loss al 5%)
+                # variacion >= 0.10 (Take Profit al 10%)
+                
+                if rsi_val > 65 or variacion <= -0.05 or variacion >= 0.10:
+                    print(f"⚠️ Alerta técnica detectada en {sim}. Buscando noticias...")
+                    
+                    # Ejecuta la búsqueda de noticias (esto alimentará a la IA)
+                    noticias_contexto = obtener_noticias_recientes(sim)
                     
                     ventas_alertas.append({
                         'Símbolo': sim,
                         'Precio Compra': precio_compra,
                         'Precio Actual': precio_actual,
-                        'Retorno': f"{variacion:+.2f}%",
-                        'RSI': round(rsi, 2),
-                        'Noticias': noticias, # <--- Se envía a la IA
-                        'Motivo': "Sobrecompra" if rsi > 70 else "Límite de pérdida/ganancia"
+                        'Retorno': f"{variacion*100:+.2f}%",
+                        'RSI': round(rsi_val, 2),
+                        'Noticias': noticias_contexto,
+                        'Motivo': "Sobrecompra" if rsi_val > 65 else "Umbral de Precio"
                     })
             except Exception as e:
                 print(f"❌ Error evaluando {sim}: {e}")
@@ -1029,9 +1036,8 @@ def main():
     metrics = backtest_historial(hist_df)
     print(f"  Backtest {metrics['total']} señales: WinRate:{metrics['win_rate']}%  RetProm:{metrics['ret_prom']}%")
 
-    # 8. Análisis IA sobre compras
-    # Podrías actualizar el prompt en v4.0 para incluir portafolio (ventas)
-    ia_texto = analisis_ia(compras_alertas, regime, usd_mxn)
+    # 8. Análisis IA (Asegúrate de que incluya ventas_alertas)
+    ia_texto = analizar_ia(compras_alertas, regime, usd_mxn, posiciones, ventas_alertas)
 
     # 9. Alertas
     if compras_alertas or ventas_alertas:
