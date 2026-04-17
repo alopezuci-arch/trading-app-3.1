@@ -1,6 +1,7 @@
 # ============================================================
 # SCANNER DE TRADING AUTÓNOMO 24/7
-# Versión corregida v3.4: Take Profit 15% / Stop Loss -7%
+# Versión corregida v3.5: Take Profit 15% / Stop Loss -7%
+# Incluye cualquier símbolo de posiciones, conversión MXN
 # ============================================================
 
 import os
@@ -47,9 +48,9 @@ CACHE_DIR = "cache_ia"
 CACHE_TTL = 3600
 HISTORICO_FILE = "historial_senales.csv"
 POSICIONES_FILE = "posiciones.json"
-"1 de 8"
+
 # ============================================================
-# UNIVERSO DE ACTIVOS
+# UNIVERSO DE ACTIVOS (CORREGIDO: SE AGREGA TECL Y OTROS)
 # ============================================================
 
 sp500 = [
@@ -96,7 +97,8 @@ nasdaq100 = [
 etfs_sectoriales = [
 'XLK','XLV','XLF','XLE','XLI','XLY','XLP','XLU','XLB','XLRE','XLC',
 'SOXX','ARKK','ARKG','ARKW','ARKF','CIBR','ROBO','ICLN','TAN','LIT',
-'JETS','XHB','KRE','IBB','SPY','QQQ','IWM','DIA','VTI'
+'JETS','XHB','KRE','IBB','SPY','QQQ','IWM','DIA','VTI',
+'TECL'  # ✅ CORRECCIÓN: Se agrega TECL al universo
 ]
 
 commodity_etfs = ['GLD','SLV','USO','UNG','DBC']
@@ -139,8 +141,8 @@ emergentes_acciones = [
 'BABA','BIDU','JD','PDD','NTES','TCEHY','INFY','HDB','IBN','VALE','PBR','YPF','MELI','NU'
 ]
 
-# Universo completo (con .MX incluido)
-UNIVERSO = list(set(
+# Universo base (sin incluir posiciones aún)
+UNIVERSO_BASE = list(set(
     sp500 + nasdaq100 + etfs_sectoriales + commodity_etfs + mining_oil +
     ia_stocks + mid_cap_growth + etfs_emergentes + fibras_mex + bmv + ibex35 + emergentes_acciones
 ))
@@ -151,7 +153,7 @@ UNIVERSO = list(set(
 
 mexicanos_con_sufijo = set(fibras_mex + bmv)
 MEXICAN_SYMBOLS = {s.replace('.MX', '') for s in mexicanos_con_sufijo}
-"2 de 8"
+
 # ============================================================
 # CAPA DE PERSISTENCIA — GitHub Repo
 # ============================================================
@@ -198,7 +200,7 @@ def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool
     except Exception as e:
         print(f"⚠️ repo escribir '{nombre}': {e}")
         return False
-"3 de 8"
+
 # ============================================================
 # CARGA DE POSICIONES (normalización de claves)
 # ============================================================
@@ -282,7 +284,6 @@ def cargar_posiciones_repo() -> dict:
 
     return posiciones_json
 
-
 # ============================================================
 # HISTORIAL
 # ============================================================
@@ -304,7 +305,6 @@ def cargar_historial_repo() -> pd.DataFrame:
 
     return pd.DataFrame(columns=cols)
 
-
 def sincronizar_historial_repo():
     if not _repo_disponible() or not os.path.exists(HISTORICO_FILE):
         return
@@ -315,7 +315,6 @@ def sincronizar_historial_repo():
         print("☁️ Historial sincronizado con repo")
     except Exception as e:
         print(f"⚠️ Error sincronizando historial: {e}")
-
 
 # ============================================================
 # CARGA Y SINCRONIZACIÓN DE CACHÉ IA
@@ -339,7 +338,6 @@ def cargar_cache_ia_repo():
         except:
             pass
 
-
 def sincronizar_cache_ia_repo():
     if not _repo_disponible() or not os.path.exists(CACHE_DIR):
         return
@@ -358,7 +356,7 @@ def sincronizar_cache_ia_repo():
 
     except Exception as e:
         print(f"⚠️ Error sincronizando caché IA: {e}")
-"4 de 8"
+
 # ============================================================
 # INDICADORES, SCORING, MARKET REGIME
 # ============================================================
@@ -404,7 +402,6 @@ def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
         hist['EMA50_weekly'] = weekly.ewm(span=50, adjust=False).mean().reindex(hist.index, method='ffill')
 
     return hist
-
 
 def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
     score, señales = 0, []
@@ -462,7 +459,6 @@ def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
 
     return score, señales
 
-
 def obtener_market_regime() -> dict:
     try:
         sp = yf.Ticker("^GSPC").history(period="1y")
@@ -501,7 +497,6 @@ def obtener_market_regime() -> dict:
         return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0,
                 'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Error al obtener datos'}
 
-
 def position_size(precio: float, atr: float) -> dict:
     riesgo_mxn = CAPITAL_TRADING * (RIESGO_PCT / 100)
     stop_dist = 2 * atr
@@ -514,163 +509,115 @@ def position_size(precio: float, atr: float) -> dict:
     unidades = inversion / precio
 
     return {'unidades': round(unidades, 2), 'inversion': round(inversion, 2)}
-"5 de 8"
+
 # ============================================================
-# INDICADORES, SCORING, MARKET REGIME
+# FUNCIÓN ANALIZAR (CORREGIDA CON LÓGICA DE VENTAS Y CONVERSIÓN MXN)
 # ============================================================
 
-def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
-    hist = hist.copy()
+def analizar(args) -> dict | None:
+    """
+    Analiza un símbolo y determina si es COMPRA, VENDER u OBSERVAR.
+    Argumentos: (simbolo, usd_mxn, eur_mxn, regime_bonus, posiciones)
+    """
+    simbolo, usd_mxn, eur_mxn, regime_bonus, posiciones = args
 
-    hist['EMA20'] = hist['Close'].ewm(span=20, adjust=False).mean()
-    hist['EMA50'] = hist['Close'].ewm(span=50, adjust=False).mean()
-
-    delta = hist['Close'].diff()
-    gain = delta.where(delta > 0, 0).rolling(14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-    hist['RSI'] = 100 - (100 / (1 + gain / loss))
-
-    hist['EMA12'] = hist['Close'].ewm(span=12, adjust=False).mean()
-    hist['EMA26'] = hist['Close'].ewm(span=26, adjust=False).mean()
-    hist['MACD'] = hist['EMA12'] - hist['EMA26']
-    hist['MACD_sig'] = hist['MACD'].ewm(span=9, adjust=False).mean()
-    hist['MACD_hist'] = hist['MACD'] - hist['MACD_sig']
-
-    hl = hist['High'] - hist['Low']
-    hc = (hist['High'] - hist['Close'].shift()).abs()
-    lc = (hist['Low'] - hist['Close'].shift()).abs()
-    hist['ATR'] = pd.concat([hl, hc, lc], axis=1).max(axis=1).rolling(14).mean()
-
-    hist['BB_mid'] = hist['Close'].rolling(20).mean()
-    bb_std = hist['Close'].rolling(20).std()
-    hist['BB_upper'] = hist['BB_mid'] + 2 * bb_std
-    hist['BB_lower'] = hist['BB_mid'] - 2 * bb_std
-    hist['BB_pct'] = (hist['Close'] - hist['BB_lower']) / (hist['BB_upper'] - hist['BB_lower'])
-
-    low14 = hist['Low'].rolling(14).min()
-    high14 = hist['High'].rolling(14).max()
-    hist['STOCH_K'] = 100 * (hist['Close'] - low14) / (high14 - low14)
-    hist['STOCH_D'] = hist['STOCH_K'].rolling(3).mean()
-
-    hist['Vol_avg'] = hist['Volume'].rolling(20).mean()
-
-    if len(hist) > 100:
-        weekly = hist['Close'].resample('W').last()
-        hist['EMA20_weekly'] = weekly.ewm(span=20, adjust=False).mean().reindex(hist.index, method='ffill')
-        hist['EMA50_weekly'] = weekly.ewm(span=50, adjust=False).mean().reindex(hist.index, method='ffill')
-
-    return hist
-
-
-def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
-    score, señales = 0, []
-
-    if r['EMA20'] > r['EMA50']:
-        score += 2
-        señales.append("EMA alcista")
-
-    if p and p.get('EMA20', 0) <= p.get('EMA50', 1):
-        score += 1
-        señales.append("Golden Cross")
-
-    rsi = r['RSI']
-    if 45 <= rsi <= 65:
-        score += 2
-        señales.append(f"RSI {rsi:.0f} óptimo")
-    elif 30 <= rsi < 45:
-        score += 1
-        señales.append(f"RSI {rsi:.0f} rebote")
-
-    if r['MACD'] > r['MACD_sig']:
-        score += 2
-        señales.append("MACD positivo")
-
-    if p and p.get('MACD', 1) <= p.get('MACD_sig', 0):
-        score += 1
-        señales.append("Cruce MACD")
-
-    if r['Volume'] > r['Vol_avg'] * 1.2:
-        score += 1
-        señales.append("Volumen alto")
-
-    bp = r.get('BB_pct')
-    if bp is not None and not np.isnan(bp):
-        if bp < 0.2:
-            score += 2
-            señales.append("Banda BB inferior")
-        elif bp < 0.4:
-            score += 1
-            señales.append("BB zona baja")
-
-    sk, sd = r.get('STOCH_K', np.nan), r.get('STOCH_D', np.nan)
-    if not (np.isnan(sk) or np.isnan(sd)) and 20 <= sk <= 50 and sk > sd:
-        score += 1
-        señales.append(f"Stoch {sk:.0f}")
-
-    dist = (r['Close'] / r['EMA50'] - 1) * 100
-    if -3 <= dist <= 0:
-        score += 1
-        señales.append("Rebote EMA50")
-
-    if 'EMA20_weekly' in r and 'EMA50_weekly' in r and r['EMA20_weekly'] > r['EMA50_weekly']:
-        score += 2
-        señales.append("EMA semanal alcista")
-
-    return score, señales
-
-
-def obtener_market_regime() -> dict:
     try:
-        sp = yf.Ticker("^GSPC").history(period="1y")
-        if sp.empty or len(sp) < 200:
-            return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0,
-                    'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Sin datos'}
-
-        precio = sp['Close'].iloc[-1]
-        ema200 = sp['Close'].ewm(span=200).mean().iloc[-1]
-        ema50 = sp['Close'].ewm(span=50).mean().iloc[-1]
-
-        ret_1m = (precio / sp['Close'].iloc[-20] - 1) * 100 if len(sp) >= 20 else 0
-
-        delta = sp['Close'].diff()
-        gain = delta.where(delta > 0, 0).rolling(14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-        rs = gain / loss
-        rsi_sp500 = 100 - (100 / (1 + rs)).iloc[-1] if not loss.empty else 50
-
-        if precio > ema200 and precio > ema50 and ema50 > ema200:
-            return {'regime': 'ALCISTA', 'score_bonus': 0, 'precio': precio, 'ema200': ema200,
-                    'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1),
-                    'descripcion': 'S&P 500 sobre EMA50 y EMA200 — condiciones favorables'}
-
-        elif precio > ema200:
-            return {'regime': 'LATERAL', 'score_bonus': -1, 'precio': precio, 'ema200': ema200,
-                    'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1),
-                    'descripcion': 'Ser selectivo'}
-
+        # Determinar tipo de cambio según el sufijo
+        if simbolo.endswith('.MX'):
+            factor = 1.0
+        elif simbolo.endswith('.MC'):
+            factor = eur_mxn
         else:
-            return {'regime': 'BAJISTA', 'score_bonus': -3, 'precio': precio, 'ema200': ema200,
-                    'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1),
-                    'descripcion': 'Mercado bajista — evitar nuevas compras'}
+            factor = usd_mxn
 
-    except:
-        return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0,
-                'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Error al obtener datos'}
+        # Descargar datos históricos
+        ticker = yf.Ticker(simbolo)
+        hist = ticker.history(period="3mo")
+        if hist.empty or len(hist) < 50:
+            return None
 
+        # Convertir precios a MXN
+        for col in ['Open', 'High', 'Low', 'Close']:
+            hist[col] = hist[col] * factor
 
-def position_size(precio: float, atr: float) -> dict:
-    riesgo_mxn = CAPITAL_TRADING * (RIESGO_PCT / 100)
-    stop_dist = 2 * atr
+        hist = calcular_indicadores(hist)
+        hist = hist.dropna(subset=['RSI', 'MACD', 'EMA20', 'EMA50', 'ATR', 'STOCH_K', 'STOCH_D'])
+        if len(hist) < 2:
+            return None
 
-    if stop_dist <= 0:
-        return {'unidades': 0, 'inversion': 0}
+        # Obtener valores actuales y anteriores
+        ultimo = hist.iloc[-1].to_dict()
+        penultimo = hist.iloc[-2].to_dict()
+        precio_actual = ultimo['Close']
+        atr = ultimo['ATR']
 
-    unidades = riesgo_mxn / stop_dist
-    inversion = min(unidades * precio, CAPITAL_TRADING * 0.20)
-    unidades = inversion / precio
+        # Score técnico
+        score_base, señales = calcular_score(ultimo, penultimo)
+        score = max(0, score_base + regime_bonus)
 
-    return {'unidades': round(unidades, 2), 'inversion': round(inversion, 2)}
-"6 de 8"
+        # Calcular tamaño de posición (si fuera compra)
+        ps = position_size(precio_actual, atr)
+
+        # Verificar si tenemos posición abierta (para decidir venta)
+        simbolo_limpio = simbolo.replace('.MX', '')
+        precio_compra = posiciones.get(simbolo_limpio)
+
+        recomendacion = "EVITAR"
+        motivo = ""
+        senales_venta = []
+
+        # ========== LÓGICA DE VENTA (Take Profit 15% / Stop Loss -7%) ==========
+        if precio_compra is not None:
+            ganancia_pct = ((precio_actual / precio_compra) - 1) * 100
+            if ganancia_pct >= 15:
+                recomendacion = "VENDER"
+                motivo = f"🎯 Take Profit +{ganancia_pct:.1f}%"
+                senales_venta.append(motivo)
+            elif ganancia_pct <= -7:
+                recomendacion = "VENDER"
+                motivo = f"🛑 Stop Loss {ganancia_pct:.1f}%"
+                senales_venta.append(motivo)
+
+        # ========== LÓGICA DE COMPRA (solo si no se ha marcado venta) ==========
+        if recomendacion != "VENDER":
+            if score >= 8:
+                recomendacion = "COMPRAR ★★★"
+                motivo = f"Score {score}/14"
+            elif score >= 6:
+                recomendacion = "COMPRAR ★★"
+                motivo = f"Score {score}/14"
+            elif score >= 4:
+                recomendacion = "OBSERVAR"
+                motivo = f"Score {score}/14"
+            else:
+                recomendacion = "EVITAR"
+                motivo = f"Score {score}/14"
+
+        # Construir resultado
+        resultado = {
+            'Símbolo': simbolo_limpio,
+            'Precio MXN': round(precio_actual, 2),
+            'Score': score,
+            'RSI': round(ultimo['RSI'], 1),
+            'ATR': round(atr, 2),
+            'Stop Loss': round(precio_actual - 2 * atr, 2),
+            'Take Profit': round(precio_actual + 3 * atr, 2),
+            'Unidades': ps['unidades'],
+            'Inversión MXN': ps['inversion'],
+            '% Capital': round((ps['inversion'] / CAPITAL_TRADING) * 100, 1),
+            'Dist EMA50': round((precio_actual / ultimo['EMA50'] - 1) * 100, 2),
+            'Recomendación': recomendacion,
+            'Motivo': motivo,
+            'Señales': " | ".join(señales + senales_venta)
+        }
+
+        # Si es venta, agregamos también el campo 'Motivo' ya incluido
+        return resultado
+
+    except Exception as e:
+        print(f"⚠️ Error analizando {simbolo}: {e}")
+        return None
+
 # ============================================================
 # HISTORIAL, IA Y ALERTAS
 # ============================================================
@@ -698,7 +645,6 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
     df = df[df['fecha'] >= cutoff]
 
     df.to_csv(HISTORICO_FILE, index=False)
-
 
 def backtest_historial(df_hist: pd.DataFrame) -> dict:
     if df_hist.empty:
@@ -735,7 +681,6 @@ def backtest_historial(df_hist: pd.DataFrame) -> dict:
 
     return {'win_rate': 0, 'ret_prom': 0, 'total': 0}
 
-
 # ============================================================
 # IA
 # ============================================================
@@ -743,14 +688,12 @@ def backtest_historial(df_hist: pd.DataFrame) -> dict:
 def _calcular_hash_prompt(prompt: str) -> str:
     return hashlib.sha256(prompt.encode()).hexdigest()
 
-
 def _guardar_cache_ia(prompt: str, respuesta: str):
     os.makedirs(CACHE_DIR, exist_ok=True)
     key = _calcular_hash_prompt(prompt)
     with open(f"{CACHE_DIR}/{key}.json", 'w', encoding='utf-8') as f:
         json.dump({'timestamp': time.time(), 'prompt': prompt, 'respuesta': respuesta},
                   f, ensure_ascii=False, indent=2)
-
 
 def _obtener_cache_ia(prompt: str) -> str | None:
     key = _calcular_hash_prompt(prompt)
@@ -773,7 +716,6 @@ def _obtener_cache_ia(prompt: str) -> str | None:
 
     return None
 
-
 def _llamar_ia_con_reintentos(proveedor: str, prompt: str, max_retries=3):
     for intento in range(max_retries):
         try:
@@ -794,7 +736,6 @@ def _llamar_ia_con_reintentos(proveedor: str, prompt: str, max_retries=3):
 
     raise RuntimeError(f"No IA disponible de {proveedor}")
 
-
 def _ia_gemini(prompt: str) -> str:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
     resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=30)
@@ -803,7 +744,6 @@ def _ia_gemini(prompt: str) -> str:
         return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
 
     raise RuntimeError(f"Gemini {resp.status_code}")
-
 
 def _ia_groq(prompt: str) -> str:
     resp = requests.post(
@@ -819,7 +759,6 @@ def _ia_groq(prompt: str) -> str:
         return resp.json()["choices"][0]["message"]["content"]
 
     raise RuntimeError(f"Groq {resp.status_code}")
-
 
 def _ia_anthropic(prompt: str) -> str:
     resp = requests.post(
@@ -837,7 +776,6 @@ def _ia_anthropic(prompt: str) -> str:
         return resp.json()["content"][0]["text"]
 
     raise RuntimeError(f"Anthropic {resp.status_code}")
-
 
 def _construir_prompt(oportunidades: list[dict], regime: dict, usd_mxn: float,
                       posiciones: dict, ventas: list[dict]) -> str:
@@ -873,7 +811,6 @@ Respuesta breve en español.
 """
     return prompt
 
-
 def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float,
                 posiciones: dict, ventas: list[dict]) -> str:
 
@@ -905,13 +842,13 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float,
 
     return ""
 
-
 # ============================================================
 # ALERTAS
 # ============================================================
 
 def enviar_email(asunto: str, html: str) -> bool:
     if not EMAIL_REMITENTE or not EMAIL_PASSWORD:
+        print("❌ Email no configurado (faltan credenciales)")
         return False
 
     try:
@@ -933,7 +870,6 @@ def enviar_email(asunto: str, html: str) -> bool:
         print(f"❌ Error email: {e}")
         return False
 
-
 def enviar_whatsapp(mensaje: str) -> bool:
     if not WHATSAPP_NUMERO or not WHATSAPP_APIKEY:
         return False
@@ -953,7 +889,6 @@ def enviar_whatsapp(mensaje: str) -> bool:
     except Exception as e:
         print(f"❌ Error WhatsApp: {e}")
         return False
-
 
 def construir_email(ops_compras: list[dict], ops_ventas: list[dict],
                     regime: dict, ia_texto: str, hora: str) -> str:
@@ -1009,7 +944,7 @@ def construir_email(ops_compras: list[dict], ops_ventas: list[dict],
 
 </body></html>
 """
-"7 de 8"
+
 # ============================================================
 # EJECUCIÓN PRINCIPAL DEL SCANNER
 # ============================================================
@@ -1020,6 +955,7 @@ def ejecutar_scanner():
 
     # 1. Cargar posiciones reales
     posiciones = cargar_posiciones_repo()
+    print(f"📊 Posiciones activas: {list(posiciones.keys())}")
 
     # 2. Cargar historial
     historial = cargar_historial_repo()
@@ -1031,16 +967,24 @@ def ejecutar_scanner():
     regime = obtener_market_regime()
     regime_bonus = regime.get('score_bonus', 0)
 
-    # 5. Obtener tipo de cambio USD/MXN
+    # 5. Obtener tipo de cambio USD/MXN y EUR/MXN
     try:
         usd_mxn = yf.Ticker("MXN=X").history(period="1d")['Close'].iloc[-1]
+        eur_mxn = yf.Ticker("EURMXN=X").history(period="1d")['Close'].iloc[-1]
     except:
-        usd_mxn = 17.0
+        usd_mxn = 20.0
+        eur_mxn = 21.5
 
-    print(f"💱 USD/MXN = {usd_mxn:.2f}")
+    print(f"💱 USD/MXN = {usd_mxn:.2f}, EUR/MXN = {eur_mxn:.2f}")
 
-    # 6. Ejecutar análisis en paralelo
-    args_list = [(sim, usd_mxn, regime_bonus, posiciones) for sim in UNIVERSO]
+    # 6. Construir lista de símbolos a analizar: universo base + todas las posiciones
+    #    Esto asegura que cualquier activo en cartera sea evaluado (incluso si no está en las listas predefinidas)
+    simbolos_unicos = set(UNIVERSO_BASE) | set(posiciones.keys())
+    lista_simbolos = list(simbolos_unicos)
+    print(f"📈 Analizando {len(lista_simbolos)} símbolos (incluye {len(posiciones)} posiciones)")
+
+    # 7. Ejecutar análisis en paralelo
+    args_list = [(sim, usd_mxn, eur_mxn, regime_bonus, posiciones) for sim in lista_simbolos]
 
     resultados = []
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -1050,11 +994,18 @@ def ejecutar_scanner():
             if r:
                 resultados.append(r)
 
-    # 7. Separar compras y ventas
+    print(f"🔍 Total resultados obtenidos: {len(resultados)}")
+
+    # 8. Separar compras y ventas
     ops_ventas = [r for r in resultados if r['Recomendación'] == "VENDER"]
     ops_compras = [r for r in resultados if r['Recomendación'].startswith("COMPRAR")]
 
-    # 8. Guardar historial
+    print(f"🟢 Compras: {len(ops_compras)}")
+    print(f"🔴 Ventas: {len(ops_ventas)}")
+    for v in ops_ventas:
+        print(f"   {v['Símbolo']} - {v['Motivo']}")
+
+    # 9. Guardar historial
     fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     for senal in resultados:
         guardar_senal_en_historial(senal, fecha)
@@ -1062,17 +1013,19 @@ def ejecutar_scanner():
     sincronizar_historial_repo()
     sincronizar_cache_ia_repo()
 
-    # 9. IA
-    ia_texto = analisis_ia(ops_compras, regime, usd_mxn, posiciones, ops_ventas)
+    # 10. IA (solo si hay compras o ventas)
+    ia_texto = ""
+    if ops_compras or ops_ventas:
+        ia_texto = analisis_ia(ops_compras, regime, usd_mxn, posiciones, ops_ventas)
 
-    # 10. Construir email
+    # 11. Construir email
     hora = datetime.now().strftime("%d/%m %H:%M")
     html = construir_email(ops_compras, ops_ventas, regime, ia_texto, hora)
 
-    # 11. Enviar email
+    # 12. Enviar email (siempre)
     enviar_email("📈 Scanner Trading — Actualización", html)
 
-    # 12. Enviar WhatsApp (solo ventas)
+    # 13. Enviar WhatsApp (solo ventas)
     if ops_ventas:
         mensaje = "🔴 ALERTAS DE VENTA:\n" + "\n".join(
             [f"{v['Símbolo']}: {v['Motivo']}" for v in ops_ventas]
@@ -1081,11 +1034,9 @@ def ejecutar_scanner():
 
     print("✅ Scanner finalizado.")
 
-
 # ============================================================
 # EJECUCIÓN DIRECTA
 # ============================================================
 
 if __name__ == "__main__":
     ejecutar_scanner()
-"8 de 8"
