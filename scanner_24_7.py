@@ -102,26 +102,124 @@ def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool
         print(f"⚠️  repo escribir '{nombre}': {e}")
         return False
 
+# === PEGA ESTO EN LUGAR DEL BLOQUE ANTERIOR ===
+
 def cargar_posiciones_repo() -> dict:
     """
     Carga posiciones abiertas desde data/posiciones.json del repo.
-    Mismo archivo que escribe el app — fuente única de verdad.
+    Si el archivo está vacío o desactualizado (fuente única de verdad del app falló),
+    reconstruye el portafolio real basándose matemáticamente en data/transacciones.csv.
     """
-    contenido = _repo_leer("posiciones.json")
-    if contenido and contenido.strip() not in ("", "{}", "null"):
+    print("📌 Intentando cargar portafolio desde data/posiciones.json...")
+    
+    # 1. Intentar cargar desde posiciones.json (método rápido)
+    contenido_json = _repo_leer("posiciones.json")
+    posiciones_json = {}
+    
+    if contenido_json and contenido_json.strip() not in ("", "{}", "null"):
         try:
-            data = json.loads(contenido)
+            data = json.loads(contenido_json)
             if isinstance(data, dict) and data:
                 # Asegurar símbolos en mayúsculas y precios como float
-                posiciones = {k.upper(): float(v) for k, v in data.items()}
-                print(f"📌 Portafolio real cargado desde repo ({len(posiciones)} activos).")
-                return posiciones
+                posiciones_json = {k.upper(): float(v) for k, v in data.items()}
+                print(f"  ✅ Portafolio JSON cargado ({len(posiciones_json)} activos).")
         except Exception as e:
-            print(f"⚠️  Error parseando posiciones.json: {e}")
-    
-    print("ℹ️  Sin posiciones abiertas registradas en el repo.")
-    return {}
+            print(f"  ⚠️ Error parseando posiciones.json: {e}")
 
+    # 2. CARGAR Y VALIDAR CONTRA transacciones.csv (FUENTE DE RESPALDO DE LA VERDAD)
+    # Ya que el historial sí se está guardando bien, lo usaremos para verificar.
+    print("📌 Validando portafolio contra data/transacciones.csv...")
+    csv_contenido = _repo_leer("transacciones.csv")
+    posiciones_reconstruidas = {}
+    
+    if csv_contenido and len(csv_contenido) > 60:
+        try:
+            from io import StringIO
+            # Asegurarse de importar pandas como pd si no lo has hecho
+            df = pd.read_csv(StringIO(csv_contenido))
+            
+            # Normalizar datos
+            df['simbolo'] = df['simbolo'].str.upper().str.strip()
+            df['tipo'] = df['tipo'].str.lower().str.strip()
+            # Asegurarse de que la fecha sea datetime
+            df['fecha'] = pd.to_datetime(df['fecha'])
+            
+            # Calcular matemáticamente las posiciones abiertas
+            # Agrupamos por símbolo y sumamos cantidades de compra y restamos de venta
+            df_compras = df[df['tipo'] == 'compra'].groupby('simbolo')['cantidad'].sum()
+            df_ventas = df[df['tipo'] == 'venta'].groupby('simbolo')['cantidad'].sum()
+            
+            # Unimos los dataframes para calcular la cantidad neta actual
+            df_neto = pd.DataFrame({'compras': df_compras, 'ventas': df_ventas}).fillna(0)
+            df_neto['cantidad_actual'] = df_neto['compras'] - df_neto['ventas']
+            
+            # Filtrar solo las acciones que tenemos actualmente (cantidad > 0)
+            # Usamos una tolerancia pequeña para evitar errores de coma flotante
+            acciones_abiertas = df_neto[df_neto['cantidad_actual'] > 0.001].index.tolist()
+            
+            # Para cada acción abierta, necesitamos encontrar el precio promedio de compra
+            # (Lógica simplificada: último precio de compra registrado)
+            for sim in acciones_abiertas:
+                ultimo_trade_compra = df[
+                    (df['simbolo'] == sim) & (df['tipo'] == 'compra')
+                ].sort_values('fecha').iloc[-1]
+                posiciones_reconstruidas[sim] = float(ultimo_trade_compra['precio'])
+                
+            print(f"  ✅ Portafolio reconstruido desde transacciones.csv ({len(posiciones_reconstruidas)} activos).")
+            
+        except Exception as e:
+            print(f"  ❌ Error reconstruyendo portafolio desde CSV: {e}")
+            # Si el CSV falla catastróficamente, confiamos en lo que obtuvimos del JSON
+            return posiciones_json
+
+    # 3. COMPARAR Y DECIDIR LA VERDAD
+    # Si positions_json está vacío y logramos reconstruir desde el CSV,
+    # el CSV es la verdad. Debemos actualizar el JSON en el repo.
+    
+    if not posiciones_json and posiciones_reconstruidas:
+        print("⚠️data/posiciones.json estaba vacío. Sincronizando con data/transacciones.csv...")
+        # Guardar el portafolio reconstruido en el repo para que el App lo vea actualizado
+        contenido_a_guardar = json.dumps(
+            {k: v for k, v in posiciones_reconstruidas.items()},
+            indent=2, ensure_ascii=False
+        )
+        if _repo_escribir("posiciones.json", contenido_a_guardar, "sincronizar portafolio desde transacciones.csv"):
+            print("  ☁️ data/posiciones.json actualizado en GitHub vía API.")
+        else:
+            print("  ❌ Falló la actualización de posiciones.json en GitHub.")
+            
+        return posiciones_reconstruidas
+        
+    # Si ambos existen, el JSON suele ser más preciso (precio promedio), 
+    # pero el CSV manda en qué acciones tenemos.
+    elif posiciones_json and posiciones_reconstruidas:
+        # Asegurarnos de no tener acciones en el JSON que el CSV dice que ya vendimos
+        set_json = set(posiciones_json.keys())
+        set_csv = set(posiciones_reconstruidas.keys())
+        
+        # Acciones que están en JSON pero NO en CSV (probablemente vendidas y no sincronizadas)
+        acciones_a_borrar = set_json - set_csv
+        if acciones_a_borrar:
+            print(f"⚠️ Limpiando {len(acciones_a_borrar)} acciones vendidas del portafolio JSON: {list(acciones_a_borrar)}")
+            for sim in acciones_a_borrar:
+                del posiciones_json[sim]
+            
+            # Actualizar JSON en repo con la limpieza
+            contenido_a_guardar = json.dumps(
+                {k: v for k, v in posiciones_json.items()},
+                indent=2, ensure_ascii=False
+            )
+            _repo_escribir("posiciones.json", contenido_a_guardar, "limpiar acciones vendidas")
+
+        return posiciones_json
+
+    # Si ninguno tiene datos
+    elif not posiciones_json and not posiciones_reconstruidas:
+        print("ℹ️ Sin posiciones abiertas registradas en el repo (JSON vacío, CSV vacío o sin trades).")
+        return {}
+        
+    # Fallback por defecto
+    return posiciones_json
 def cargar_historial_repo() -> pd.DataFrame:
     """Descarga historial_senales.csv del repo y lo escribe al disco local."""
     cols = ['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales']
