@@ -112,6 +112,15 @@ def cargar_posiciones_repo() -> dict:
     """
     print("📌 Intentando cargar portafolio desde data/posiciones.json...")
     
+    universo_sin_sufijo = [s.replace('.MX', '') for s in UNIVERSO]
+    universo_final = list(set(universo_sin_sufijo + list(posiciones.keys())))
+    
+    """actualiza claves de mx.a nada""
+    posiciones_normalizadas = {}
+    for k, v in posiciones_json.items():
+        clave_limpia = k.replace('.MX', '')  # 'FUNO11.MX' -> 'FUNO11'
+        posiciones_normalizadas[clave_limpia] = v
+        
     # 1. Intentar cargar desde posiciones.json (método rápido)
     contenido_json = _repo_leer("posiciones.json")
     posiciones_json = {}
@@ -361,6 +370,11 @@ bmv = [
     'MEGA.MX','PINFRA.MX','TLEVISACPO.MX','VESTA.MX','GRUMA.MX','HERDEZ.MX','CUERVO.MX','ORBIA.MX',
     'VOLARA.MX','Q.MX','LABB.MX','NEMAKA.MX'
 ]
+
+# Crear conjunto de símbolos mexicanos sin sufijo .MX para identificar activos que no requieren conversión USD/MXN
+mexicanos_con_sufijo = set(fibras_mex + bmv)
+MEXICAN_SYMBOLS = {s.replace('.MX', '') for s in mexicanos_con_sufijo}
+
 ibex35 = [
     'SAN.MC','BBVA.MC','TEF.MC','ITX.MC','IBE.MC','FER.MC','ENG.MC','ACS.MC','REP.MC','AENA.MC',
     'CLNX.MC','GRF.MC','MTS.MC','MAP.MC','MEL.MC','CABK.MC','ELE.MC','IAG.MC','ANA.MC','VIS.MC',
@@ -504,7 +518,7 @@ def analizar(args: tuple) -> dict | None:
             return None
         
         # Convertir a MXN si aplica
-        factor = 1.0 if simbolo.endswith('.MX') else usd_mxn
+        factor = 1.0 if simbolo in MEXICAN_SYMBOLS else usd_mxn
         for c in ['Close','Open','High','Low']:
             hist[c] *= factor
             
