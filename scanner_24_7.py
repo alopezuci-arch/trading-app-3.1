@@ -1,8 +1,7 @@
 # ============================================================
 # SCANNER DE TRADING AUTÓNOMO 24/7
-# Versión corregida v3.2: Prioriza Alertas de Venta Técnicas
-# basadas en Portafolio Real. Corregida la normalización de
-# símbolos mexicanos y la conversión de moneda.
+# Versión corregida v3.3: Precios de compra ya en MXN, sin doble conversión.
+# Prioriza Alertas de Venta Técnicas basadas en Portafolio Real.
 # ============================================================
 
 import os
@@ -49,9 +48,8 @@ HISTORICO_FILE   = "historial_senales.csv"
 POSICIONES_FILE  = "posiciones.json"
 
 # ============================================================
-# UNIVERSO DE ACTIVOS (Se mantiene igual)
+# UNIVERSO DE ACTIVOS
 # ============================================================
-# (... Mantener las listas sp500, nasdaq100, etfs, bmv, etc. igual que en tu archivo subido ...)
 sp500 = [
     'MMM','AOS','ABT','ABBV','ACN','ADBE','AMD','AES','AFL','A','APD','AKAM','ALK','ALB',
     'ARE','ALGN','ALLE','LNT','ALL','GOOGL','GOOG','MO','AMZN','AMCR','AEE','AAL','AEP',
@@ -119,7 +117,6 @@ bmv = [
     'MEGA.MX','PINFRA.MX','TLEVISACPO.MX','VESTA.MX','GRUMA.MX','HERDEZ.MX','CUERVO.MX','ORBIA.MX',
     'VOLARA.MX','Q.MX','LABB.MX','NEMAKA.MX'
 ]
-
 ibex35 = [
     'SAN.MC','BBVA.MC','TEF.MC','ITX.MC','IBE.MC','FER.MC','ENG.MC','ACS.MC','REP.MC','AENA.MC',
     'CLNX.MC','GRF.MC','MTS.MC','MAP.MC','MEL.MC','CABK.MC','ELE.MC','IAG.MC','ANA.MC','VIS.MC',
@@ -129,27 +126,20 @@ emergentes_acciones = [
     'BABA','BIDU','JD','PDD','NTES','TCEHY','INFY','HDB','IBN','VALE','PBR','YPF','MELI','NU'
 ]
 
-# Unir todos los universos en una sola lista (sin duplicados)
-UNIVERSO = list(set(
-    sp500 + nasdaq100 + etfs_sectoriales + commodity_etfs + mining_oil + 
-    ia_stocks + mid_cap_growth + etfs_emergentes + fibras_mex + bmv + ibex35 + emergentes_acciones
-))
-
-# ============================================================
-# CORRECCIÓN: Conjunto de símbolos mexicanos SIN sufijo .MX
-# para identificar activos que no requieren conversión USD/MXN
-# ============================================================
-mexicanos_con_sufijo = set(fibras_mex + bmv)
-MEXICAN_SYMBOLS = {s.replace('.MX', '') for s in mexicanos_con_sufijo}
-
-# UNIVERSO original (con .MX incluido)
+# Universo completo (con .MX incluido)
 UNIVERSO = list(set(
     sp500 + nasdaq100 + etfs_sectoriales + commodity_etfs + mining_oil +
     ia_stocks + mid_cap_growth + etfs_emergentes + fibras_mex + bmv + ibex35 + emergentes_acciones
 ))
 
 # ============================================================
-# CAPA DE PERSISTENCIA — GitHub Repo (sin cambios)
+# CORRECCIÓN: Conjunto de símbolos mexicanos SIN sufijo .MX
+# ============================================================
+mexicanos_con_sufijo = set(fibras_mex + bmv)
+MEXICAN_SYMBOLS = {s.replace('.MX', '') for s in mexicanos_con_sufijo}
+
+# ============================================================
+# CAPA DE PERSISTENCIA — GitHub Repo
 # ============================================================
 def _gh_headers() -> dict:
     return {
@@ -195,7 +185,7 @@ def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool
         return False
 
 # ============================================================
-# CARGA DE POSICIONES (con normalización de claves)
+# CARGA DE POSICIONES (normalización de claves)
 # ============================================================
 def cargar_posiciones_repo() -> dict:
     print("📌 Intentando cargar portafolio desde data/posiciones.json...")
@@ -206,7 +196,7 @@ def cargar_posiciones_repo() -> dict:
         try:
             data = json.loads(contenido_json)
             if isinstance(data, dict) and data:
-                # Normalizar: eliminar .MX de las claves
+                # Normalizar: eliminar .MX de las claves, mantener mayúsculas
                 posiciones_json = {}
                 for k, v in data.items():
                     clave_limpia = k.upper().replace('.MX', '')
@@ -250,7 +240,6 @@ def cargar_posiciones_repo() -> dict:
         _repo_escribir("posiciones.json", contenido_guardar, "sincronizar desde CSV")
         return posiciones_reconstruidas
     elif posiciones_json and posiciones_reconstruidas:
-        # Limpiar vendidos
         set_json = set(posiciones_json.keys())
         set_csv = set(posiciones_reconstruidas.keys())
         acciones_a_borrar = set_json - set_csv
@@ -325,7 +314,7 @@ def sincronizar_cache_ia_repo():
         print(f"⚠️ Error sincronizando caché IA: {e}")
 
 # ============================================================
-# INDICADORES, SCORING, MARKET REGIME (sin cambios)
+# INDICADORES, SCORING, MARKET REGIME
 # ============================================================
 def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist = hist.copy()
@@ -439,17 +428,16 @@ def position_size(precio: float, atr: float) -> dict:
     return {'unidades': round(unidades, 2), 'inversion': round(inversion, 2)}
 
 # ============================================================
-# FUNCIÓN DE ANÁLISIS (corregida: conversión de moneda y ventas)
+# FUNCIÓN DE ANÁLISIS CORREGIDA
 # ============================================================
 def analizar(args: tuple) -> dict | None:
     simbolo, usd_mxn, regime_bonus, posiciones = args
     try:
-        # Descargar datos históricos (el símbolo puede ser sin .MX, pero yfinance acepta)
         hist = yf.Ticker(simbolo).history(period="3mo")
         if hist.empty or len(hist) < 55:
             return None
 
-        # Determinar factor de conversión a MXN usando MEXICAN_SYMBOLS global
+        # Determinar factor de conversión a MXN para datos históricos
         if simbolo in MEXICAN_SYMBOLS:
             factor = 1.0
         else:
@@ -468,16 +456,10 @@ def analizar(args: tuple) -> dict | None:
         precio = r['Close']
         atr = r['ATR']
 
-        # ========== LÓGICA DE VENTA ==========
+        # ========== LÓGICA DE VENTA (CORREGIDA) ==========
         if simbolo in posiciones:
-            precio_compra_original = posiciones[simbolo]
-            # El precio de compra ya está almacenado en MXN (por normalización)
-            # pero si no, aseguramos conversión:
-            if simbolo not in MEXICAN_SYMBOLS:
-                precio_compra_mxn = precio_compra_original * usd_mxn
-            else:
-                precio_compra_mxn = precio_compra_original
-
+            # El precio de compra ya está en MXN (así se guarda en posiciones.json)
+            precio_compra_mxn = posiciones[simbolo]
             ganancia_pct = ((precio / precio_compra_mxn) - 1) * 100
             motivo_venta = ""
 
@@ -543,7 +525,7 @@ def analizar(args: tuple) -> dict | None:
         return None
 
 # ============================================================
-# HISTORIAL, IA Y ALERTAS (funciones auxiliares)
+# HISTORIAL, IA Y ALERTAS
 # ============================================================
 def guardar_senal_en_historial(senal: dict, fecha: str):
     if os.path.exists(HISTORICO_FILE):
@@ -591,7 +573,7 @@ def backtest_historial(df_hist: pd.DataFrame) -> dict:
         return {'win_rate': round(win_rate, 1), 'ret_prom': round(ret_prom, 2), 'total': len(resultados)}
     return {'win_rate': 0, 'ret_prom': 0, 'total': 0}
 
-# Funciones de IA (sin cambios)
+# IA
 def _calcular_hash_prompt(prompt: str) -> str:
     return hashlib.sha256(prompt.encode()).hexdigest()
 
@@ -715,7 +697,7 @@ def enviar_email(asunto: str, html: str) -> bool:
             s.sendmail(EMAIL_REMITENTE, EMAIL_DESTINO, msg.as_string())
         print(f"✅ Email enviado a {EMAIL_DESTINO}")
         return True
-    except Exception as e:   # <-- CORREGIDO: except Exception
+    except Exception as e:   # CORREGIDO
         print(f"❌ Error email: {e}")
         return False
 
@@ -764,7 +746,7 @@ def construir_email(ops_compras: list[dict], ops_ventas: list[dict], regime: dic
       <tr style="background:#e8f5e9"><th>Símbolo</th><th>Precio</th><th>Score</th><th>Stop</th><th>Inversión</th><th>Rec.</th></tr>
       {filas_compras if filas_compras else '<tr><td colspan="6">Sin oportunidades</td></tr>'}
     </table>
-    <p style="color:#999;font-size:11px;">Scanner v3.2 corregido</p>
+    <p style="color:#999;font-size:11px;">Scanner v3.3 — Precios de compra en MXN</p>
     </body></html>"""
 
 def obtener_noticias_recientes(ticker):
@@ -778,12 +760,12 @@ def obtener_noticias_recientes(ticker):
         return "No se pudieron cargar noticias."
 
 # ============================================================
-# MAIN (corregido)
+# MAIN
 # ============================================================
 def main():
     hora = datetime.now().strftime("%d/%m/%Y %H:%M")
     print(f"\n{'='*50}")
-    print(f"  Scanner Trading v3.2 (Corregido) — {hora}")
+    print(f"  Scanner Trading v3.3 (Corregido) — {hora}")
     print(f"{'='*50}\n")
 
     # Tipo de cambio
