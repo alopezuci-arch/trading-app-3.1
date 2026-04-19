@@ -1023,7 +1023,8 @@ def ejecutar_scanner():
     enviar_email("📈 Scanner Trading — Actualización", html)
 
        # 13. Enviar WhatsApp (formato completo, similar al antiguo de app.py)
-    if ops_compras or ops_ventas:
+    
+        if ops_compras or ops_ventas:
         # Calcular top 3 compras (por score)
         top_compras = sorted(ops_compras, key=lambda x: x['Score'], reverse=True)[:3]
         top_nombres = [c['Símbolo'] for c in top_compras] if top_compras else ["ninguna"]
