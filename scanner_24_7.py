@@ -888,8 +888,8 @@ def enviar_whatsapp(mensaje: str) -> bool:
         print(f"❌ Error WhatsApp: {e}")
         return False
 
-def construir_email(ops_compras: list[dict], ops_ventas: list[dict],
-                    regime: dict, ia_texto: str, hora: str) -> str:
+def construir_email(ia_texto: str, ops_compras: list[dict], ops_ventas: list[dict],
+                    regime: dict, hora: str) -> str:
 
     filas_compras = "".join([
         f"<tr><td><b>{o['Símbolo']}</b></td><td>${o['Precio MXN']:,.2f}</td>"
