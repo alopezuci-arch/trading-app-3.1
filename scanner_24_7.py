@@ -203,52 +203,59 @@ def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool
 # ============================================================
 # CARGA DE POSICIONES (normalización de claves)
 # ============================================================
-
 def cargar_posiciones_repo() -> dict:
+    import os
     print("📌 Intentando cargar portafolio...")
     posiciones = {}
 
-    # 1. Intentar cargar desde archivo local posiciones.json
-    if os.path.exists("posiciones.json"):
+    # 1. Intentar cargar desde archivo local data/posiciones.json
+    ruta_posiciones = os.path.join("data", "posiciones.json")
+    if os.path.exists(ruta_posiciones):
         try:
-            with open("posiciones.json", "r", encoding="utf-8") as f:
+            with open(ruta_posiciones, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, dict):
                     for k, v in data.items():
                         clave_limpia = k.upper().replace('.MX', '')
                         posiciones[clave_limpia] = float(v)
-                    print(f" ✅ Portafolio cargado desde posiciones.json local ({len(posiciones)} activos).")
+                    print(f" ✅ Portafolio cargado desde {ruta_posiciones} ({len(posiciones)} activos).")
                     return posiciones
         except Exception as e:
-            print(f" ⚠️ Error leyendo posiciones.json local: {e}")
+            print(f" ⚠️ Error leyendo {ruta_posiciones}: {e}")
 
-    # 2. Intentar cargar desde transacciones.csv local
-    if os.path.exists("transacciones.csv"):
+    # 2. Intentar cargar desde data/transacciones.csv
+    ruta_csv = os.path.join("data", "transacciones.csv")
+    if os.path.exists(ruta_csv):
         try:
-            df = pd.read_csv("transacciones.csv")
+            df = pd.read_csv(ruta_csv)
             df['simbolo'] = df['simbolo'].str.upper().str.replace('.MX', '')
             df['tipo'] = df['tipo'].str.lower().str.strip()
             df['fecha'] = pd.to_datetime(df['fecha'])
 
-            df_compras = df[df['tipo'] == 'compra'].groupby('simbolo')['cantidad'].sum()
-            df_ventas = df[df['tipo'] == 'venta'].groupby('simbolo')['cantidad'].sum()
-            df_neto = pd.DataFrame({'compras': df_compras, 'ventas': df_ventas}).fillna(0)
-            df_neto['cantidad_actual'] = df_neto['compras'] - df_neto['ventas']
-            acciones_abiertas = df_neto[df_neto['cantidad_actual'] > 0.001].index.tolist()
+            # Calcular cantidad neta por símbolo
+            from collections import defaultdict
+            neto = defaultdict(float)
+            for _, row in df.iterrows():
+                if row['tipo'] == 'compra':
+                    neto[row['simbolo']] += row['cantidad']
+                else:
+                    neto[row['simbolo']] -= row['cantidad']
 
-            for sim in acciones_abiertas:
-                ultimo_trade_compra = df[(df['simbolo'] == sim) & (df['tipo'] == 'compra')].sort_values('fecha').iloc[-1]
-                posiciones[sim] = float(ultimo_trade_compra['precio'])
-
-            print(f" ✅ Portafolio reconstruido desde transacciones.csv local ({len(posiciones)} activos).")
+            for sim, cant in neto.items():
+                if cant > 0.001:
+                    # Obtener el último precio de compra (por si hubo múltiples compras)
+                    compras_sim = df[(df['simbolo'] == sim) & (df['tipo'] == 'compra')].sort_values('fecha')
+                    if not compras_sim.empty:
+                        posiciones[sim] = float(compras_sim.iloc[-1]['precio'])
+            print(f" ✅ Portafolio reconstruido desde {ruta_csv} ({len(posiciones)} activos).")
             return posiciones
         except Exception as e:
-            print(f" ⚠️ Error leyendo transacciones.csv local: {e}")
+            print(f" ⚠️ Error leyendo {ruta_csv}: {e}")
 
-    # 3. Fallback: intentar desde GitHub (si está configurado)
+    # 3. Fallback: intentar desde GitHub (usando DATA_PATH)
     if _repo_disponible():
         print("📡 Intentando cargar desde GitHub...")
-        contenido_json = _repo_leer("posiciones.json")
+        contenido_json = _repo_leer("posiciones.json")  # _repo_leer ya usa DATA_PATH
         if contenido_json and contenido_json.strip() not in ("", "{}", "null"):
             try:
                 data = json.loads(contenido_json)
@@ -262,8 +269,7 @@ def cargar_posiciones_repo() -> dict:
                 print(f" ⚠️ Error parseando posiciones.json de GitHub: {e}")
 
     print("ℹ️ Sin posiciones abiertas.")
-    return posiciones
-    
+    return posiciones    
 # ============================================================
 # HISTORIAL
 # ============================================================
