@@ -749,27 +749,32 @@ def enviar_whatsapp(mensaje: str) -> bool:
 
 def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame, resumen_ia: str = "") -> str:
     fecha = datetime.now().strftime("%d/%m/%Y %H:%M")
-    filas_compra = "".join([f"<tr><td><b>{r['Símbolo']}</b></td>.\]
-
-{r['Precio (MXN)']}</td>.\]
-
-{r.get('Score','')}</td>.\]
-
-{r.get('Motivo','')}</tr>" for _, r in compras_df.iterrows()])
-    filas_venta = "".join([f"<tr><td><b>{r['Símbolo']}</b></td>.\]
-
-{r['Precio (MXN)']}</td>.\]
-
-{r.get('Motivo','')}</tr>" for _, r in ventas_df.iterrows()])
-    bloque_ia = f"<h3>🤖 Análisis de IA</h3><div>{resumen_ia.replace(chr(10),'<br>')}</div>" if resumen_ia else ""
+    
+    filas_compra = ""
+    for _, r in compras_df.iterrows():
+        filas_compra += f"<tr><td><b>{r['Símbolo']}</b></td><td>{r['Precio (MXN)']}</td><td>{r.get('Score', '')}</td><td>{r.get('Motivo', '')}</td></tr>"
+    
+    filas_venta = ""
+    for _, r in ventas_df.iterrows():
+        filas_venta += f"<tr><td><b>{r['Símbolo']}</b></td><td>{r['Precio (MXN)']}</td><td>{r.get('Motivo', '')}</td></tr>"
+    
+    bloque_ia = f"<h3 style='color:#7b61ff'>🤖 Análisis de IA</h3><div style='background:#f5f3ff;padding:12px 16px;border-left:4px solid #7b61ff;border-radius:4px;font-size:14px;line-height:1.6'>{resumen_ia.replace(chr(10), '<br>')}</div>" if resumen_ia else ""
+    
     return f"""
-    <html><body>
-    <h2>📈 Alerta de Trading — {fecha}</h2>
+    <html><body style="font-family:Arial,sans-serif;max-width:700px">
+    <h2 style="color:#1a73e8">📈 Alerta de Trading — {fecha}</h2>
     {bloque_ia}
-    <h3>🟢 COMPRAS ({len(compras_df)})</h3>
-    <table border="1">{filas_compra if filas_compra else '<tr><td>Sin señales</td></tr>'}</table>
-    <h3>🔴 VENTAS ({len(ventas_df)})</h3>
-    <table border="1">{filas_venta if filas_venta else '<tr><td>Sin señales</td></tr>'}</table>
+    <h3 style="color:#34a853">🟢 Señales de COMPRA ({len(compras_df)})</h3>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+      <tr style="background:#e8f5e9"><th>Símbolo</th><th>Precio (MXN)</th><th>Score</th><th>Motivo</th></tr>
+      {filas_compra if filas_compra else '<tr><td colspan="4">Sin señales</td></tr>'}
+    </table>
+    <h3 style="color:#ea4335">🔴 Señales de VENTA ({len(ventas_df)})</h3>
+    <table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">
+      <tr style="background:#fce8e6"><th>Símbolo</th><th>Precio (MXN)</th><th>Motivo</th></tr>
+      {filas_venta if filas_venta else '<tr><td colspan="3">Sin señales</td></tr>'}
+    </table>
+    <p style="color:#666;font-size:12px;margin-top:20px">Generado por Sistema de Trading Personal v3.0</p>
     </body></html>"""
 
 def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figure:
