@@ -762,8 +762,6 @@ def position_size(precio: float, atr: float, capital: float, riesgo_pct: float) 
     pct_capital = (inversion / capital) * 100
     return {'unidades': round(unidades, 2), 'inversion_mxn': round(inversion, 2), 'pct_capital': round(pct_capital, 1)}
 
-@st.cache_data(ttl=86400)
-
 def obtener_regimen_diario() -> pd.Series:
     """Devuelve una Serie con el régimen diario del S&P 500 (2=alcista, 1=lateral, 0=bajista)."""
     sp = yf.Ticker("^GSPC").history(period="3y")
