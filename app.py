@@ -1217,7 +1217,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
     df = pd.DataFrame(resultados)
     st.success(f"✅ Análisis completado. Se obtuvieron {len(df)} resultados.")
-        ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
+    ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
     compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
     observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()    
 
