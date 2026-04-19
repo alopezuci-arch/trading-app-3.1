@@ -1587,8 +1587,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         with st.spinner("🤖 Analizando con IA..."):
             texto_ia = analisis_ia(compras.head(8).to_dict('records'), regime_data, usd_mxn)
             st.session_state['analisis_ia'] = texto_ia
-
-    # Alertas (email, WhatsApp)
+                # Alertas (email, WhatsApp)
     compras_alerta = compras[compras['Score'] >= umbral_score]
     resumen_ia = st.session_state.get('analisis_ia', '')
     if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
@@ -1609,17 +1608,13 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                     enviar_whatsapp(msg)
 
     # Backtesting con optimización de parámetros (opcional)
-if backtesting_check:
-    with st.spinner("Optimizando parámetros con backtesting..."):
-        opt = get_backtest_optimization()
-        if opt:
-            st.session_state['param_opt'] = opt
-            st.info(f"Optimización backtest: mejor umbral score = {opt['best_score_thresh']}, multiplicador ATR = {opt['best_atr_mult']}, win rate = {opt['best_win_rate']}%")
+    if backtesting_check:
+        with st.spinner("Optimizando parámetros con backtesting..."):
+            opt = get_backtest_optimization()
+            if opt:
+                st.session_state['param_opt'] = opt
+                st.info(f"Optimización backtest: mejor umbral score = {opt['best_score_thresh']}, multiplicador ATR = {opt['best_atr_mult']}, win rate = {opt['best_win_rate']}%")
 
-
-    sp_hist = calcular_indicadores(sp_hist)
-    opt = backtest_optimizar_parametros(sp_hist)
-    return opt
     st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra.")
     st.rerun()
 
