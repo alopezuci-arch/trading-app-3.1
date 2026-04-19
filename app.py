@@ -620,7 +620,7 @@ drive_upload = st.sidebar.checkbox("💾 Guardar informe en Google Drive", value
 # ============================================================
 # FUNCIONES DE ANÁLISIS TÉCNICO, SCORE, BACKTESTING, ETC.
 # ============================================================
-def safe_history(ticker, period="3mo", max_retries=3):
+def safe_history(ticker, period="6mo", max_retries=3):
     for intento in range(max_retries):
         try:
             hist = ticker.history(period=period, auto_adjust=True)
@@ -952,7 +952,7 @@ def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, 
     for sim in symbols:
         try:
             ticker = yf.Ticker(sim)
-            hist = safe_history(ticker, "3mo")
+            hist = safe_history(ticker, "6mo")
             if hist.empty:
                 continue
             factor = 1.0 if sim.endswith('.MX') else (eur_mxn if sim.endswith('.MC') else usd_mxn)
@@ -1044,7 +1044,7 @@ def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame, resu
     </body></html>"""
 
 def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figure:
-    hist = safe_history(yf.Ticker(simbolo), "3mo")
+    hist = safe_history(yf.Ticker(simbolo), "6mo")
     if hist.empty:
         return go.Figure()
     factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
