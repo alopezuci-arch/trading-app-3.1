@@ -1211,7 +1211,6 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         if not resultados:
         st.warning("⚠️ No se encontraron resultados. Verifica la conexión o el mercado seleccionado.")
         st.stop()
-
     # ========== CREAR DATAFRAMES ==========
     df = pd.DataFrame(resultados)
     st.success(f"✅ Análisis completado. Se obtuvieron {len(df)} resultados.")
