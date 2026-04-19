@@ -1022,9 +1022,9 @@ def ejecutar_scanner():
     # 12. Enviar email
     enviar_email("📈 Scanner Trading — Actualización", html)
 
-       # 13. Enviar WhatsApp (formato completo, similar al antiguo de app.py)
-    
-        if ops_compras or ops_ventas:
+    # 13. Enviar WhatsApp (formato completo, similar al antiguo de app.py)
+        # 13. Enviar WhatsApp (formato completo, similar al antiguo de app.py)
+    if ops_compras or ops_ventas:
         # Calcular top 3 compras (por score)
         top_compras = sorted(ops_compras, key=lambda x: x['Score'], reverse=True)[:3]
         top_nombres = [c['Símbolo'] for c in top_compras] if top_compras else ["ninguna"]
@@ -1047,15 +1047,13 @@ def ejecutar_scanner():
         # Si hay ventas, agregar detalles
         if ops_ventas:
             mensaje += "\n*Ventas detectadas:*\n"
-            for v in ops_ventas[:5]:  # máximo 5 para no exceder límite de WhatsApp
+            for v in ops_ventas[:5]:
                 mensaje += f"  • {v['Símbolo']}: {v['Motivo']}\n"
         
         mensaje += f"\n🎯 Confianza: {confianza}\n"
         mensaje += "📧 Ver detalles en tu email"
         
         enviar_whatsapp(mensaje)
-
-    print("✅ Scanner finalizado.")
 
 # ============================================================
 # EJECUCIÓN DIRECTA
