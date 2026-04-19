@@ -888,8 +888,8 @@ def enviar_whatsapp(mensaje: str) -> bool:
         print(f"❌ Error WhatsApp: {e}")
         return False
 
-def construir_email(ia_texto: str, ops_compras: list[dict], ops_ventas: list[dict],
-                    regime: dict, hora: str) -> str:
+def construir_email(ops_compras: list[dict], ops_ventas: list[dict],
+                   ia_texto: str regime: dict,ia_texto: str, hora: str) -> str:
 
     filas_compras = "".join([
         f"<tr><td><b>{o['Símbolo']}</b></td><td>${o['Precio MXN']:,.2f}</td>"
@@ -1017,13 +1017,13 @@ def ejecutar_scanner():
 
     # 11. Construir email
     hora = datetime.now().strftime("%d/%m %H:%M")
-    html = construir_email(ia_texto, ops_compras, ops_ventas, regime, hora)
+    html = construir_email(ia_texto, ops_compras, ops_ventas, regime, ia_texto, hora)
 
     # 12. Enviar email
     enviar_email("📈 Scanner Trading — Actualización", html)
 
     # 13. Enviar WhatsApp (formato completo, similar al antiguo de app.py)
-        # 13. Enviar WhatsApp (formato completo, similar al antiguo de app.py)
+
     if ops_compras or ops_ventas:
         # Calcular top 3 compras (por score)
         top_compras = sorted(ops_compras, key=lambda x: x['Score'], reverse=True)[:3]
