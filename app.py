@@ -1207,16 +1207,16 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
         status_text.empty()
         progress_bar.empty()
-            
-        if not resultados:
+    if not resultados:
         st.warning("⚠️ No se encontraron resultados. Verifica la conexión o el mercado seleccionado.")
         st.stop()
+
     # ========== CREAR DATAFRAMES ==========
     df = pd.DataFrame(resultados)
     st.success(f"✅ Análisis completado. Se obtuvieron {len(df)} resultados.")
-        ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
-        compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
-        observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
+    ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
+    compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
+    observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
 
     # ========== FILTRO DE FUNDAMENTALES SÓLIDOS ==========
     if filtro_fundamentales and fundamentales_check and not compras.empty:
@@ -1309,7 +1309,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                 st.info(f"Backtest: mejor umbral score = {opt['best_score_thresh']}, ATR mult = {opt['best_atr_mult']}, win rate = {opt['best_win_rate']}%")
 
     st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra.")
-    st.rerun()
+    st.rerun()            
 # ============================================================
 # PRESENTACIÓN DE RESULTADOS (si existen)
 # ============================================================
