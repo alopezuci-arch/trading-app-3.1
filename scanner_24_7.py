@@ -926,11 +926,7 @@ def construir_email(ops_compras: list[dict], ops_ventas: list[dict],
 {icono_regime} Régimen S&P 500: <b>{regime['regime']}</b> | S&P: {regime['precio']:,.0f}
 </p>
 
-<h3 style="color:#ea4335">🔴 VENTAS ({len(ops_ventas)})</h3>
-<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%">
-<tr style="background:#fce8e6"><th>Símbolo</th><th>Precio MXN</th><th>Motivo</th></tr>
-{filas_ventas}
-</table>
+{bloque_ia}
 
 <h3 style="color:#34a853">🟢 COMPRAS ({len(ops_compras)})</h3>
 <table border="1" cellpadding="6" style="border-collapse:collapse;width:100%">
@@ -938,7 +934,11 @@ def construir_email(ops_compras: list[dict], ops_ventas: list[dict],
 {filas_compras}
 </table>
 
-{bloque_ia}
+<h3 style="color:#ea4335">🔴 VENTAS ({len(ops_ventas)})</h3>
+<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%">
+<tr style="background:#fce8e6"><th>Símbolo</th><th>Precio MXN</th><th>Motivo</th></tr>
+{filas_ventas}
+</table>
 
 </body></html>
 """
