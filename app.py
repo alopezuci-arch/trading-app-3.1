@@ -27,6 +27,13 @@ import pickle
 import warnings
 warnings.filterwarnings('ignore')
 
+# --- Sesión con impersonación de navegador para evitar bloqueos de Yahoo en Streamlit Cloud ---
+try:
+    from curl_cffi import requests as curl_requests
+    _YF_SESSION = curl_requests.Session(impersonate="chrome124")
+except Exception:
+    _YF_SESSION = None
+
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
@@ -60,6 +67,10 @@ GHU_GIST_TOKEN = os.environ.get("GHU_GIST_TOKEN", "")
 REPO_OWNER     = "alopezuci-arch"
 REPO_NAME      = "trading-app-3.1"
 DATA_PATH      = "data"
+
+# Archivos de persistencia (definidos aquí para evitar NameError en funciones posteriores)
+TRANSACCIONES_FILE = "transacciones.csv"
+HISTORIAL_FILE     = "historial_senales.csv"
 
 # ============================================================
 # PERSISTENCIA (mismo código que tenías, no cambio nada esencial)
@@ -104,14 +115,7 @@ def repo_cargar_posiciones() -> dict:
         try:
             data = json.loads(contenido)
             if isinstance(data, dict) and data:
-                posiciones = {}
-                for k, v in data.items():
-                    clave = k.upper()
-                    # Si es un símbolo mexicano y no tiene .MX, se lo añadimos
-                    if clave in MEXICAN_SYMBOLS_WITHOUT_SUFFIX and not clave.endswith('.MX'):
-                        clave = clave + '.MX'
-                    posiciones[clave] = float(v)
-                return posiciones
+                return {k.upper(): float(v) for k, v in data.items()}
         except:
             pass
     return {}
@@ -243,7 +247,6 @@ def restaurar_desde_zip(uploaded_file) -> dict:
 # ============================================================
 # HISTORIAL Y TRANSACCIONES
 # ============================================================
-TRANSACCIONES_FILE = "transacciones.csv"
 def cargar_transacciones() -> pd.DataFrame:
     if os.path.exists(TRANSACCIONES_FILE):
         df = pd.read_csv(TRANSACCIONES_FILE)
@@ -428,26 +431,32 @@ mercado_opciones = {
 @st.cache_data(ttl=3600)
 def obtener_tipo_cambio() -> tuple[float, float]:
     try:
-        usd = yf.Ticker("USDMXN=X").history(period="1d")
-        eur = yf.Ticker("EURMXN=X").history(period="1d")
+        usd = yf.Ticker("USDMXN=X", session=_YF_SESSION).history(period="5d")
+        eur = yf.Ticker("EURMXN=X", session=_YF_SESSION).history(period="5d")
         return (float(usd['Close'].iloc[-1]) if not usd.empty else 20.0,
                 float(eur['Close'].iloc[-1]) if not eur.empty else 21.5)
-    except:
+    except Exception as e:
+        print(f"[tipo_cambio] Error: {e}")
         return 20.0, 21.5
 
-def safe_history(ticker, period="6mo", max_retries=5):
+def safe_history(ticker, period="6mo", max_retries=3):
+    last_err = None
     for intento in range(max_retries):
         try:
             hist = ticker.history(period=period, auto_adjust=True)
-            if not hist.empty and len(hist) >= 20:   # reducido para más tolerancia
+            if not hist.empty and len(hist) >= 20:
                 return hist
-            time.sleep(1)
+            # vacío: esperar un poco y reintentar
+            time.sleep(1 + intento)
         except Exception as e:
-            if "Rate limit" in str(e) or "429" in str(e):
-                wait = 2 ** intento
-                time.sleep(wait)
+            last_err = e
+            msg = str(e)
+            if "Rate limit" in msg or "429" in msg or "Too Many Requests" in msg:
+                time.sleep(2 ** intento)
             else:
                 time.sleep(1)
+    if last_err:
+        print(f"[safe_history] {ticker.ticker if hasattr(ticker,'ticker') else '?'}: {last_err}")
     return pd.DataFrame()
 
 def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
@@ -474,12 +483,13 @@ def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist['BB_pct'] = (hist['Close'] - hist['BB_lower']) / (hist['BB_upper'] - hist['BB_lower'])
     low14 = hist['Low'].rolling(14).min()
     high14 = hist['High'].rolling(14).max()
-    hist['STOCH_K'] = 100 * (hist['Close'] - low14) / (high14 - low14)
+    rango14 = (high14 - low14).replace(0, np.nan)
+    hist['STOCH_K'] = 100 * (hist['Close'] - low14) / rango14
     hist['STOCH_D'] = hist['STOCH_K'].rolling(3).mean()
     hist['Vol_avg'] = hist['Volume'].rolling(20).mean()
     # Nuevos indicadores
     hist['ROC'] = (hist['Close'] / hist['Close'].shift(10) - 1) * 100
-    hist['WILLR'] = -100 * (high14 - hist['Close']) / (high14 - low14)
+    hist['WILLR'] = -100 * (high14 - hist['Close']) / rango14
     hist['OBV'] = (np.sign(hist['Close'].diff()) * hist['Volume']).cumsum()
     hist['ATR_RATIO'] = hist['ATR'] / hist['Close']
     hist['DOW'] = hist.index.dayofweek
@@ -536,7 +546,7 @@ def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
 
 def obtener_market_regime() -> dict:
     try:
-        sp = yf.Ticker("^GSPC").history(period="1y")
+        sp = yf.Ticker("^GSPC", session=_YF_SESSION).history(period="1y")
         if sp.empty or len(sp) < 200:
             return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0,
                     'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Sin datos'}
@@ -577,7 +587,7 @@ def position_size(precio: float, atr: float, capital: float, riesgo_pct: float) 
 
 @st.cache_data(ttl=3600)
 def obtener_regimen_diario() -> pd.Series:
-    sp = yf.Ticker("^GSPC").history(period="3y")
+    sp = yf.Ticker("^GSPC", session=_YF_SESSION).history(period="3y")
     if sp.empty:
         return pd.Series()
     sp['EMA200'] = sp['Close'].ewm(span=200).mean()
@@ -591,7 +601,7 @@ def obtener_regimen_diario() -> pd.Series:
 
 def obtener_fundamentales_profundos(simbolo: str) -> dict:
     try:
-        info = yf.Ticker(simbolo).info
+        info = yf.Ticker(simbolo, session=_YF_SESSION).info
         dy = info.get('dividendYield')
         roe = info.get('returnOnEquity')
         rg = info.get('revenueGrowth')
@@ -620,7 +630,7 @@ def obtener_fundamentales_profundos(simbolo: str) -> dict:
 
 def backtest_realista(simbolo: str, precio_entrada: float, atr: float, window_dias=30) -> dict:
     try:
-        ticker = yf.Ticker(simbolo)
+        ticker = yf.Ticker(simbolo, session=_YF_SESSION)
         hist = safe_history(ticker, "6mo")
         if hist.empty:
             return {'resultado': 0, 'tipo': 'error'}
@@ -681,7 +691,7 @@ def backtest_optimizar_parametros(hist_anual: pd.DataFrame) -> dict:
 
 @st.cache_data(ttl=86400)
 def get_backtest_optimization():
-    sp_hist = yf.Ticker("^GSPC").history(period="2y")
+    sp_hist = yf.Ticker("^GSPC", session=_YF_SESSION).history(period="2y")
     if sp_hist.empty:
         return None
     sp_hist = calcular_indicadores(sp_hist)
@@ -699,7 +709,7 @@ def entrenar_modelo_ml(simbolo: str, usd_mxn: float, eur_mxn: float) -> dict:
         cache[simbolo] = {'model': clf_repo, 'acc': acc_repo, 'ts': datetime.now()}
         return {'model': clf_repo, 'accuracy': acc_repo, 'fuente': '☁️ repo'}
     try:
-        ticker = yf.Ticker(simbolo)
+        ticker = yf.Ticker(simbolo, session=_YF_SESSION)
         hist = safe_history(ticker, "3y")
         if hist.empty or len(hist) < 200:
             return None
@@ -787,7 +797,7 @@ def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, 
     precios = {}
     for sim in symbols:
         try:
-            ticker = yf.Ticker(sim)
+            ticker = yf.Ticker(sim, session=_YF_SESSION)
             hist = safe_history(ticker, "6mo")
             if hist.empty:
                 continue
@@ -878,7 +888,7 @@ def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame, resu
     </body></html>"""
 
 def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figure:
-    hist = safe_history(yf.Ticker(simbolo), "6mo")
+    hist = safe_history(yf.Ticker(simbolo, session=_YF_SESSION), "6mo")
     if hist.empty:
         return go.Figure()
     factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
@@ -905,7 +915,7 @@ def dashboard_rendimiento(df_hist: pd.DataFrame) -> None:
     returns = []
     for _, row in df_hist.iterrows():
         try:
-            ticker = yf.Ticker(row['simbolo'])
+            ticker = yf.Ticker(row['simbolo'], session=_YF_SESSION)
             hist = ticker.history(start=row['fecha'] - timedelta(days=5), end=row['fecha'] + timedelta(days=10))
             if hist.empty:
                 continue
@@ -984,7 +994,7 @@ def analizar_accion(args: tuple) -> dict | None:
     simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt, regime_bonus, capital, riesgo_pct = args
     try:
         periodo = "6mo" if incluir_bt else "3mo"
-        ticker = yf.Ticker(simbolo)
+        ticker = yf.Ticker(simbolo, session=_YF_SESSION)
         hist = safe_history(ticker, periodo)
         if hist.empty or len(hist) < 20:
             return None
@@ -1059,8 +1069,7 @@ def analizar_accion(args: tuple) -> dict | None:
             resultado['BT Resultado'] = f"{bt['resultado']:.2f}% ({bt['tipo']})"
         return resultado
     except Exception as e:
-        # No silenciar totalmente para depuración, pero no romper
-        # st.error(f"Error con {simbolo}: {e}")
+        print(f"[analizar_accion] {simbolo}: {type(e).__name__}: {e}")
         return None
 
 # ============================================================
@@ -1181,16 +1190,12 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     col2.metric("⚡ Trading (25%)", f"${trade_cap:,.0f} MXN")
     col3.metric("🎯 Alta convicción (10%)", f"${conv_cap:,.0f} MXN")
     st.markdown("---")
+
     lista_acciones = mercado_opciones[mercado_seleccionado].copy()
     if PRECIO_COMPRA:
-    for sim in PRECIO_COMPRA.keys():
-        # Si el símbolo está en la lista de mexicanos (bmv) y no tiene .MX, se lo añadimos
-        if sim in [s.replace('.MX', '') for s in bmv]:
-            sim_con_sufijo = sim + '.MX'
-        else:
-            sim_con_sufijo = sim
-        if sim_con_sufijo not in lista_acciones:
-            lista_acciones.append(sim_con_sufijo)
+        for sim in PRECIO_COMPRA.keys():
+            if sim not in lista_acciones:
+                lista_acciones.append(sim)
 
     total = len(lista_acciones)
     st.info(f"Analizando {total} acciones...")
@@ -1219,7 +1224,19 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         status_text.empty()
         progress_bar.empty()
     if not resultados:
-        st.warning("⚠️ No se encontraron resultados. Verifica la conexión o el mercado seleccionado.")
+        st.error(
+            "⚠️ No se obtuvieron resultados para ningún símbolo.\n\n"
+            "**Causa más probable en Streamlit Cloud:** Yahoo Finance está bloqueando las "
+            "peticiones de `yfinance` (rate-limit 429 sobre IPs compartidas).\n\n"
+            "**Soluciones:**\n"
+            "1. Espera 10-30 min y vuelve a intentar.\n"
+            "2. Asegúrate de que `curl_cffi` esté en `requirements.txt` (ya se usa "
+            "impersonación de Chrome en esta versión).\n"
+            "3. Revisa los logs de Streamlit Cloud (Manage app → Logs) para ver el error exacto "
+            "de yfinance.\n"
+            "4. Si persiste, despliega en Render/Railway (IP dedicada) o usa una API alternativa "
+            "(Alpha Vantage, Finnhub)."
+        )
         st.stop()
 
     # ========== CREAR DATAFRAMES ==========
@@ -1320,7 +1337,6 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                 st.info(f"Backtest: mejor umbral score = {opt['best_score_thresh']}, ATR mult = {opt['best_atr_mult']}, win rate = {opt['best_win_rate']}%")
 
     st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra.")
-    st.rerun()            
 # ============================================================
 # PRESENTACIÓN DE RESULTADOS (si existen)
 # ============================================================
