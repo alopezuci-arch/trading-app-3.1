@@ -205,20 +205,13 @@ def generar_backup_zip() -> bytes:
     import zipfile
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-        # posiciones.json
         posiciones = st.session_state.get('PRECIO_COMPRA', {})
-        zf.writestr("posiciones.json",
-                    json.dumps(posiciones, indent=2, ensure_ascii=False))
-        # transacciones.csv
+        zf.writestr("posiciones.json", json.dumps(posiciones, indent=2, ensure_ascii=False))
         if os.path.exists(TRANSACCIONES_FILE):
             zf.write(TRANSACCIONES_FILE, "transacciones.csv")
-        # historial_senales.csv
         if os.path.exists("historial_senales.csv"):
             zf.write("historial_senales.csv", "historial_senales.csv")
-        # readme
-        zf.writestr("LEEME.txt",
-            f"Backup Trading App — {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
-            "Para restaurar: usa el boton 'Restaurar desde backup' en el sidebar.")
+        zf.writestr("LEEME.txt", f"Backup Trading App — {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
     buf.seek(0)
     return buf.read()
 
@@ -228,13 +221,12 @@ def restaurar_desde_zip(uploaded_file) -> dict:
     posiciones = {}
     try:
         with zipfile.ZipFile(io.BytesIO(uploaded_file.read())) as zf:
-            nombres = zf.namelist()
-            if "posiciones.json" in nombres:
+            if "posiciones.json" in zf.namelist():
                 posiciones = json.loads(zf.read("posiciones.json").decode())
-            if "transacciones.csv" in nombres:
+            if "transacciones.csv" in zf.namelist():
                 with open(TRANSACCIONES_FILE, 'wb') as f:
                     f.write(zf.read("transacciones.csv"))
-            if "historial_senales.csv" in nombres:
+            if "historial_senales.csv" in zf.namelist():
                 with open("historial_senales.csv", 'wb') as f:
                     f.write(zf.read("historial_senales.csv"))
     except Exception as e:
