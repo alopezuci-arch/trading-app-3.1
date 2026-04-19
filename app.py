@@ -1207,11 +1207,12 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
         status_text.empty()
         progress_bar.empty()
-
-    if not resultados:
+            
+        if not resultados:
         st.warning("⚠️ No se encontraron resultados. Verifica la conexión o el mercado seleccionado.")
         st.stop()
-            # ========== CREAR DATAFRAMES ==========
+
+    # ========== CREAR DATAFRAMES ==========
     df = pd.DataFrame(resultados)
     st.success(f"✅ Análisis completado. Se obtuvieron {len(df)} resultados.")
     ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
