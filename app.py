@@ -1491,12 +1491,16 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                 html = construir_email_html(compras_alerta, ventas, resumen_ia)
                 enviar_email(f"📈 Alerta Trading {datetime.now().strftime('%d/%m %H:%M')}", html)
             if alerta_whatsapp:
-                n_compras = len(compras_alerta)
-                n_ventas = len(ventas)
-                top3 = ", ".join(compras_alerta.head(3)['Símbolo'].tolist()) if n_compras else "ninguna"
-                msg = (f"📈 *Alerta Trading* {datetime.now().strftime('%d/%m %H:%M')}\n"
-                       f"🟢 Compras: {n_compras} (Top: {top3})\n🔴 Ventas: {n_ventas}\nUmbral score: {umbral_score}")
-                enviar_whatsapp(msg)
+                # No enviar WhatsApp si estamos en GitHub Actions (solo el scanner lo hará)
+            if os.environ.get("GITHUB_ACTIONS") == "true":
+            print("⚠️ Omitiendo WhatsApp desde app.py (ejecución automática)")
+            else:
+            n_compras = len(compras_alerta)
+            n_ventas = len(ventas)
+            top3 = ", ".join(compras_alerta.head(3)['Símbolo'].tolist()) if n_compras else "ninguna"
+            msg = (f"📈 *Alerta Trading* {datetime.now().strftime('%d/%m %H:%M')}\n"
+               f"🟢 Compras: {n_compras} (Top: {top3})\n🔴 Ventas: {n_ventas}\nUmbral score: {umbral_score}")
+        enviar_whatsapp(msg)
 
     # Backtesting con optimización de parámetros (opcional)
     if backtesting_check:
