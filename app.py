@@ -104,7 +104,14 @@ def repo_cargar_posiciones() -> dict:
         try:
             data = json.loads(contenido)
             if isinstance(data, dict) and data:
-                return {k.upper(): float(v) for k, v in data.items()}
+                posiciones = {}
+                for k, v in data.items():
+                    clave = k.upper()
+                    # Si es un símbolo mexicano y no tiene .MX, se lo añadimos
+                    if clave in MEXICAN_SYMBOLS_WITHOUT_SUFFIX and not clave.endswith('.MX'):
+                        clave = clave + '.MX'
+                    posiciones[clave] = float(v)
+                return posiciones
         except:
             pass
     return {}
@@ -1174,12 +1181,16 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     col2.metric("⚡ Trading (25%)", f"${trade_cap:,.0f} MXN")
     col3.metric("🎯 Alta convicción (10%)", f"${conv_cap:,.0f} MXN")
     st.markdown("---")
-
     lista_acciones = mercado_opciones[mercado_seleccionado].copy()
     if PRECIO_COMPRA:
-        for sim in PRECIO_COMPRA.keys():
-            if sim not in lista_acciones:
-                lista_acciones.append(sim)
+    for sim in PRECIO_COMPRA.keys():
+        # Si el símbolo está en la lista de mexicanos (bmv) y no tiene .MX, se lo añadimos
+        if sim in [s.replace('.MX', '') for s in bmv]:
+            sim_con_sufijo = sim + '.MX'
+        else:
+            sim_con_sufijo = sim
+        if sim_con_sufijo not in lista_acciones:
+            lista_acciones.append(sim_con_sufijo)
 
     total = len(lista_acciones)
     st.info(f"Analizando {total} acciones...")
