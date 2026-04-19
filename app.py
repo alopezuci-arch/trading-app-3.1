@@ -1137,9 +1137,6 @@ if st.sidebar.button("📉 REGISTRAR VENTA"):
 st.sidebar.markdown("### 📂 Google Drive")
 drive_upload = st.sidebar.checkbox("💾 Guardar en Drive", value=False)
 
-# ============================================================
-# BOTÓN DE ANÁLISIS (CORREGIDO Y CON LOGS)
-# ============================================================
 if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     PRECIO_COMPRA = dict(st.session_state.get('PRECIO_COMPRA', {}))
 
@@ -1215,35 +1212,35 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         st.warning("⚠️ No se encontraron resultados. Verifica la conexión o el mercado seleccionado.")
         st.stop()
 
+    # ========== CREAR DATAFRAMES ==========
     df = pd.DataFrame(resultados)
     st.success(f"✅ Análisis completado. Se obtuvieron {len(df)} resultados.")
     ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
     compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
-    observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()    
+    observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
 
-# ========== FILTRO DE FUNDAMENTALES SÓLIDOS ==========
-if filtro_fundamentales and fundamentales_check and not compras.empty:
-    required_cols = ['ROE (%)', 'Debt/Equity', 'EPS Growth (%)', 'Net Margin (%)']
-    if all(col in compras.columns for col in required_cols):
-        for col in required_cols:
-            compras[col] = pd.to_numeric(compras[col], errors='coerce')
-        mask = (
-            (compras['ROE (%)'].fillna(-999) > 5) &
-            (compras['Debt/Equity'].fillna(999) < 2) &
-            (compras['EPS Growth (%)'].fillna(-999) > 0) &
-            (compras['Net Margin (%)'].fillna(-999) > 0)
-        )
-        filtradas = compras[mask].copy()
-        if filtradas.empty:
-            st.warning("⚠️ No hay acciones que cumplan los criterios fundamentales sólidos.")
+    # ========== FILTRO DE FUNDAMENTALES SÓLIDOS ==========
+    if filtro_fundamentales and fundamentales_check and not compras.empty:
+        required_cols = ['ROE (%)', 'Debt/Equity', 'EPS Growth (%)', 'Net Margin (%)']
+        if all(col in compras.columns for col in required_cols):
+            for col in required_cols:
+                compras[col] = pd.to_numeric(compras[col], errors='coerce')
+            mask = (
+                (compras['ROE (%)'].fillna(-999) > 5) &
+                (compras['Debt/Equity'].fillna(999) < 2) &
+                (compras['EPS Growth (%)'].fillna(-999) > 0) &
+                (compras['Net Margin (%)'].fillna(-999) > 0)
+            )
+            filtradas = compras[mask].copy()
+            if filtradas.empty:
+                st.warning("⚠️ No hay acciones que cumplan los criterios fundamentales sólidos.")
+            else:
+                st.success(f"✅ Filtro fundamental aplicado: {len(compras)} → {len(filtradas)} acciones")
+                compras = filtradas
         else:
-            st.success(f"✅ Filtro fundamental aplicado: {len(compras)} → {len(filtradas)} acciones")
-            compras = filtradas
-    else:
-        st.warning("⚠️ No se encontraron datos fundamentales. Asegúrate de activar 'Análisis fundamental (profundo)'.")
-        
-    # ===============================================================
-    # Sentimiento
+            st.warning("⚠️ No se encontraron datos fundamentales. Asegúrate de activar 'Análisis fundamental (profundo)'.")
+
+    # ========== SENTIMIENTO ==========
     if sentiment_check and not compras.empty:
         with st.spinner("Analizando sentimiento..."):
             for idx, row in compras.iterrows():
@@ -1252,7 +1249,7 @@ if filtro_fundamentales and fundamentales_check and not compras.empty:
                 compras.at[idx, 'Sentimiento Score'] = sent['score']
                 compras.at[idx, 'Noticias'] = "; ".join(sent['noticias'][:2])
 
-    # ML
+    # ========== ML ==========
     if ml_check and not compras.empty:
         with st.spinner("🧠 Cargando modelos ML..."):
             for idx, row in compras.iterrows():
@@ -1262,10 +1259,11 @@ if filtro_fundamentales and fundamentales_check and not compras.empty:
                 else:
                     compras.at[idx, 'ML Predicción'] = "No disponible"
 
-    # Optimización cartera
+    # ========== OPTIMIZACIÓN DE CARTERA ==========
     if not compras.empty:
         compras = optimizar_cartera(compras, trade_capital, usd_mxn, eur_mxn)
 
+    # ========== GUARDAR EN SESSION STATE ==========
     st.session_state['df'] = df
     st.session_state['compras'] = compras
     st.session_state['ventas'] = ventas
@@ -1281,12 +1279,13 @@ if filtro_fundamentales and fundamentales_check and not compras.empty:
         repo_guardar_posiciones(PRECIO_COMPRA)
     repo_guardar_transacciones()
 
+    # ========== IA ==========
     if ia_check and not compras.empty:
         with st.spinner("🤖 Analizando con IA..."):
             texto_ia = analisis_ia(compras.head(8).to_dict('records'), regime_data, usd_mxn)
             st.session_state['analisis_ia'] = texto_ia
 
-    # Alertas
+    # ========== ALERTAS ==========
     compras_alerta = compras[compras['Score'] >= umbral_score]
     resumen_ia = st.session_state.get('analisis_ia', '')
     if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
@@ -1302,7 +1301,7 @@ if filtro_fundamentales and fundamentales_check and not compras.empty:
                        f"🟢 Compras: {n_compras} (Top: {top3})\n🔴 Ventas: {n_ventas}\nUmbral: {umbral_score}")
                 enviar_whatsapp(msg)
 
-    # Backtesting
+    # ========== BACKTESTING ==========
     if backtesting_check:
         with st.spinner("Optimizando backtesting..."):
             opt = get_backtest_optimization()
@@ -1312,7 +1311,6 @@ if filtro_fundamentales and fundamentales_check and not compras.empty:
 
     st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra.")
     st.rerun()
-
 # ============================================================
 # PRESENTACIÓN DE RESULTADOS (si existen)
 # ============================================================
