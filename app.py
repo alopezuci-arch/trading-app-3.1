@@ -200,6 +200,47 @@ def repo_cargar_modelo_ml(simbolo: str):
         pass
     return None, 0
 
+def generar_backup_zip() -> bytes:
+    """Genera un ZIP con todos los datos para descarga local."""
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        # posiciones.json
+        posiciones = st.session_state.get('PRECIO_COMPRA', {})
+        zf.writestr("posiciones.json",
+                    json.dumps(posiciones, indent=2, ensure_ascii=False))
+        # transacciones.csv
+        if os.path.exists(TRANSACCIONES_FILE):
+            zf.write(TRANSACCIONES_FILE, "transacciones.csv")
+        # historial_senales.csv
+        if os.path.exists("historial_senales.csv"):
+            zf.write("historial_senales.csv", "historial_senales.csv")
+        # readme
+        zf.writestr("LEEME.txt",
+            f"Backup Trading App — {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
+            "Para restaurar: usa el boton 'Restaurar desde backup' en el sidebar.")
+    buf.seek(0)
+    return buf.read()
+
+def restaurar_desde_zip(uploaded_file) -> dict:
+    """Lee un ZIP de backup y devuelve las posiciones; restaura CSV al disco."""
+    import zipfile
+    posiciones = {}
+    try:
+        with zipfile.ZipFile(io.BytesIO(uploaded_file.read())) as zf:
+            nombres = zf.namelist()
+            if "posiciones.json" in nombres:
+                posiciones = json.loads(zf.read("posiciones.json").decode())
+            if "transacciones.csv" in nombres:
+                with open(TRANSACCIONES_FILE, 'wb') as f:
+                    f.write(zf.read("transacciones.csv"))
+            if "historial_senales.csv" in nombres:
+                with open("historial_senales.csv", 'wb') as f:
+                    f.write(zf.read("historial_senales.csv"))
+    except Exception as e:
+        st.error(f"Error leyendo backup: {e}")
+    return posiciones
+    
 # ============================================================
 # HISTORIAL Y TRANSACCIONES
 # ============================================================
