@@ -205,84 +205,65 @@ def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool
 # ============================================================
 
 def cargar_posiciones_repo() -> dict:
-    print("📌 Intentando cargar portafolio desde data/posiciones.json...")
+    print("📌 Intentando cargar portafolio...")
+    posiciones = {}
 
-    contenido_json = _repo_leer("posiciones.json")
-    posiciones_json = {}
-
-    if contenido_json and contenido_json.strip() not in ("", "{}", "null"):
+    # 1. Intentar cargar desde archivo local posiciones.json
+    if os.path.exists("posiciones.json"):
         try:
-            data = json.loads(contenido_json)
-            if isinstance(data, dict) and data:
-                posiciones_json = {}
-                for k, v in data.items():
-                    clave_limpia = k.upper().replace('.MX', '')
-                    posiciones_json[clave_limpia] = float(v)
-                print(f" ✅ Portafolio JSON cargado ({len(posiciones_json)} activos).")
+            with open("posiciones.json", "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    for k, v in data.items():
+                        clave_limpia = k.upper().replace('.MX', '')
+                        posiciones[clave_limpia] = float(v)
+                    print(f" ✅ Portafolio cargado desde posiciones.json local ({len(posiciones)} activos).")
+                    return posiciones
         except Exception as e:
-            print(f" ⚠️ Error parseando posiciones.json: {e}")
+            print(f" ⚠️ Error leyendo posiciones.json local: {e}")
 
-    # Respaldo desde transacciones.csv
-    print("📌 Validando portafolio contra data/transacciones.csv...")
-    csv_contenido = _repo_leer("transacciones.csv")
-    posiciones_reconstruidas = {}
-
-    if csv_contenido and len(csv_contenido) > 60:
+    # 2. Intentar cargar desde transacciones.csv local
+    if os.path.exists("transacciones.csv"):
         try:
-            from io import StringIO
-            df = pd.read_csv(StringIO(csv_contenido))
-
+            df = pd.read_csv("transacciones.csv")
             df['simbolo'] = df['simbolo'].str.upper().str.replace('.MX', '')
             df['tipo'] = df['tipo'].str.lower().str.strip()
             df['fecha'] = pd.to_datetime(df['fecha'])
 
             df_compras = df[df['tipo'] == 'compra'].groupby('simbolo')['cantidad'].sum()
             df_ventas = df[df['tipo'] == 'venta'].groupby('simbolo')['cantidad'].sum()
-
             df_neto = pd.DataFrame({'compras': df_compras, 'ventas': df_ventas}).fillna(0)
             df_neto['cantidad_actual'] = df_neto['compras'] - df_neto['ventas']
-
             acciones_abiertas = df_neto[df_neto['cantidad_actual'] > 0.001].index.tolist()
 
             for sim in acciones_abiertas:
-                ultimo_trade_compra = df[
-                    (df['simbolo'] == sim) & (df['tipo'] == 'compra')
-                ].sort_values('fecha').iloc[-1]
+                ultimo_trade_compra = df[(df['simbolo'] == sim) & (df['tipo'] == 'compra')].sort_values('fecha').iloc[-1]
+                posiciones[sim] = float(ultimo_trade_compra['precio'])
 
-                posiciones_reconstruidas[sim] = float(ultimo_trade_compra['precio'])
-
-            print(f" ✅ Portafolio reconstruido desde transacciones.csv ({len(posiciones_reconstruidas)} activos).")
-
+            print(f" ✅ Portafolio reconstruido desde transacciones.csv local ({len(posiciones)} activos).")
+            return posiciones
         except Exception as e:
-            print(f" ❌ Error reconstruyendo portafolio desde CSV: {e}")
+            print(f" ⚠️ Error leyendo transacciones.csv local: {e}")
 
-    # Decidir la fuente de verdad
-    if not posiciones_json and posiciones_reconstruidas:
-        print("⚠️ data/posiciones.json vacío. Sincronizando con CSV...")
-        contenido_guardar = json.dumps(posiciones_reconstruidas, indent=2, ensure_ascii=False)
-        _repo_escribir("posiciones.json", contenido_guardar, "sincronizar desde CSV")
-        return posiciones_reconstruidas
+    # 3. Fallback: intentar desde GitHub (si está configurado)
+    if _repo_disponible():
+        print("📡 Intentando cargar desde GitHub...")
+        contenido_json = _repo_leer("posiciones.json")
+        if contenido_json and contenido_json.strip() not in ("", "{}", "null"):
+            try:
+                data = json.loads(contenido_json)
+                if isinstance(data, dict):
+                    for k, v in data.items():
+                        clave_limpia = k.upper().replace('.MX', '')
+                        posiciones[clave_limpia] = float(v)
+                    print(f" ✅ Portafolio cargado desde GitHub ({len(posiciones)} activos).")
+                    return posiciones
+            except Exception as e:
+                print(f" ⚠️ Error parseando posiciones.json de GitHub: {e}")
 
-    elif posiciones_json and posiciones_reconstruidas:
-        set_json = set(posiciones_json.keys())
-        set_csv = set(posiciones_reconstruidas.keys())
-
-        acciones_a_borrar = set_json - set_csv
-        if acciones_a_borrar:
-            print(f"⚠️ Limpiando {len(acciones_a_borrar)} acciones vendidas del JSON.")
-            for sim in acciones_a_borrar:
-                del posiciones_json[sim]
-
-            _repo_escribir("posiciones.json", json.dumps(posiciones_json, indent=2), "limpiar vendidos")
-
-        return posiciones_json
-
-    elif not posiciones_json and not posiciones_reconstruidas:
-        print("ℹ️ Sin posiciones abiertas.")
-        return {}
-
-    return posiciones_json
-
+    print("ℹ️ Sin posiciones abiertas.")
+    return posiciones
+    
 # ============================================================
 # HISTORIAL
 # ============================================================
