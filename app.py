@@ -722,6 +722,20 @@ def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
     return score, señales
 
 def obtener_market_regime() -> dict:
+    def obtener_regimen_diario() -> pd.Series:
+    """Devuelve una Serie con el régimen diario del S&P 500 (2=alcista, 1=lateral, 0=bajista)."""
+    sp = yf.Ticker("^GSPC").history(period="3y")
+    if sp.empty:
+        return pd.Series()
+    sp['EMA200'] = sp['Close'].ewm(span=200).mean()
+    sp['EMA50'] = sp['Close'].ewm(span=50).mean()
+    cond_alta = (sp['Close'] > sp['EMA200']) & (sp['Close'] > sp['EMA50']) & (sp['EMA50'] > sp['EMA200'])
+    cond_lateral = (sp['Close'] > sp['EMA200']) & (~cond_alta)
+    sp['REGIME'] = 0          # bajista
+    sp.loc[cond_lateral, 'REGIME'] = 1
+    sp.loc[cond_alta, 'REGIME'] = 2
+    return sp['REGIME']
+    
     try:
         sp = yf.Ticker("^GSPC").history(period="1y")
         if sp.empty or len(sp) < 200:
@@ -853,18 +867,24 @@ def backtest_optimizar_parametros(hist_anual: pd.DataFrame) -> dict:
 
 def entrenar_modelo_ml(simbolo: str, usd_mxn: float, eur_mxn: float) -> dict:
     """
-    Entrena un modelo predictivo (RandomForest o XGBoost) con validación temporal,
-    optimización de hiperparámetros y balanceo de clases.
+    Entrena un modelo predictivo (RandomForest) con:
+    - Walk‑forward (últimos 2 años)
+    - Target de 3 clases (subida >1.5%, bajada >1.5%, lateral)
+    - Feature: régimen de mercado (alcista/lateral/bajista)
+    - Validación temporal (TimeSeriesSplit)
+    - GridSearch de hiperparámetros
+    - Probabilidades calibradas
+    - Caché en memoria y persistencia en repo (7 días)
     """
     cache = _ml_cache_global()
 
-    # 1. Cache en memoria (válido por 7 días)
+    # 1. Caché en memoria (válido 7 días)
     if simbolo in cache:
         entrada = cache[simbolo]
-        if (datetime.now() - entrada['ts']).total_seconds() < 604800:  # 7 días
+        if (datetime.now() - entrada['ts']).total_seconds() < 604800:
             return {'model': entrada['model'], 'accuracy': entrada['acc'], 'fuente': '⚡ memoria'}
 
-    # 2. Modelo en repo (válido por 7 días)
+    # 2. Cargar desde repo (si tiene menos de 7 días)
     clf_repo, acc_repo = repo_cargar_modelo_ml(simbolo)
     if clf_repo is not None:
         cache[simbolo] = {'model': clf_repo, 'acc': acc_repo, 'ts': datetime.now()}
@@ -873,68 +893,87 @@ def entrenar_modelo_ml(simbolo: str, usd_mxn: float, eur_mxn: float) -> dict:
     # 3. Entrenar desde cero
     try:
         ticker = yf.Ticker(simbolo)
-        hist = safe_history(ticker, "3y")
+        hist = safe_history(ticker, "3y")   # 3 años de datos
         if hist.empty or len(hist) < 200:
             return None
 
+        # Convertir a MXN
         factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
         for col in ['Close','Open','High','Low']:
             hist[col] *= factor
 
+        # Añadir régimen de mercado como feature
+        regime_series = obtener_regimen_diario()
+        hist = hist.join(regime_series.rename('REGIME'), how='left')
+        hist['REGIME'] = hist['REGIME'].fillna(method='ffill').fillna(1)
+
+        # Calcular indicadores (debe incluir ROC, WILLR, OBV, ATR_RATIO, DOW)
         hist = calcular_indicadores(hist)
         hist = hist.dropna()
-        if len(hist) < 100:
+        if len(hist) < 200:
             return None
 
-        # Target: sube en 5 días? (clasificación binaria)
-        hist['target'] = (hist['Close'].shift(-5) > hist['Close']).astype(int)
+        # Target: 3 clases (subida >1.5%, bajada >1.5%, lateral)
+        ret_futuro = (hist['Close'].shift(-5) / hist['Close'] - 1) * 100
+        hist['target'] = np.select(
+            [ret_futuro > 1.5, ret_futuro < -1.5],
+            [2, 0],   # 2=subida, 0=bajada, 1=lateral
+            default=1
+        )
         hist = hist.dropna()
 
-        # Features actualizadas
+        # Features (incluir las nuevas y REGIME)
         features = [
             'EMA20', 'EMA50', 'RSI', 'MACD', 'MACD_sig', 'ATR', 'BB_pct',
             'STOCH_K', 'STOCH_D', 'Volume', 'Vol_avg',
-            'ROC', 'WILLR', 'OBV', 'ATR_RATIO', 'DOW'
+            'ROC', 'WILLR', 'OBV', 'ATR_RATIO', 'DOW', 'REGIME'
         ]
         # Asegurar que todas existan
         for f in features:
             if f not in hist.columns:
-                hist[f] = 0  # fallback
-
+                hist[f] = 0
         X = hist[features]
         y = hist['target']
 
+        # Walk‑forward: usar solo los últimos 2 años (aprox 504 días)
+        if len(X) > 504:
+            X = X.tail(504)
+            y = y.tail(504)
+
         # Validación temporal (TimeSeriesSplit)
-        from sklearn.model_selection import TimeSeriesSplit
+        from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
         tscv = TimeSeriesSplit(n_splits=3)
 
-        # GridSearch para RandomForest
+        # GridSearch para RandomForest (class_weight='balanced' para manejar desbalanceo)
+        from sklearn.ensemble import RandomForestClassifier
         param_grid = {
             'n_estimators': [50, 100],
             'max_depth': [3, 5, 7],
             'min_samples_split': [2, 5],
             'class_weight': ['balanced', None]
         }
-        from sklearn.ensemble import RandomForestClassifier
         grid = GridSearchCV(RandomForestClassifier(random_state=42),
-                            param_grid, cv=tscv, scoring='accuracy', n_jobs=-1)
+                            param_grid, cv=tscv, scoring='f1_macro', n_jobs=-1)
         grid.fit(X, y)
 
         best_clf = grid.best_estimator_
-        accuracy = grid.best_score_ * 100  # en porcentaje
+        raw_f1 = grid.best_score_ * 100
 
-        # Opcional: usar XGBoost (requiere instalación: pip install xgboost)
-        # from xgboost import XGBClassifier
-        # xgb_param = {'n_estimators': 100, 'max_depth': 3, 'learning_rate': 0.1}
-        # best_clf = XGBClassifier(**xgb_param, use_label_encoder=False, eval_metric='loglikelihood')
-        # best_clf.fit(X, y)
-        # accuracy = cross_val_score(best_clf, X, y, cv=tscv).mean() * 100
+        # Calibrar probabilidades (para obtener certeza más realista)
+        from sklearn.calibration import CalibratedClassifierCV
+        calibrated_clf = CalibratedClassifierCV(best_clf, method='sigmoid', cv=3)
+        calibrated_clf.fit(X, y)
+
+        # Evaluación final (F1 macro)
+        from sklearn.metrics import f1_score
+        y_pred = calibrated_clf.predict(X)
+        final_f1 = f1_score(y, y_pred, average='macro') * 100
 
         # Guardar en caché y repo
-        cache[simbolo] = {'model': best_clf, 'acc': round(accuracy, 1), 'ts': datetime.now()}
-        repo_guardar_modelo_ml(simbolo, best_clf, accuracy)
+        cache[simbolo] = {'model': calibrated_clf, 'acc': round(final_f1, 1), 'ts': datetime.now()}
+        repo_guardar_modelo_ml(simbolo, calibrated_clf, final_f1)
 
-        return {'model': best_clf, 'accuracy': round(accuracy, 1), 'fuente': '🔄 entrenado'}
+        return {'model': calibrated_clf, 'accuracy': round(final_f1, 1), 'fuente': '🔄 entrenado'}
 
     except Exception as e:
         print(f"Error entrenando ML para {simbolo}: {e}")
