@@ -721,16 +721,15 @@ def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
 
     return score, señales
 
-
-
 def obtener_market_regime() -> dict:
-   try:
+    try:
         sp = yf.Ticker("^GSPC").history(period="1y")
         if sp.empty or len(sp) < 200:
-            return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0, 'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Sin datos'}
+            return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0,
+                    'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Sin datos'}
         precio = sp['Close'].iloc[-1]
         ema200 = sp['Close'].ewm(span=200).mean().iloc[-1]
-        ema50  = sp['Close'].ewm(span=50).mean().iloc[-1]
+        ema50 = sp['Close'].ewm(span=50).mean().iloc[-1]
         ret_1m = (precio / sp['Close'].iloc[-20] - 1) * 100 if len(sp) >= 20 else 0
         delta = sp['Close'].diff()
         gain = delta.where(delta > 0, 0).rolling(14).mean()
@@ -738,13 +737,20 @@ def obtener_market_regime() -> dict:
         rs = gain / loss
         rsi_sp500 = 100 - (100 / (1 + rs)).iloc[-1] if not loss.empty else 50
         if precio > ema200 and precio > ema50 and ema50 > ema200:
-            return {'regime': 'ALCISTA', 'score_bonus': 0, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1), 'descripcion': 'S&P 500 sobre EMA50 y EMA200 — condiciones favorables'}
+            return {'regime': 'ALCISTA', 'score_bonus': 0, 'precio': precio, 'ema200': ema200,
+                    'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1),
+                    'descripcion': 'S&P 500 sobre EMA50 y EMA200 — condiciones favorables'}
         elif precio > ema200:
-            return {'regime': 'LATERAL', 'score_bonus': -1, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1), 'descripcion': 'Ser selectivo'}
+            return {'regime': 'LATERAL', 'score_bonus': -1, 'precio': precio, 'ema200': ema200,
+                    'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1),
+                    'descripcion': 'Ser selectivo'}
         else:
-            return {'regime': 'BAJISTA', 'score_bonus': -3, 'precio': precio, 'ema200': ema200, 'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1), 'descripcion': 'Mercado bajista — evitar nuevas compras'}
+            return {'regime': 'BAJISTA', 'score_bonus': -3, 'precio': precio, 'ema200': ema200,
+                    'ret_1m': ret_1m, 'rsi_sp500': round(rsi_sp500, 1),
+                    'descripcion': 'Mercado bajista — evitar nuevas compras'}
     except:
-        return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0, 'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Error al obtener datos'}
+        return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0,
+                'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Error al obtener datos'}
 
 def position_size(precio: float, atr: float, capital: float, riesgo_pct: float) -> dict:
     riesgo_mxn = capital * (riesgo_pct / 100)
