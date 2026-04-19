@@ -620,15 +620,19 @@ drive_upload = st.sidebar.checkbox("💾 Guardar informe en Google Drive", value
 # ============================================================
 # FUNCIONES DE ANÁLISIS TÉCNICO, SCORE, BACKTESTING, ETC.
 # ============================================================
-def safe_history(ticker, period="6mo", max_retries=3):
+def safe_history(ticker, period="6mo", max_retries=5):
     for intento in range(max_retries):
         try:
             hist = ticker.history(period=period, auto_adjust=True)
             if not hist.empty and len(hist) >= 55:
                 return hist
             time.sleep(1)
-        except Exception:
-            time.sleep(2 ** intento)
+        except Exception as e:
+            if "Rate limit" in str(e) or 429 in str(e):
+                wait = 2 ** intento  # 1, 2, 4, 8, 16 segundos
+                time.sleep(wait)
+            else:
+                time.sleep(1)
     return pd.DataFrame()
 
 def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
