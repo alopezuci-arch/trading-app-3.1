@@ -1,7 +1,6 @@
 # ============================================================
 # SCANNER DE TRADING AUTÓNOMO 24/7
-# Versión corregida v3.5: Take Profit 15% / Stop Loss -7%
-# Incluye cualquier símbolo de posiciones, conversión MXN
+# Versión corregida v3.6: Sin filtro de volumen, logs mejorados
 # ============================================================
 
 import os
@@ -50,7 +49,7 @@ HISTORICO_FILE = "historial_senales.csv"
 POSICIONES_FILE = "posiciones.json"
 
 # ============================================================
-# UNIVERSO DE ACTIVOS (CORREGIDO: SE AGREGA TECL Y OTROS)
+# UNIVERSO DE ACTIVOS (incluye TECL)
 # ============================================================
 
 sp500 = [
@@ -98,7 +97,7 @@ etfs_sectoriales = [
 'XLK','XLV','XLF','XLE','XLI','XLY','XLP','XLU','XLB','XLRE','XLC',
 'SOXX','ARKK','ARKG','ARKW','ARKF','CIBR','ROBO','ICLN','TAN','LIT',
 'JETS','XHB','KRE','IBB','SPY','QQQ','IWM','DIA','VTI',
-'TECL'  # ✅ CORRECCIÓN: Se agrega TECL al universo
+'TECL'  # ✅ TECL agregado
 ]
 
 commodity_etfs = ['GLD','SLV','USO','UNG','DBC']
@@ -141,7 +140,7 @@ emergentes_acciones = [
 'BABA','BIDU','JD','PDD','NTES','TCEHY','INFY','HDB','IBN','VALE','PBR','YPF','MELI','NU'
 ]
 
-# Universo base (sin incluir posiciones aún)
+# Universo base
 UNIVERSO_BASE = list(set(
     sp500 + nasdaq100 + etfs_sectoriales + commodity_etfs + mining_oil +
     ia_stocks + mid_cap_growth + etfs_emergentes + fibras_mex + bmv + ibex35 + emergentes_acciones
@@ -511,18 +510,14 @@ def position_size(precio: float, atr: float) -> dict:
     return {'unidades': round(unidades, 2), 'inversion': round(inversion, 2)}
 
 # ============================================================
-# FUNCIÓN ANALIZAR (CORREGIDA CON LÓGICA DE VENTAS Y CONVERSIÓN MXN)
+# FUNCIÓN ANALIZAR (SIN FILTRO DE VOLUMEN, CON LOGS OPCIONALES)
 # ============================================================
 
 def analizar(args) -> dict | None:
-    """
-    Analiza un símbolo y determina si es COMPRA, VENDER u OBSERVAR.
-    Argumentos: (simbolo, usd_mxn, eur_mxn, regime_bonus, posiciones)
-    """
     simbolo, usd_mxn, eur_mxn, regime_bonus, posiciones = args
 
     try:
-        # Determinar tipo de cambio según el sufijo
+        # Determinar tipo de cambio
         if simbolo.endswith('.MX'):
             factor = 1.0
         elif simbolo.endswith('.MC'):
@@ -530,13 +525,13 @@ def analizar(args) -> dict | None:
         else:
             factor = usd_mxn
 
-        # Descargar datos históricos
         ticker = yf.Ticker(simbolo)
         hist = ticker.history(period="3mo")
         if hist.empty or len(hist) < 50:
+            # No se pudo obtener datos suficientes
             return None
 
-        # Convertir precios a MXN
+        # Convertir a MXN
         for col in ['Open', 'High', 'Low', 'Close']:
             hist[col] = hist[col] * factor
 
@@ -545,20 +540,21 @@ def analizar(args) -> dict | None:
         if len(hist) < 2:
             return None
 
-        # Obtener valores actuales y anteriores
+        # Eliminamos el filtro de volumen (comentado)
+        # ultimo = hist.iloc[-1].to_dict()
+        # if ultimo['Volume'] < (500_000 if not simbolo.endswith('.MX') else 1_000_000):
+        #     return None
+
         ultimo = hist.iloc[-1].to_dict()
         penultimo = hist.iloc[-2].to_dict()
         precio_actual = ultimo['Close']
         atr = ultimo['ATR']
 
-        # Score técnico
         score_base, señales = calcular_score(ultimo, penultimo)
         score = max(0, score_base + regime_bonus)
 
-        # Calcular tamaño de posición (si fuera compra)
         ps = position_size(precio_actual, atr)
 
-        # Verificar si tenemos posición abierta (para decidir venta)
         simbolo_limpio = simbolo.replace('.MX', '')
         precio_compra = posiciones.get(simbolo_limpio)
 
@@ -566,19 +562,21 @@ def analizar(args) -> dict | None:
         motivo = ""
         senales_venta = []
 
-        # ========== LÓGICA DE VENTA (Take Profit 15% / Stop Loss -7%) ==========
+        # Lógica de venta
         if precio_compra is not None:
             ganancia_pct = ((precio_actual / precio_compra) - 1) * 100
             if ganancia_pct >= 15:
                 recomendacion = "VENDER"
                 motivo = f"🎯 Take Profit +{ganancia_pct:.1f}%"
                 senales_venta.append(motivo)
+                print(f"🔔 Venta detectada: {simbolo_limpio} - {motivo} (precio compra={precio_compra}, actual={precio_actual:.2f})")
             elif ganancia_pct <= -7:
                 recomendacion = "VENDER"
                 motivo = f"🛑 Stop Loss {ganancia_pct:.1f}%"
                 senales_venta.append(motivo)
+                print(f"🔔 Venta detectada: {simbolo_limpio} - {motivo}")
 
-        # ========== LÓGICA DE COMPRA (solo si no se ha marcado venta) ==========
+        # Lógica de compra solo si no es venta
         if recomendacion != "VENDER":
             if score >= 8:
                 recomendacion = "COMPRAR ★★★"
@@ -593,7 +591,6 @@ def analizar(args) -> dict | None:
                 recomendacion = "EVITAR"
                 motivo = f"Score {score}/14"
 
-        # Construir resultado
         resultado = {
             'Símbolo': simbolo_limpio,
             'Precio MXN': round(precio_actual, 2),
@@ -610,12 +607,11 @@ def analizar(args) -> dict | None:
             'Motivo': motivo,
             'Señales': " | ".join(señales + senales_venta)
         }
-
-        # Si es venta, agregamos también el campo 'Motivo' ya incluido
         return resultado
 
     except Exception as e:
-        print(f"⚠️ Error analizando {simbolo}: {e}")
+        # Silenciamos errores para no llenar la consola, pero opcional
+        # print(f"⚠️ Error analizando {simbolo}: {e}")
         return None
 
 # ============================================================
@@ -682,7 +678,7 @@ def backtest_historial(df_hist: pd.DataFrame) -> dict:
     return {'win_rate': 0, 'ret_prom': 0, 'total': 0}
 
 # ============================================================
-# IA
+# IA (sin cambios relevantes)
 # ============================================================
 
 def _calcular_hash_prompt(prompt: str) -> str:
@@ -977,8 +973,7 @@ def ejecutar_scanner():
 
     print(f"💱 USD/MXN = {usd_mxn:.2f}, EUR/MXN = {eur_mxn:.2f}")
 
-    # 6. Construir lista de símbolos a analizar: universo base + todas las posiciones
-    #    Esto asegura que cualquier activo en cartera sea evaluado (incluso si no está en las listas predefinidas)
+    # 6. Construir lista de símbolos: universo base + todas las posiciones
     simbolos_unicos = set(UNIVERSO_BASE) | set(posiciones.keys())
     lista_simbolos = list(simbolos_unicos)
     print(f"📈 Analizando {len(lista_simbolos)} símbolos (incluye {len(posiciones)} posiciones)")
@@ -1003,7 +998,7 @@ def ejecutar_scanner():
     print(f"🟢 Compras: {len(ops_compras)}")
     print(f"🔴 Ventas: {len(ops_ventas)}")
     for v in ops_ventas:
-        print(f"   {v['Símbolo']} - {v['Motivo']}")
+        print(f"   ✅ {v['Símbolo']} - {v['Motivo']}")
 
     # 9. Guardar historial
     fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1013,7 +1008,7 @@ def ejecutar_scanner():
     sincronizar_historial_repo()
     sincronizar_cache_ia_repo()
 
-    # 10. IA (solo si hay compras o ventas)
+    # 10. IA
     ia_texto = ""
     if ops_compras or ops_ventas:
         ia_texto = analisis_ia(ops_compras, regime, usd_mxn, posiciones, ops_ventas)
@@ -1022,7 +1017,7 @@ def ejecutar_scanner():
     hora = datetime.now().strftime("%d/%m %H:%M")
     html = construir_email(ops_compras, ops_ventas, regime, ia_texto, hora)
 
-    # 12. Enviar email (siempre)
+    # 12. Enviar email
     enviar_email("📈 Scanner Trading — Actualización", html)
 
     # 13. Enviar WhatsApp (solo ventas)
