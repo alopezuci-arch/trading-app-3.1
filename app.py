@@ -1270,6 +1270,29 @@ if 'df' in st.session_state:
     eur_mxn = st.session_state['eur_mxn']
     regime_data = st.session_state['regime']
 
+    # ========== FILTRO DE FUNDAMENTALES SÓLIDOS ==========
+    if filtro_fundamentales and fundamentales_check and not compras.empty:
+        required_cols = ['ROE (%)', 'Debt/Equity', 'EPS Growth (%)', 'Net Margin (%)']
+        if all(col in compras.columns for col in required_cols):
+            for col in required_cols:
+                compras[col] = pd.to_numeric(compras[col], errors='coerce')
+            mask = (
+                (compras['ROE (%)'].fillna(-999) > 5) &
+                (compras['Debt/Equity'].fillna(999) < 2) &
+                (compras['EPS Growth (%)'].fillna(-999) > 0) &
+                (compras['Net Margin (%)'].fillna(-999) > 0)
+            )
+            filtradas = compras[mask].copy()
+            if filtradas.empty:
+                st.warning("⚠️ No hay acciones que cumplan los criterios fundamentales sólidos.")
+            else:
+                st.success(f"✅ Filtro fundamental aplicado: {len(compras)} → {len(filtradas)} acciones")
+                compras = filtradas
+                st.session_state['compras'] = compras   # actualizar estado
+        else:
+            st.warning("⚠️ No se encontraron datos fundamentales. Asegúrate de activar 'Análisis fundamental (profundo)'.")
+    # ====================================================
+
     st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
 
     icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴','DESCONOCIDO':'⚪'}.get(regime_data.get('regime','DESCONOCIDO'),'⚪')
