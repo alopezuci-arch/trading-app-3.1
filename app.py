@@ -1161,7 +1161,28 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
     compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
     observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
-
+    
+    # ========== AQUÍ PEGA EL FILTRO (el código que te di) ==========
+    if filtro_fundamentales and fundamentales_check and not compras.empty:
+    required_cols = ['ROE (%)', 'Debt/Equity', 'EPS Growth (%)', 'Net Margin (%)']
+    if all(col in compras.columns for col in required_cols):
+        for col in required_cols:
+            compras[col] = pd.to_numeric(compras[col], errors='coerce')
+        mask = (
+            (compras['ROE (%)'].fillna(-999) > 5) &
+            (compras['Debt/Equity'].fillna(999) < 2) &
+            (compras['EPS Growth (%)'].fillna(-999) > 0) &
+            (compras['Net Margin (%)'].fillna(-999) > 0)
+        )
+        filtradas = compras[mask].copy()
+        if filtradas.empty:
+            st.warning("⚠️ No hay acciones que cumplan los criterios fundamentales sólidos.")
+        else:
+            st.success(f"✅ Filtro fundamental aplicado: {len(compras)} → {len(filtradas)} acciones")
+            compras = filtradas
+    else:
+        st.warning("⚠️ No se encontraron datos fundamentales. Asegúrate de activar 'Análisis fundamental (profundo)'.")
+# ===============================================================
     # Sentimiento
     if sentiment_check and not compras.empty:
         with st.spinner("Analizando sentimiento..."):
