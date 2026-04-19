@@ -1469,7 +1469,6 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
             PRECIO_COMPRA[sim] = precio
         if PRECIO_COMPRA:
             st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
-            # Persistir en repo inmediatamente
             repo_guardar_posiciones(PRECIO_COMPRA)
             repo_guardar_transacciones()
 
@@ -1495,8 +1494,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                f"${trade_cap * riesgo_pct / 100:,.0f} MXN máx. por trade")
     st.markdown("---")
 
-    lista_acciones = mercado_opciones[mercado_seleccionado].copy()  # copia para no modificar original
-    # 🔧 Añadir símbolos registrados en PRECIO_COMPRA (incluso si no están en la lista)
+    lista_acciones = mercado_opciones[mercado_seleccionado].copy()
     if PRECIO_COMPRA:
         for sim in PRECIO_COMPRA.keys():
             if sim not in lista_acciones:
@@ -1534,9 +1532,8 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
     df = pd.DataFrame(resultados)
 
-    # Añadir fundamentales profundos
     if fundamentales_check:
-        # Ya se añaden en analizar_accion, pero si se añaden nuevos campos, los traemos
+        # Ya se añaden en analizar_accion
         pass
 
     ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
@@ -1582,12 +1579,13 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     if PRECIO_COMPRA:
         repo_guardar_posiciones(PRECIO_COMPRA)
     repo_guardar_transacciones()
-        if ia_check and not compras.empty:
+
+    if ia_check and not compras.empty:
         with st.spinner("🤖 Analizando con IA..."):
             texto_ia = analisis_ia(compras.head(8).to_dict('records'), regime_data, usd_mxn)
             st.session_state['analisis_ia'] = texto_ia
 
-    # Alertas (email, WhatsApp) - AHORA BIEN INDENTADO (4 espacios)
+    # Alertas (email, WhatsApp)
     compras_alerta = compras[compras['Score'] >= umbral_score]
     resumen_ia = st.session_state.get('analisis_ia', '')
     if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
@@ -1617,7 +1615,6 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
     st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra.")
     st.rerun()
-
 # ============================================================
 # PRESENTACIÓN DE RESULTADOS (después del análisis)
 # ============================================================
