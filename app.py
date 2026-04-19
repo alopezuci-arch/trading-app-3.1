@@ -1582,12 +1582,12 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     if PRECIO_COMPRA:
         repo_guardar_posiciones(PRECIO_COMPRA)
     repo_guardar_transacciones()
-
-    if ia_check and not compras.empty:
+        if ia_check and not compras.empty:
         with st.spinner("🤖 Analizando con IA..."):
             texto_ia = analisis_ia(compras.head(8).to_dict('records'), regime_data, usd_mxn)
             st.session_state['analisis_ia'] = texto_ia
-                # Alertas (email, WhatsApp)
+
+    # Alertas (email, WhatsApp) - AHORA BIEN INDENTADO (4 espacios)
     compras_alerta = compras[compras['Score'] >= umbral_score]
     resumen_ia = st.session_state.get('analisis_ia', '')
     if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
