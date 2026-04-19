@@ -763,8 +763,6 @@ def position_size(precio: float, atr: float, capital: float, riesgo_pct: float) 
     return {'unidades': round(unidades, 2), 'inversion_mxn': round(inversion, 2), 'pct_capital': round(pct_capital, 1)}
 
 @st.cache_data(ttl=86400)
-def obtener_market_regime() -> dict:
-    # ... (tu código original, sin cambios) ...
 
 def obtener_regimen_diario() -> pd.Series:
     """Devuelve una Serie con el régimen diario del S&P 500 (2=alcista, 1=lateral, 0=bajista)."""
