@@ -721,22 +721,10 @@ def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
 
     return score, señales
 
-def obtener_market_regime() -> dict:
-    def obtener_regimen_diario() -> pd.Series:
-    """Devuelve una Serie con el régimen diario del S&P 500 (2=alcista, 1=lateral, 0=bajista)."""
-    sp = yf.Ticker("^GSPC").history(period="3y")
-    if sp.empty:
-        return pd.Series()
-    sp['EMA200'] = sp['Close'].ewm(span=200).mean()
-    sp['EMA50'] = sp['Close'].ewm(span=50).mean()
-    cond_alta = (sp['Close'] > sp['EMA200']) & (sp['Close'] > sp['EMA50']) & (sp['EMA50'] > sp['EMA200'])
-    cond_lateral = (sp['Close'] > sp['EMA200']) & (~cond_alta)
-    sp['REGIME'] = 0
-    sp.loc[cond_lateral, 'REGIME'] = 1
-    sp.loc[cond_alta, 'REGIME'] = 2
-    return sp['REGIME']
 
-    try:
+
+def obtener_market_regime() -> dict:
+   try:
         sp = yf.Ticker("^GSPC").history(period="1y")
         if sp.empty or len(sp) < 200:
             return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0, 'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Sin datos'}
@@ -769,6 +757,23 @@ def position_size(precio: float, atr: float, capital: float, riesgo_pct: float) 
     return {'unidades': round(unidades, 2), 'inversion_mxn': round(inversion, 2), 'pct_capital': round(pct_capital, 1)}
 
 @st.cache_data(ttl=86400)
+def obtener_market_regime() -> dict:
+    # ... (tu código original, sin cambios) ...
+
+def obtener_regimen_diario() -> pd.Series:
+    """Devuelve una Serie con el régimen diario del S&P 500 (2=alcista, 1=lateral, 0=bajista)."""
+    sp = yf.Ticker("^GSPC").history(period="3y")
+    if sp.empty:
+        return pd.Series()
+    sp['EMA200'] = sp['Close'].ewm(span=200).mean()
+    sp['EMA50'] = sp['Close'].ewm(span=50).mean()
+    cond_alta = (sp['Close'] > sp['EMA200']) & (sp['Close'] > sp['EMA50']) & (sp['EMA50'] > sp['EMA200'])
+    cond_lateral = (sp['Close'] > sp['EMA200']) & (~cond_alta)
+    sp['REGIME'] = 0
+    sp.loc[cond_lateral, 'REGIME'] = 1
+    sp.loc[cond_alta, 'REGIME'] = 2
+    return sp['REGIME']
+
 def obtener_fundamentales_profundos(simbolo: str) -> dict:
     try:
         info = yf.Ticker(simbolo).info
