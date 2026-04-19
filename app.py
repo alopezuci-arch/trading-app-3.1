@@ -875,6 +875,16 @@ def backtest_optimizar_parametros(hist_anual: pd.DataFrame) -> dict:
                     best_score_thresh = score_thresh
                     best_atr_mult = atr_mult
     return {'best_score_thresh': best_score_thresh, 'best_atr_mult': best_atr_mult, 'best_win_rate': round(best_win_rate,1)}
+    
+@st.cache_data(ttl=86400)   # 1 día de caché
+def get_backtest_optimization():
+    """Descarga y optimiza parámetros de backtesting (caché diario)."""
+    sp_hist = yf.Ticker("^GSPC").history(period="2y")
+    if sp_hist.empty:
+        return None
+    sp_hist = calcular_indicadores(sp_hist)
+    opt = backtest_optimizar_parametros(sp_hist)
+    return opt
 
 def entrenar_modelo_ml(simbolo: str, usd_mxn: float, eur_mxn: float) -> dict:
     """
@@ -1606,11 +1616,7 @@ if backtesting_check:
             st.session_state['param_opt'] = opt
             st.info(f"Optimización backtest: mejor umbral score = {opt['best_score_thresh']}, multiplicador ATR = {opt['best_atr_mult']}, win rate = {opt['best_win_rate']}%")
 
-def get_backtest_optimization():
-    """Descarga y optimiza parámetros de backtesting (caché diario)."""
-    sp_hist = yf.Ticker("^GSPC").history(period="2y")
-    if sp_hist.empty:
-        return None
+
     sp_hist = calcular_indicadores(sp_hist)
     opt = backtest_optimizar_parametros(sp_hist)
     return opt
