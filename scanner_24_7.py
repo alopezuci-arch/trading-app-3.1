@@ -515,8 +515,14 @@ def position_size(precio: float, atr: float) -> dict:
 
 def analizar(args) -> dict | None:
     simbolo, usd_mxn, eur_mxn, regime_bonus, posiciones = args
+    debug = simbolo in ['T', 'AMD', 'TECL']  # activar logs para estos
 
     try:
+        if debug:
+            print(f"\n🔍 Analizando {simbolo}...")
+            print(f"   posiciones.keys() = {list(posiciones.keys())}")
+            print(f"   usd_mxn={usd_mxn}, eur_mxn={eur_mxn}")
+
         # Determinar tipo de cambio
         if simbolo.endswith('.MX'):
             factor = 1.0
@@ -526,10 +532,11 @@ def analizar(args) -> dict | None:
             factor = usd_mxn
 
         ticker = yf.Ticker(simbolo)
-        hist = ticker.history(period="3mo")
-        if hist.empty or len(hist) < 50:
-            # No se pudo obtener datos suficientes
+        hist = ticker.history(period="6mo")  # Cambiado a 6 meses para más datos
+        if hist.empty:
+            if debug: print(f"   ❌ hist vacío")
             return None
+        if debug: print(f"   ✅ hist obtenido, len={len(hist)}")
 
         # Convertir a MXN
         for col in ['Open', 'High', 'Low', 'Close']:
@@ -538,17 +545,17 @@ def analizar(args) -> dict | None:
         hist = calcular_indicadores(hist)
         hist = hist.dropna(subset=['RSI', 'MACD', 'EMA20', 'EMA50', 'ATR', 'STOCH_K', 'STOCH_D'])
         if len(hist) < 2:
+            if debug: print(f"   ❌ después de dropna, hist tiene solo {len(hist)} filas")
             return None
-
-        # Eliminamos el filtro de volumen (comentado)
-        # ultimo = hist.iloc[-1].to_dict()
-        # if ultimo['Volume'] < (500_000 if not simbolo.endswith('.MX') else 1_000_000):
-        #     return None
 
         ultimo = hist.iloc[-1].to_dict()
         penultimo = hist.iloc[-2].to_dict()
         precio_actual = ultimo['Close']
         atr = ultimo['ATR']
+
+        if debug:
+            print(f"   precio_actual (MXN) = {precio_actual:.2f}")
+            print(f"   ATR = {atr:.2f}")
 
         score_base, señales = calcular_score(ultimo, penultimo)
         score = max(0, score_base + regime_bonus)
@@ -557,6 +564,9 @@ def analizar(args) -> dict | None:
 
         simbolo_limpio = simbolo.replace('.MX', '')
         precio_compra = posiciones.get(simbolo_limpio)
+        if debug:
+            print(f"   simbolo_limpio = {simbolo_limpio}")
+            print(f"   precio_compra = {precio_compra}")
 
         recomendacion = "EVITAR"
         motivo = ""
@@ -565,16 +575,21 @@ def analizar(args) -> dict | None:
         # Lógica de venta
         if precio_compra is not None:
             ganancia_pct = ((precio_actual / precio_compra) - 1) * 100
+            if debug:
+                print(f"   ganancia_pct = {ganancia_pct:.2f}%")
             if ganancia_pct >= 15:
                 recomendacion = "VENDER"
                 motivo = f"🎯 Take Profit +{ganancia_pct:.1f}%"
                 senales_venta.append(motivo)
-                print(f"🔔 Venta detectada: {simbolo_limpio} - {motivo} (precio compra={precio_compra}, actual={precio_actual:.2f})")
+                print(f"🔔 Venta detectada: {simbolo_limpio} - {motivo}")
             elif ganancia_pct <= -7:
                 recomendacion = "VENDER"
                 motivo = f"🛑 Stop Loss {ganancia_pct:.1f}%"
                 senales_venta.append(motivo)
                 print(f"🔔 Venta detectada: {simbolo_limpio} - {motivo}")
+        else:
+            if debug:
+                print(f"   ⚠️ No hay precio de compra para {simbolo_limpio}")
 
         # Lógica de compra solo si no es venta
         if recomendacion != "VENDER":
@@ -610,8 +625,8 @@ def analizar(args) -> dict | None:
         return resultado
 
     except Exception as e:
-        # Silenciamos errores para no llenar la consola, pero opcional
-        # print(f"⚠️ Error analizando {simbolo}: {e}")
+        if debug:
+            print(f"   ❌ Excepción: {e}")
         return None
 
 # ============================================================
