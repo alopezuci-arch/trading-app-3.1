@@ -1022,11 +1022,36 @@ def ejecutar_scanner():
     # 12. Enviar email
     enviar_email("📈 Scanner Trading — Actualización", html)
 
-    # 13. Enviar WhatsApp (solo ventas)
-    if ops_ventas:
-        mensaje = "🔴 ALERTAS DE VENTA:\n" + "\n".join(
-            [f"{v['Símbolo']}: {v['Motivo']}" for v in ops_ventas]
+       # 13. Enviar WhatsApp (formato completo, similar al antiguo de app.py)
+    if ops_compras or ops_ventas:
+        # Calcular top 3 compras (por score)
+        top_compras = sorted(ops_compras, key=lambda x: x['Score'], reverse=True)[:3]
+        top_nombres = [c['Símbolo'] for c in top_compras] if top_compras else ["ninguna"]
+        
+        # Determinar confianza básica basada en número de compras/ventas y régimen
+        if regime['regime'] == 'ALCISTA' and len(ops_compras) > 10:
+            confianza = "ALTA"
+        elif regime['regime'] == 'LATERAL' or len(ops_compras) > 5:
+            confianza = "MEDIA"
+        else:
+            confianza = "BAJA"
+        
+        # Construir mensaje
+        mensaje = (
+            f"📊 *Scanner Trading* – {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+            f"📈 Régimen: {regime['regime']} | USD/MXN: {usd_mxn:.2f}\n\n"
+            f"🟢 *Compras*: {len(ops_compras)} (Top: {', '.join(top_nombres)})\n"
+            f"🔴 *Ventas*: {len(ops_ventas)}\n"
         )
+        # Si hay ventas, agregar detalles
+        if ops_ventas:
+            mensaje += "\n*Ventas detectadas:*\n"
+            for v in ops_ventas[:5]:  # máximo 5 para no exceder límite de WhatsApp
+                mensaje += f"  • {v['Símbolo']}: {v['Motivo']}\n"
+        
+        mensaje += f"\n🎯 Confianza: {confianza}\n"
+        mensaje += "📧 Ver detalles en tu email"
+        
         enviar_whatsapp(mensaje)
 
     print("✅ Scanner finalizado.")
