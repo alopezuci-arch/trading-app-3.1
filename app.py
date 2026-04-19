@@ -1341,8 +1341,7 @@ if 'df' in st.session_state:
     # ========== MOSTRAR TABLAS DIRECTAMENTE (sin filtro fundamental aquí) ==========
     st.subheader("📊 Tablas de resultados")
     tab1, tab2, tab3, tab4 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS"])
-    cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit','Unidades','Inversión (MXN)','% Capital','Recomendación','Motivo','Señales']
-
+    cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit','Unidades','Inversión (MXN)','% Capital','Peso Cartera','Inversión Asignada','Unidades Ajustadas','Recomendación','Motivo','Señales']
     with tab1:
         if not compras.empty:
             st.dataframe(compras[[c for c in cols_base if c in compras.columns]], use_container_width=True)
