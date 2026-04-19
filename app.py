@@ -731,11 +731,11 @@ def obtener_market_regime() -> dict:
     sp['EMA50'] = sp['Close'].ewm(span=50).mean()
     cond_alta = (sp['Close'] > sp['EMA200']) & (sp['Close'] > sp['EMA50']) & (sp['EMA50'] > sp['EMA200'])
     cond_lateral = (sp['Close'] > sp['EMA200']) & (~cond_alta)
-    sp['REGIME'] = 0          # bajista
+    sp['REGIME'] = 0
     sp.loc[cond_lateral, 'REGIME'] = 1
     sp.loc[cond_alta, 'REGIME'] = 2
     return sp['REGIME']
-    
+
     try:
         sp = yf.Ticker("^GSPC").history(period="1y")
         if sp.empty or len(sp) < 200:
