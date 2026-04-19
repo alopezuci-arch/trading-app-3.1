@@ -228,7 +228,7 @@ def repo_guardar_modelo_ml(simbolo: str, clf, accuracy: float):
         _repo_escribir(nombre, model_b64, f"modelo ML {simbolo}")
     except:
         pass
-
+#actualizado el 19 de abril
 def repo_cargar_modelo_ml(simbolo: str):
     """Intenta cargar modelo ML desde repo. Devuelve (modelo, accuracy) o (None, 0)."""
     try:
@@ -238,11 +238,11 @@ def repo_cargar_modelo_ml(simbolo: str):
         meta = json.loads(meta_str)
         if simbolo not in meta:
             return None, 0
-        # Verificar frescura (máx 24 h)
+        # Verificar frescura (máx 7 días)
         fecha_str = meta[simbolo].get("fecha", "")
         if fecha_str:
             fecha = datetime.strptime(fecha_str, "%Y-%m-%d %H:%M")
-            if (datetime.now() - fecha).total_seconds() > 86400:
+            if (datetime.now() - fecha).total_seconds() > 604800:   # ← 7 días
                 return None, 0
         import base64
         nombre = f"ml_{simbolo.replace('.','_')}.b64"
@@ -659,6 +659,15 @@ def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist['STOCH_D']  = hist['STOCH_K'].rolling(3).mean()
     hist['Vol_avg']  = hist['Volume'].rolling(20).mean()
 
+    # Nuevos indicadores 19.04.2026
+    hist['ROC'] = (hist['Close'] / hist['Close'].shift(10) - 1) * 100
+    low14 = hist['Low'].rolling(14).min()
+    high14 = hist['High'].rolling(14).max()
+    hist['WILLR'] = -100 * (high14 - hist['Close']) / (high14 - low14)
+    hist['OBV'] = (np.sign(hist['Close'].diff()) * hist['Volume']).cumsum()
+    hist['ATR_RATIO'] = hist['ATR'] / hist['Close']
+    hist['DOW'] = hist.index.dayofweek
+    
     if len(hist) > 100:
         weekly = hist['Close'].resample('W').last()
         hist['EMA20_weekly'] = weekly.ewm(span=20, adjust=False).mean().reindex(hist.index, method='ffill')
@@ -844,20 +853,18 @@ def backtest_optimizar_parametros(hist_anual: pd.DataFrame) -> dict:
 
 def entrenar_modelo_ml(simbolo: str, usd_mxn: float, eur_mxn: float) -> dict:
     """
-    Entrena RandomForest. Orden de prioridad:
-      1. Cache memoria (misma sesión) — instantáneo
-      2. Modelo en GitHub repo       — segundos, sobrevive suspensiones
-      3. Reentrenar desde yfinance   — solo si no hay modelo válido (<24h)
+    Entrena un modelo predictivo (RandomForest o XGBoost) con validación temporal,
+    optimización de hiperparámetros y balanceo de clases.
     """
     cache = _ml_cache_global()
 
-    # 1. Cache en memoria
+    # 1. Cache en memoria (válido por 7 días)
     if simbolo in cache:
         entrada = cache[simbolo]
-        if (datetime.now() - entrada['ts']).total_seconds() < 86400:
+        if (datetime.now() - entrada['ts']).total_seconds() < 604800:  # 7 días
             return {'model': entrada['model'], 'accuracy': entrada['acc'], 'fuente': '⚡ memoria'}
 
-    # 2. Modelo en repo (sobrevive reinicios)
+    # 2. Modelo en repo (válido por 7 días)
     clf_repo, acc_repo = repo_cargar_modelo_ml(simbolo)
     if clf_repo is not None:
         cache[simbolo] = {'model': clf_repo, 'acc': acc_repo, 'ts': datetime.now()}
@@ -869,29 +876,68 @@ def entrenar_modelo_ml(simbolo: str, usd_mxn: float, eur_mxn: float) -> dict:
         hist = safe_history(ticker, "3y")
         if hist.empty or len(hist) < 200:
             return None
+
         factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
         for col in ['Close','Open','High','Low']:
             hist[col] *= factor
+
         hist = calcular_indicadores(hist)
         hist = hist.dropna()
         if len(hist) < 100:
             return None
+
+        # Target: sube en 5 días? (clasificación binaria)
         hist['target'] = (hist['Close'].shift(-5) > hist['Close']).astype(int)
         hist = hist.dropna()
-        if len(hist) < 100:
-            return None
-        features = ['EMA20','EMA50','RSI','MACD','MACD_sig','ATR','BB_pct','STOCH_K','STOCH_D','Volume','Vol_avg']
+
+        # Features actualizadas
+        features = [
+            'EMA20', 'EMA50', 'RSI', 'MACD', 'MACD_sig', 'ATR', 'BB_pct',
+            'STOCH_K', 'STOCH_D', 'Volume', 'Vol_avg',
+            'ROC', 'WILLR', 'OBV', 'ATR_RATIO', 'DOW'
+        ]
+        # Asegurar que todas existan
+        for f in features:
+            if f not in hist.columns:
+                hist[f] = 0  # fallback
+
         X = hist[features]
         y = hist['target']
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-        clf = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
-        clf.fit(X_train, y_train)
-        acc = round(accuracy_score(y_test, clf.predict(X_test)) * 100, 1)
-        # Guardar en ambas capas
-        cache[simbolo] = {'model': clf, 'acc': acc, 'ts': datetime.now()}
-        repo_guardar_modelo_ml(simbolo, clf, acc)
-        return {'model': clf, 'accuracy': acc, 'fuente': '🔄 entrenado'}
-    except:
+
+        # Validación temporal (TimeSeriesSplit)
+        from sklearn.model_selection import TimeSeriesSplit
+        tscv = TimeSeriesSplit(n_splits=3)
+
+        # GridSearch para RandomForest
+        param_grid = {
+            'n_estimators': [50, 100],
+            'max_depth': [3, 5, 7],
+            'min_samples_split': [2, 5],
+            'class_weight': ['balanced', None]
+        }
+        from sklearn.ensemble import RandomForestClassifier
+        grid = GridSearchCV(RandomForestClassifier(random_state=42),
+                            param_grid, cv=tscv, scoring='accuracy', n_jobs=-1)
+        grid.fit(X, y)
+
+        best_clf = grid.best_estimator_
+        accuracy = grid.best_score_ * 100  # en porcentaje
+
+        # Opcional: usar XGBoost (requiere instalación: pip install xgboost)
+        # from xgboost import XGBClassifier
+        # xgb_param = {'n_estimators': 100, 'max_depth': 3, 'learning_rate': 0.1}
+        # best_clf = XGBClassifier(**xgb_param, use_label_encoder=False, eval_metric='loglikelihood')
+        # best_clf.fit(X, y)
+        # accuracy = cross_val_score(best_clf, X, y, cv=tscv).mean() * 100
+
+        # Guardar en caché y repo
+        cache[simbolo] = {'model': best_clf, 'acc': round(accuracy, 1), 'ts': datetime.now()}
+        repo_guardar_modelo_ml(simbolo, best_clf, accuracy)
+
+        return {'model': best_clf, 'accuracy': round(accuracy, 1), 'fuente': '🔄 entrenado'}
+
+    except Exception as e:
+        print(f"Error entrenando ML para {simbolo}: {e}")
         return None
 
 def analizar_sentimiento(simbolo: str) -> dict:
