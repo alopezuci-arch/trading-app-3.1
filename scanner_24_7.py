@@ -1017,7 +1017,7 @@ def ejecutar_scanner():
 
     # 11. Construir email
     hora = datetime.now().strftime("%d/%m %H:%M")
-    html = construir_email(ops_compras, ops_ventas, regime, ia_texto, hora)
+    html = construir_email(ia_texto, ops_compras, ops_ventas, regime, hora)
 
     # 12. Enviar email
     enviar_email("📈 Scanner Trading — Actualización", html)
