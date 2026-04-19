@@ -1599,13 +1599,12 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                     enviar_whatsapp(msg)
 
     # Backtesting con optimización de parámetros (opcional)
-    if backtesting_check:
+if backtesting_check:
     with st.spinner("Optimizando parámetros con backtesting..."):
         opt = get_backtest_optimization()
         if opt:
             st.session_state['param_opt'] = opt
-            st.info(f"Optimización backtest: mejor umbral score = {opt['best_score_thresh']}, 
-            multiplicador ATR = {opt['best_atr_mult']}, win rate = {opt['best_win_rate']}%")
+            st.info(f"Optimización backtest: mejor umbral score = {opt['best_score_thresh']}, multiplicador ATR = {opt['best_atr_mult']}, win rate = {opt['best_win_rate']}%")
 
 def get_backtest_optimization():
     """Descarga y optimiza parámetros de backtesting (caché diario)."""
