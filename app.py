@@ -1045,12 +1045,17 @@ else:
 mercado_seleccionado = st.sidebar.selectbox("📊 Mercado", list(mercado_opciones.keys()), index=1)
 
 st.sidebar.markdown("### 🔧 Análisis")
-fundamentales_check = st.sidebar.checkbox("📊 Análisis fundamental", value=False)
-backtesting_check = st.sidebar.checkbox("🧪 Backtesting", value=True)
-market_regime_check = st.sidebar.checkbox("🌡️ Filtrar por Market Regime", value=True)
+fundamentales_check = st.sidebar.checkbox("📊 Análisis fundamental (profundo)", value=False)
+
+filtro_fundamentales = False
+if fundamentales_check:
+    filtro_fundamentales = st.sidebar.checkbox("📊 Solo fundamentales sólidos", value=False)
+
+backtesting_check    = st.sidebar.checkbox("🧪 Backtesting realista (SL/TP)", value=True)
+market_regime_check  = st.sidebar.checkbox("🌡️ Filtrar por Market Regime", value=True)
 ia_check = st.sidebar.checkbox("🤖 Análisis IA", value=True)
-sentiment_check = st.sidebar.checkbox("📰 Sentimiento", value=False)
-ml_check = st.sidebar.checkbox("🧠 ML predictivo", value=False)
+sentiment_check = st.sidebar.checkbox("📰 Análisis de sentimiento (noticias)", value=False)
+ml_check = st.sidebar.checkbox("🧠 Modelo predictivo (ML)", value=False)
 
 st.sidebar.markdown("### 💼 Gestión de capital")
 capital_total = st.sidebar.number_input("Capital (MXN)", min_value=1000.0, value=100_000.0, step=1000.0)
