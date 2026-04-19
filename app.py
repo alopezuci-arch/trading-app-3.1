@@ -1322,29 +1322,6 @@ if 'df' in st.session_state:
     eur_mxn = st.session_state['eur_mxn']
     regime_data = st.session_state['regime']
 
-    # ========== FILTRO DE FUNDAMENTALES SÓLIDOS ==========
-    if filtro_fundamentales and fundamentales_check and not compras.empty:
-        required_cols = ['ROE (%)', 'Debt/Equity', 'EPS Growth (%)', 'Net Margin (%)']
-        if all(col in compras.columns for col in required_cols):
-            for col in required_cols:
-                compras[col] = pd.to_numeric(compras[col], errors='coerce')
-            mask = (
-                (compras['ROE (%)'].fillna(-999) > 5) &
-                (compras['Debt/Equity'].fillna(999) < 2) &
-                (compras['EPS Growth (%)'].fillna(-999) > 0) &
-                (compras['Net Margin (%)'].fillna(-999) > 0)
-            )
-            filtradas = compras[mask].copy()
-            if filtradas.empty:
-                st.warning("⚠️ No hay acciones que cumplan los criterios fundamentales sólidos.")
-            else:
-                st.success(f"✅ Filtro fundamental aplicado: {len(compras)} → {len(filtradas)} acciones")
-                compras = filtradas
-                st.session_state['compras'] = compras   # actualizar estado
-        else:
-            st.warning("⚠️ No se encontraron datos fundamentales. Asegúrate de activar 'Análisis fundamental (profundo)'.")
-    # ====================================================
-
     st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
 
     icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴','DESCONOCIDO':'⚪'}.get(regime_data.get('regime','DESCONOCIDO'),'⚪')
@@ -1361,10 +1338,8 @@ if 'df' in st.session_state:
     col3.metric("👀 Observar", len(observar))
     col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
 
-    st.subheader("📊 Dashboard de rendimiento")
-    df_hist = cargar_historial_senales()
-    dashboard_rendimiento(df_hist)
-
+    # ========== MOSTRAR TABLAS DIRECTAMENTE (sin filtro fundamental aquí) ==========
+    st.subheader("📊 Tablas de resultados")
     tab1, tab2, tab3, tab4 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS"])
     cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit','Unidades','Inversión (MXN)','% Capital','Recomendación','Motivo','Señales']
 
@@ -1386,7 +1361,7 @@ if 'df' in st.session_state:
     with tab4:
         st.dataframe(df, use_container_width=True)
 
-    # Gráfico
+    # Gráfico (opcional, si quieres mantenerlo)
     if not df.empty:
         todos_simbolos = df['Símbolo'].tolist()
         sim_elegido = st.selectbox("Selecciona un símbolo", todos_simbolos, key="selector")
