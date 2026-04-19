@@ -889,7 +889,7 @@ def enviar_whatsapp(mensaje: str) -> bool:
         return False
 
 def construir_email(ops_compras: list[dict], ops_ventas: list[dict],
-                   ia_texto: str regime: dict,ia_texto: str, hora: str) -> str:
+                    regime: dict, ia_texto: str, hora: str) -> str:
 
     filas_compras = "".join([
         f"<tr><td><b>{o['Símbolo']}</b></td><td>${o['Precio MXN']:,.2f}</td>"
@@ -1017,7 +1017,7 @@ def ejecutar_scanner():
 
     # 11. Construir email
     hora = datetime.now().strftime("%d/%m %H:%M")
-    html = construir_email(ia_texto, ops_compras, ops_ventas, regime, ia_texto, hora)
+    html = construir_email(ops_compras, ops_ventas, regime, ia_texto, hora)
 
     # 12. Enviar email
     enviar_email("📈 Scanner Trading — Actualización", html)
