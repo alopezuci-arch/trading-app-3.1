@@ -1416,6 +1416,12 @@ if 'df' in st.session_state:
     col3.metric("👀 Observar", len(observar))
     col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
     #AQUIIIIIIIIIIIIIIIIIIIIII
+
+    # ========== DASHBOARD DE RENDIMIENTO (historial de señales) ==========
+    st.subheader("📈 Rendimiento histórico de señales")
+    df_hist = cargar_historial_senales()
+    dashboard_rendimiento(df_hist)
+    
     # ========== TABLAS Y SECCIONES ORGANIZADAS EN PESTAÑAS ==========
     st.subheader("📊 Resultados detallados")
     (tab1, tab2, tab3, tab4, tab5, tab6, tab7) = st.tabs([
