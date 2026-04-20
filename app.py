@@ -1338,6 +1338,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     # ========== OPTIMIZACIÓN DE CARTERA ==========
     if not compras.empty:
         compras = optimizar_cartera(compras, trade_capital, usd_mxn, eur_mxn)
+        st.write("DEBUG: optimización ejecutada. Columnas:", compras.columns.tolist())
 
     # ========== GUARDAR EN SESSION STATE ==========
     st.session_state['df'] = df
