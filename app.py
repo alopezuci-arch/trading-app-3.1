@@ -318,6 +318,39 @@ def cargar_historial_senales() -> pd.DataFrame:
         return df
     return pd.DataFrame(columns=['fecha','simbolo','score','precio','recomendacion','señales'])
 
+def guardar_senal_en_historial(senal: dict, fecha: str):
+    """Guarda una señal (compra/venta) en el archivo historial_senales.csv."""
+    import re
+    if os.path.exists(HISTORIAL_FILE):
+        df = pd.read_csv(HISTORIAL_FILE)
+        df['fecha'] = pd.to_datetime(df['fecha'])
+    else:
+        df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
+
+    # Extraer ganancia porcentual si es una señal de venta
+    ganancia = None
+    if senal['Recomendación'] == "VENDER" and 'Motivo' in senal:
+        motivo = senal['Motivo']
+        match = re.search(r'([+-]\d+\.?\d*)%', motivo)
+        if match:
+            ganancia = float(match.group(1))
+
+    nueva = pd.DataFrame([{
+        'fecha': fecha,
+        'simbolo': senal['Símbolo'],
+        'score': senal['Score'],
+        'precio': senal['Precio MXN'],
+        'recomendacion': senal['Recomendación'],
+        'señales': senal.get('Señales', ''),
+        'ganancia_pct': ganancia
+    }])
+
+    df = pd.concat([df, nueva], ignore_index=True)
+    df['fecha'] = pd.to_datetime(df['fecha'])
+    cutoff = datetime.now() - timedelta(days=90)
+    df = df[df['fecha'] >= cutoff]
+    df.to_csv(HISTORIAL_FILE, index=False)
+
 # ============================================================
 # LISTAS DE MERCADO (sin cambios)
 # ============================================================
@@ -1284,7 +1317,21 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
     compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
     observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
-
+    #Aquí 20 de abril del 26 a las 13:17 hrs
+    # ========== GUARDAR SEÑALES EN HISTORIAL ==========
+    fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    for _, row in df.iterrows():
+        # Construir un diccionario similar a 'senal' para cada fila
+        senal = {
+            'Símbolo': row['Símbolo'],
+            'Precio MXN': row['Precio (MXN)'],
+            'Score': row['Score'],
+            'Recomendación': row['Recomendación'],
+            'Motivo': row.get('Motivo', ''),
+            'Señales': row.get('Señales', '')
+        }
+        guardar_senal_en_historial(senal, fecha_actual)
+    #hasta aca
     # ========== FILTRO DE FUNDAMENTALES SÓLIDOS ==========
     if filtro_fundamentales and fundamentales_check and not compras.empty:
         required_cols = ['ROE (%)', 'Debt/Equity', 'EPS Growth (%)', 'Net Margin (%)']
