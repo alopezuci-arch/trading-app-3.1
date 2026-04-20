@@ -925,16 +925,35 @@ def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figu
     for col in ['Close','Open','High','Low']:
         hist[col] *= factor
     hist = calcular_indicadores(hist)
-    fig = make_subplots(rows=4, cols=1, shared_xaxes=True, row_heights=[0.5,0.18,0.18,0.14], vertical_spacing=0.03)
-    fig.add_trace(go.Candlestick(x=hist.index, open=hist['Open'], high=hist['High'], low=hist['Low'], close=hist['Close'], name="Precio"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['EMA20'], line=dict(color='#ff9800'), name='EMA20'), row=1, col=1)
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['EMA50'], line=dict(color='#e91e63'), name='EMA50'), row=1, col=1)
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['RSI'], line=dict(color='#7e57c2'), name='RSI'), row=2, col=1)
-    fig.add_trace(go.Bar(x=hist.index, y=hist['MACD_hist'], name='MACD Hist'), row=3, col=1)
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['MACD'], line=dict(color='#2196f3'), name='MACD'), row=3, col=1)
-    fig.add_trace(go.Scatter(x=hist.index, y=hist['MACD_sig'], line=dict(color='#ff5722'), name='Señal'), row=3, col=1)
-    fig.add_trace(go.Bar(x=hist.index, y=hist['Volume'], name='Volumen'), row=4, col=1)
-    fig.update_layout(template='plotly_dark', height=750, xaxis_rangeslider_visible=False)
+    
+    fig = make_subplots(rows=4, cols=1, shared_xaxes=True, 
+                        row_heights=[0.5,0.18,0.18,0.14], 
+                        vertical_spacing=0.03,
+                        subplot_titles=(f"{simbolo} — Precio (MXN)", "RSI (14)", "MACD", "Volumen"))
+    
+    # Gráfico de velas
+    fig.add_trace(go.Candlestick(x=hist.index, open=hist['Open'], high=hist['High'], 
+                                 low=hist['Low'], close=hist['Close'], name="Precio"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['EMA20'], line=dict(color='#ff9800', width=1.5), name='EMA20'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['EMA50'], line=dict(color='#e91e63', width=1.5), name='EMA50'), row=1, col=1)
+    
+    # RSI con líneas de sobrecompra/sobreventa
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['RSI'], line=dict(color='#7e57c2', width=1.5), name='RSI'), row=2, col=1)
+    fig.add_hline(y=70, line_dash="dash", line_color="red", row=2, col=1, annotation_text="Sobrecompra")
+    fig.add_hline(y=30, line_dash="dash", line_color="green", row=2, col=1, annotation_text="Sobreventa")
+    
+    # MACD
+    colors_hist = ['#26a69a' if v >= 0 else '#ef5350' for v in hist['MACD_hist'].fillna(0)]
+    fig.add_trace(go.Bar(x=hist.index, y=hist['MACD_hist'], marker_color=colors_hist, name='MACD Hist'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['MACD'], line=dict(color='#2196f3', width=1.5), name='MACD'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=hist.index, y=hist['MACD_sig'], line=dict(color='#ff5722', width=1.5), name='Señal'), row=3, col=1)
+    
+    # Volumen
+    vol_colors = ['#26a69a' if c >= o else '#ef5350' for c, o in zip(hist['Close'], hist['Open'])]
+    fig.add_trace(go.Bar(x=hist.index, y=hist['Volume'], marker_color=vol_colors, name='Volumen'), row=4, col=1)
+    
+    fig.update_layout(template='plotly_dark', height=750, xaxis_rangeslider_visible=False,
+                      legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1))
     return fig
 
 def dashboard_rendimiento(df_hist: pd.DataFrame) -> None:
