@@ -1429,10 +1429,11 @@ if 'df' in st.session_state:
         sim_elegido = st.selectbox("Selecciona un símbolo", todos_simbolos, key="selector")
         if sim_elegido:
             fila = df[df['Símbolo'] == sim_elegido].iloc[0]
-            st.metric("Precio (MXN)", fila['Precio (MXN)'])
-            st.metric("Score", fila['Score'])
-            st.metric("RSI", fila['RSI'])
-            st.metric("Recomendación", fila['Recomendación'])
+            col_a, col_b, col_c, col_d = st.columns(4)
+            col_a.metric("Precio (MXN)", fila['Precio (MXN)'])
+            col_b.metric("Score", fila['Score'])
+            col_c.metric("RSI", fila['RSI'])
+            col_d.metric("Recomendación", fila['Recomendación'])
             if st.session_state.get('PRECIO_COMPRA', {}).get(sim_elegido):
                 precio_compra = st.session_state['PRECIO_COMPRA'][sim_elegido]
                 ganancia = (fila['Precio (MXN)'] / precio_compra - 1) * 100
