@@ -1419,7 +1419,7 @@ if 'df' in st.session_state:
         
     # ========== MOSTRAR TABLAS DIRECTAMENTE ==========
     st.subheader("📊 Tablas de resultados")
-    tab1, tab2, tab3, tab4 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", tab5, tab6 = st.tabs(["💼 CARTERA ACTUAL", "📜 HISTORIAL TRANSACCIONES"])
     cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit','Unidades','Inversión (MXN)','% Capital','Peso Cartera','Inversión Asignada','Unidades Ajustadas','Recomendación','Motivo','Señales']
     with tab1:
         if not compras.empty:
@@ -1439,8 +1439,7 @@ if 'df' in st.session_state:
     with tab4:
         st.dataframe(df, use_container_width=True)
         # ========== PESTAÑAS ADICIONALES: CARTERA E HISTORIAL ==========
-    tab5, tab6 = st.tabs(["💼 CARTERA ACTUAL", "📜 HISTORIAL TRANSACCIONES"])
-
+    
     with tab5:
         st.subheader("Posiciones abiertas (compras registradas)")
         if PRECIO_COMPRA:
