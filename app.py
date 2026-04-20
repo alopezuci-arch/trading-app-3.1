@@ -1222,7 +1222,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         if PRECIO_COMPRA:
             st.sidebar.success(f"✅ {len(PRECIO_COMPRA)} compra(s) registrada(s).")
             repo_guardar_posiciones(PRECIO_COMPRA)
-    repo_guardar_transacciones()
+            repo_guardar_transacciones()
 
     usd_mxn, eur_mxn = obtener_tipo_cambio()
     regime_data = obtener_market_regime()
