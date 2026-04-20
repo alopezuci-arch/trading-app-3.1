@@ -1410,7 +1410,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.session_state['ultima_actualizacion'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
     if PRECIO_COMPRA:
-        repo_guardar_posiciones(PRECIO_COMPRA)
+    repo_guardar_posiciones(PRECIO_COMPRA)
     repo_guardar_transacciones()
 
     # ========== IA ==========
