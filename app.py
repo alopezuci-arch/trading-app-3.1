@@ -1376,6 +1376,10 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
             'Motivo': row.get('Motivo', ''),
             'Señales': row.get('Señales', '')
         }
+        # --- Línea de depuración ---
+        if senal['Recomendación'] == "VENDER":
+            st.write(f"DEBUG: Señal de venta encontrada: {senal['Símbolo']} - {senal['Motivo']}")
+        
         guardar_senal_en_historial(senal, fecha_actual)
     #hasta aca
     # ========== FILTRO DE FUNDAMENTALES SÓLIDOS ==========
