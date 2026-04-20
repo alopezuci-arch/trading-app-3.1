@@ -1416,34 +1416,6 @@ if 'df' in st.session_state:
     col3.metric("👀 Observar", len(observar))
     col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
     #AQUIIIIIIIIIIIIIIIIIIIIII
-
-       # ========== GRÁFICO DE BARRAS VERTICALES: TOP 10 POR SCORE ==========
-    if not compras.empty:
-        st.subheader("🏆 Top 10 señales de compra (Score y zona RSI)")
-        top10 = compras.nlargest(10, 'Score').copy()
-        top10['RSI'] = pd.to_numeric(top10['RSI'], errors='coerce')
-        
-        def zona_rsi(rsi):
-            if rsi > 70:
-                return 'Sobrecompra'
-            elif rsi < 30:
-                return 'Sobreventa'
-            else:
-                return 'Neutral'
-        top10['Zona'] = top10['RSI'].apply(zona_rsi)
-        
-        fig = px.bar(top10, x='Símbolo', y='Score', color='Zona',
-                     color_discrete_map={'Sobrecompra': '#ef553b', 'Neutral': '#636efa', 'Sobreventa': '#00cc96'},
-                     title='Top 10 por Score (color según RSI)',
-                     labels={'Score': 'Puntuación (máx 14)'},
-                     text='Score')
-        fig.add_hline(y=7, line_dash="dash", line_color="orange", annotation_text="Umbral compra")
-        fig.add_hline(y=4, line_dash="dash", line_color="gray", annotation_text="Umbral observar")
-        fig.update_traces(textposition='outside')
-        fig.update_layout(height=450, xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("No hay señales de compra para mostrar el top.")
         
     # ========== MOSTRAR TABLAS DIRECTAMENTE ==========
     st.subheader("📊 Tablas de resultados")
@@ -1489,5 +1461,32 @@ if 'df' in st.session_state:
                 st.metric("Ganancia actual", f"{ganancia:+.2f}%")
             fig = grafico_enriquecido(sim_elegido, usd_mxn, eur_mxn)
             st.plotly_chart(fig, use_container_width=True)
+  # ========== GRÁFICO DE BARRAS VERTICALES: TOP 10 POR SCORE ==========
+    if not compras.empty:
+        st.subheader("🏆 Top 10 señales de compra (Score y zona RSI)")
+        top10 = compras.nlargest(10, 'Score').copy()
+        top10['RSI'] = pd.to_numeric(top10['RSI'], errors='coerce')
+        
+        def zona_rsi(rsi):
+            if rsi > 70:
+                return 'Sobrecompra'
+            elif rsi < 30:
+                return 'Sobreventa'
+            else:
+                return 'Neutral'
+        top10['Zona'] = top10['RSI'].apply(zona_rsi)
+        
+        fig = px.bar(top10, x='Símbolo', y='Score', color='Zona',
+                     color_discrete_map={'Sobrecompra': '#ef553b', 'Neutral': '#636efa', 'Sobreventa': '#00cc96'},
+                     title='Top 10 por Score (color según RSI)',
+                     labels={'Score': 'Puntuación (máx 14)'},
+                     text='Score')
+        fig.add_hline(y=7, line_dash="dash", line_color="orange", annotation_text="Umbral compra")
+        fig.add_hline(y=4, line_dash="dash", line_color="gray", annotation_text="Umbral observar")
+        fig.update_traces(textposition='outside')
+        fig.update_layout(height=450, xaxis_tickangle=-45)
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No hay señales de compra para mostrar el top.")
 
 st.caption("v3.0 — Corregido y optimizado")
