@@ -1367,7 +1367,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                 st.info(f"Backtest: mejor umbral score = {opt['best_score_thresh']}, ATR mult = {opt['best_atr_mult']}, win rate = {opt['best_win_rate']}%")
 
     st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra.")
-     st.rerun()
+    st.rerun()
 # ============================================================
 # PRESENTACIÓN DE RESULTADOS (si existen)
 # ============================================================
