@@ -1515,7 +1515,7 @@ if 'df' in st.session_state:
     
     # ========== TABLAS Y SECCIONES ORGANIZADAS EN PESTAÑAS ==========
     st.subheader("📊 Resultados detallados")
-        (tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8) = st.tabs([
+    (tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8) = st.tabs([
         "🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS",
         "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10", "📊 BACKTEST VENTAS"
     ])
