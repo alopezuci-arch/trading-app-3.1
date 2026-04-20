@@ -312,11 +312,14 @@ def procesar_ventas(input_text: str):
         st.rerun()
 
 def cargar_historial_senales() -> pd.DataFrame:
-    if os.path.exists("historial_senales.csv"):
-        df = pd.read_csv("historial_senales.csv")
+    if os.path.exists(HISTORIAL_FILE):
+        df = pd.read_csv(HISTORIAL_FILE)
         df['fecha'] = pd.to_datetime(df['fecha'])
+        # Asegurar que la columna ganancia_pct exista
+        if 'ganancia_pct' not in df.columns:
+            df['ganancia_pct'] = np.nan
         return df
-    return pd.DataFrame(columns=['fecha','simbolo','score','precio','recomendacion','señales'])
+    return pd.DataFrame(columns=['fecha','simbolo','score','precio','recomendacion','señales','ganancia_pct'])
 
 def guardar_senal_en_historial(senal: dict, fecha: str):
     """Guarda una señal (compra/venta) en el archivo historial_senales.csv."""
