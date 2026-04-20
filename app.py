@@ -790,14 +790,21 @@ def analizar_sentimiento(simbolo: str) -> dict:
     except:
         return {'sentimiento': 'Error', 'score': 0, 'noticias': []}
 
-def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
-    """
-    Asigna pesos de cartera a las acciones de compra. Si no se puede optimizar,
-    usa pesos iguales. Siempre devuelve las columnas de gestión de cartera.
-    """
-    if compras_df.empty:
-        return compras_df
+    #20-04-2026
+    # ========== OPTIMIZACIÓN DE CARTERA ==========
+    if not compras.empty:
+        compras = optimizar_cartera(compras, trade_capital, usd_mxn, eur_mxn)
+        # Asegurar que las columnas de gestión de cartera existan
+        for col in ['Peso Cartera', 'Inversión Asignada', 'Unidades Ajustadas']:
+            if col not in compras.columns:
+                compras[col] = 0.0
+    else:
+        # Si no hay compras, crear columnas vacías para evitar errores posteriores
+        compras = compras.copy()
+        for col in ['Peso Cartera', 'Inversión Asignada', 'Unidades Ajustadas']:
+            compras[col] = 0.0
 
+    #20-04-2026 11:04
     n = len(compras_df)
     # Si solo hay un activo, el peso es 1.0
     if n == 1:
