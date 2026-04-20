@@ -1417,37 +1417,53 @@ if 'df' in st.session_state:
     col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
     #AQUIIIIIIIIIIIIIIIIIIIIII
         
-    # ========== MOSTRAR TABLAS DIRECTAMENTE ==========
-    st.subheader("📊 Tablas de resultados")
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "💼 CARTERA ACTUAL", "📜 HISTORIAL TRANSACCIONES"])
-    cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit','Unidades','Inversión (MXN)','% Capital','Peso Cartera','Inversión Asignada','Unidades Ajustadas','Recomendación','Motivo','Señales']
+     # ========== TABLAS Y SECCIONES ORGANIZADAS EN PESTAÑAS ==========
+    st.subheader("📊 Resultados detallados")
+    (tab1, tab2, tab3, tab4, tab5, tab6, tab7) = st.tabs([
+        "🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS",
+        "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10"
+    ])
+
+    # --- Pestaña 1: Compras ---
     with tab1:
         if not compras.empty:
-            st.dataframe(compras[[c for c in cols_base if c in compras.columns]], use_container_width=True)
+            cols_compras = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit',
+                            'Unidades','Inversión (MXN)','% Capital','Peso Cartera','Inversión Asignada',
+                            'Unidades Ajustadas','Recomendación','Motivo','Señales']
+            st.dataframe(compras[[c for c in cols_compras if c in compras.columns]], use_container_width=True)
         else:
             st.info("Sin compras.")
+
+    # --- Pestaña 2: Ventas ---
     with tab2:
         if not ventas.empty:
-            st.dataframe(ventas[[c for c in cols_base if c in ventas.columns]], use_container_width=True)
+            cols_ventas = ['Símbolo','Precio (MXN)','Score','RSI','Stop Loss','Take Profit','Recomendación','Motivo']
+            st.dataframe(ventas[[c for c in cols_ventas if c in ventas.columns]], use_container_width=True)
         else:
             st.info("Sin ventas.")
+
+    # --- Pestaña 3: Observar ---
     with tab3:
         if not observar.empty:
-            st.dataframe(observar[[c for c in cols_base if c in observar.columns]], use_container_width=True)
+            cols_obs = ['Símbolo','Precio (MXN)','Score','RSI','Stop Loss','Take Profit','Motivo']
+            st.dataframe(observar[[c for c in cols_obs if c in observar.columns]], use_container_width=True)
         else:
             st.info("Sin observaciones.")
+
+    # --- Pestaña 4: Todas las acciones ---
     with tab4:
         st.dataframe(df, use_container_width=True)
-        # ========== PESTAÑAS ADICIONALES: CARTERA E HISTORIAL ==========
-    
+
+    # --- Pestaña 5: Cartera actual (posiciones abiertas) ---
     with tab5:
-        st.subheader("Posiciones abiertas (compras registradas)")
-        if PRECIO_COMPRA:
+        st.subheader("Posiciones abiertas")
+        posiciones_cartera = st.session_state.get('PRECIO_COMPRA', {})
+        if posiciones_cartera:
             df_cartera = pd.DataFrame([
                 {'Símbolo': k, 'Precio Compra (MXN)': v}
-                for k, v in PRECIO_COMPRA.items()
+                for k, v in posiciones_cartera.items()
             ])
-            # Añadir precio actual si está disponible en df
+            # Precio actual desde el DataFrame de resultados (si está disponible)
             df_cartera['Precio Actual (MXN)'] = df_cartera['Símbolo'].apply(
                 lambda x: df[df['Símbolo'] == x]['Precio (MXN)'].iloc[0] if x in df['Símbolo'].values else None
             )
@@ -1456,14 +1472,12 @@ if 'df' in st.session_state:
         else:
             st.info("No hay posiciones abiertas. Registra compras en el sidebar.")
 
+    # --- Pestaña 6: Historial de transacciones y rendimiento ---
     with tab6:
-        st.subheader("📊 Historial de transacciones y rendimiento")
+        st.subheader("Historial de transacciones")
         df_trans = cargar_transacciones()
         if not df_trans.empty:
-            # Mostrar todas las transacciones
             st.dataframe(df_trans.sort_values('fecha', ascending=False), use_container_width=True)
-            
-            # Calcular win rate solo para ventas (con ganancia_pct no nulo)
             ventas_df = df_trans[df_trans['tipo'] == 'venta'].copy()
             if not ventas_df.empty and 'ganancia_pct' in ventas_df.columns:
                 ventas_df['ganancia_pct'] = pd.to_numeric(ventas_df['ganancia_pct'], errors='coerce')
@@ -1471,10 +1485,9 @@ if 'df' in st.session_state:
                 if not ventas_con_ganancia.empty:
                     win_rate = (ventas_con_ganancia['ganancia_pct'] > 0).mean() * 100
                     ganancia_promedio = ventas_con_ganancia['ganancia_pct'].mean()
-                    st.metric("🏆 Win Rate", f"{win_rate:.1f}%")
-                    st.metric("📈 Ganancia promedio por venta", f"{ganancia_promedio:.2f}%")
-                    
-                    # Gráfico de ganancias por venta
+                    col_wr, col_gp = st.columns(2)
+                    col_wr.metric("🏆 Win Rate", f"{win_rate:.1f}%")
+                    col_gp.metric("📈 Ganancia promedio por venta", f"{ganancia_promedio:.2f}%")
                     fig = px.bar(ventas_con_ganancia, x='fecha', y='ganancia_pct', color='ganancia_pct',
                                  color_continuous_scale=['red', 'yellow', 'green'],
                                  title='Rendimiento de ventas cerradas')
@@ -1486,55 +1499,31 @@ if 'df' in st.session_state:
         else:
             st.info("No hay transacciones registradas.")
 
-    # ========== MOSTRAR ANÁLISIS DE IA ==========
-    if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
-        with st.expander("🤖 Análisis de IA", expanded=True):
-            st.markdown(st.session_state['analisis_ia'])
-
-    # Gráfico (opcional)
-    if not df.empty:
-        todos_simbolos = df['Símbolo'].tolist()
-        sim_elegido = st.selectbox("Selecciona un símbolo", todos_simbolos, key="selector")
-        if sim_elegido:
-            fila = df[df['Símbolo'] == sim_elegido].iloc[0]
-            col_a, col_b, col_c, col_d = st.columns(4)
-            col_a.metric("Precio (MXN)", fila['Precio (MXN)'])
-            col_b.metric("Score", fila['Score'])
-            col_c.metric("RSI", fila['RSI'])
-            col_d.metric("Recomendación", fila['Recomendación'])
-            if st.session_state.get('PRECIO_COMPRA', {}).get(sim_elegido):
-                precio_compra = st.session_state['PRECIO_COMPRA'][sim_elegido]
-                ganancia = (fila['Precio (MXN)'] / precio_compra - 1) * 100
-                st.metric("Ganancia actual", f"{ganancia:+.2f}%")
-            fig = grafico_enriquecido(sim_elegido, usd_mxn, eur_mxn)
+    # --- Pestaña 7: Top 10 señales de compra (gráfico de barras) ---
+    with tab7:
+        if not compras.empty:
+            st.subheader("Top 10 señales de compra (Score y zona RSI)")
+            top10 = compras.nlargest(10, 'Score').copy()
+            top10['RSI'] = pd.to_numeric(top10['RSI'], errors='coerce')
+            def zona_rsi(rsi):
+                if rsi > 70:
+                    return 'Sobrecompra'
+                elif rsi < 30:
+                    return 'Sobreventa'
+                else:
+                    return 'Neutral'
+            top10['Zona'] = top10['RSI'].apply(zona_rsi)
+            fig = px.bar(top10, x='Símbolo', y='Score', color='Zona',
+                         color_discrete_map={'Sobrecompra': '#ef553b', 'Neutral': '#636efa', 'Sobreventa': '#00cc96'},
+                         title='Top 10 por Score (color según RSI)',
+                         labels={'Score': 'Puntuación (máx 14)'},
+                         text='Score')
+            fig.add_hline(y=7, line_dash="dash", line_color="orange", annotation_text="Umbral compra")
+            fig.add_hline(y=4, line_dash="dash", line_color="gray", annotation_text="Umbral observar")
+            fig.update_traces(textposition='outside')
+            fig.update_layout(height=450, xaxis_tickangle=-45)
             st.plotly_chart(fig, use_container_width=True)
-            
-  # ========== GRÁFICO DE BARRAS VERTICALES: TOP 10 POR SCORE ==========
-    if not compras.empty:
-        st.subheader("🏆 Top 10 señales de compra (Score y zona RSI)")
-        top10 = compras.nlargest(10, 'Score').copy()
-        top10['RSI'] = pd.to_numeric(top10['RSI'], errors='coerce')
-        
-        def zona_rsi(rsi):
-            if rsi > 70:
-                return 'Sobrecompra'
-            elif rsi < 30:
-                return 'Sobreventa'
-            else:
-                return 'Neutral'
-        top10['Zona'] = top10['RSI'].apply(zona_rsi)
-        
-        fig = px.bar(top10, x='Símbolo', y='Score', color='Zona',
-                     color_discrete_map={'Sobrecompra': '#ef553b', 'Neutral': '#636efa', 'Sobreventa': '#00cc96'},
-                     title='Top 10 por Score (color según RSI)',
-                     labels={'Score': 'Puntuación (máx 14)'},
-                     text='Score')
-        fig.add_hline(y=7, line_dash="dash", line_color="orange", annotation_text="Umbral compra")
-        fig.add_hline(y=4, line_dash="dash", line_color="gray", annotation_text="Umbral observar")
-        fig.update_traces(textposition='outside')
-        fig.update_layout(height=450, xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("No hay señales de compra para mostrar el top.")
+        else:
+            st.info("No hay señales de compra para mostrar el top.")
 
 st.caption("v3.0 — Corregido y optimizado")
