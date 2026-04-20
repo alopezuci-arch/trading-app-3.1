@@ -1201,7 +1201,7 @@ if st.sidebar.button("📉 REGISTRAR VENTA"):
 
 st.sidebar.markdown("### 📂 Google Drive")
 drive_upload = st.sidebar.checkbox("💾 Guardar en Drive", value=False)
-
+#de aquí hasta el siguiente apartado 12:48 pm
 if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     PRECIO_COMPRA = dict(st.session_state.get('PRECIO_COMPRA', {}))
 
@@ -1272,6 +1272,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
         status_text.empty()
         progress_bar.empty()
+
     if not resultados:
         st.error(
             "⚠️ No se obtuvieron resultados para ningún símbolo.\n\n"
@@ -1334,11 +1335,10 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                     compras.at[idx, 'ML Predicción'] = f"{model_info['fuente']} Subida {model_info['accuracy']}%"
                 else:
                     compras.at[idx, 'ML Predicción'] = "No disponible"
-                    
+
     # ========== OPTIMIZACIÓN DE CARTERA ==========
     if not compras.empty:
         compras = optimizar_cartera(compras, trade_capital, usd_mxn, eur_mxn)
-        st.write("DEBUG: optimización ejecutada. Columnas:", compras.columns.tolist())
 
     # ========== GUARDAR EN SESSION STATE ==========
     st.session_state['df'] = df
@@ -1388,6 +1388,8 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
     st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra.")
     st.rerun()
+
+
 # ============================================================
 # PRESENTACIÓN DE RESULTADOS (si existen)
 # ============================================================
