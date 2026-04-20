@@ -1329,17 +1329,17 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                     compras.at[idx, 'ML Predicción'] = "No disponible"
 
     # ========== OPTIMIZACIÓN DE CARTERA ========== 20.04.2026 12:09 pm
-        def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
+    def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
     """
     Asigna pesos de cartera a las acciones de compra. Si no se puede optimizar,
     usa pesos iguales. Siempre devuelve las columnas de gestión de cartera.
     """
-    if compras_df.empty:
-        return compras_df
+        if compras_df.empty:
+            return compras_df
 
-    n = len(compras_df)
-    # Si solo hay un activo, el peso es 1.0
-    if n == 1:
+        n = len(compras_df)
+        # Si solo hay un activo, el peso es 1.0
+        if n == 1:
         compras_df['Peso Cartera'] = 1.0
         compras_df['Inversión Asignada'] = capital
         compras_df['Unidades Ajustadas'] = capital / compras_df['Precio (MXN)'].astype(float)
