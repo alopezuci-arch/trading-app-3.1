@@ -1367,6 +1367,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                 st.info(f"Backtest: mejor umbral score = {opt['best_score_thresh']}, ATR mult = {opt['best_atr_mult']}, win rate = {opt['best_win_rate']}%")
 
     st.success(f"✅ Análisis completado. {len(compras)} oportunidades de compra.")
+     st.rerun()
 # ============================================================
 # PRESENTACIÓN DE RESULTADOS (si existen)
 # ============================================================
@@ -1395,7 +1396,7 @@ if 'df' in st.session_state:
     col3.metric("👀 Observar", len(observar))
     col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
 
-    # ========== MOSTRAR TABLAS DIRECTAMENTE (sin filtro fundamental aquí) ==========
+    # ========== MOSTRAR TABLAS DIRECTAMENTE ==========
     st.subheader("📊 Tablas de resultados")
     tab1, tab2, tab3, tab4 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS"])
     cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit','Unidades','Inversión (MXN)','% Capital','Peso Cartera','Inversión Asignada','Unidades Ajustadas','Recomendación','Motivo','Señales']
@@ -1417,7 +1418,12 @@ if 'df' in st.session_state:
     with tab4:
         st.dataframe(df, use_container_width=True)
 
-    # Gráfico (opcional, si quieres mantenerlo)
+    # ========== MOSTRAR ANÁLISIS DE IA ==========
+    if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
+        with st.expander("🤖 Análisis de IA", expanded=True):
+            st.markdown(st.session_state['analisis_ia'])
+
+    # Gráfico (opcional)
     if not df.empty:
         todos_simbolos = df['Símbolo'].tolist()
         sim_elegido = st.selectbox("Selecciona un símbolo", todos_simbolos, key="selector")
