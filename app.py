@@ -790,6 +790,75 @@ def analizar_sentimiento(simbolo: str) -> dict:
     except:
         return {'sentimiento': 'Error', 'score': 0, 'noticias': []}
 
+def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
+    """
+    Asigna pesos de cartera a las acciones de compra. Si no se puede optimizar,
+    usa pesos iguales. Siempre devuelve las columnas de gestión de cartera.
+    """
+    if compras_df.empty:
+        return compras_df
+
+    n = len(compras_df)
+    # Si solo hay un activo, el peso es 1.0
+    if n == 1:
+        compras_df['Peso Cartera'] = 1.0
+        compras_df['Inversión Asignada'] = capital
+        compras_df['Unidades Ajustadas'] = capital / compras_df['Precio (MXN)'].astype(float)
+        return compras_df
+
+    # Intentar obtener precios históricos para todos los símbolos
+    symbols = compras_df['Símbolo'].tolist()
+    precios = {}
+    for sim in symbols:
+        try:
+            ticker = yf.Ticker(sim, session=_YF_SESSION)
+            hist = safe_history(ticker, "6mo")
+            if hist.empty:
+                continue
+            factor = 1.0 if sim.endswith('.MX') else (eur_mxn if sim.endswith('.MC') else usd_mxn)
+            precios[sim] = hist['Close'] * factor
+        except:
+            continue
+
+    # Si no se obtuvieron suficientes datos, usar pesos iguales
+    if len(precios) < 2:
+        st.warning("⚠️ No hay suficientes datos históricos para optimizar la cartera. Se usarán pesos iguales.")
+        compras_df['Peso Cartera'] = 1.0 / n
+        compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
+        compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
+        return compras_df
+
+    # Construir DataFrame de precios y calcular retornos
+    df_prices = pd.DataFrame(precios).dropna()
+    if df_prices.empty:
+        compras_df['Peso Cartera'] = 1.0 / n
+        compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
+        compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
+        return compras_df
+
+    returns = df_prices.pct_change().dropna()
+    cov = returns.cov() * 252
+    expected_returns = compras_df.set_index('Símbolo')['Score'] / 100
+
+    try:
+        inv_cov = np.linalg.pinv(cov.values)
+        ret_vec = expected_returns.reindex(cov.index).values
+        w = inv_cov @ ret_vec
+        w = w / w.sum()
+        w = np.maximum(w, 0)   # sin posiciones cortas
+        w = w / w.sum()
+        asignacion = {sym: w[i] for i, sym in enumerate(cov.index)}
+    except:
+        # Fallback: pesos iguales
+        asignacion = {sym: 1.0 / n for sym in symbols}
+
+    # Aplicar asignación
+    compras_df['Peso Cartera'] = compras_df['Símbolo'].map(asignacion).fillna(1.0 / n)
+    compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
+    compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
+
+    return compras_df
+
 # ============================================================
 # ALERTAS Y GRÁFICOS (simplificados pero funcionales)
 # ============================================================
