@@ -1548,4 +1548,4 @@ if 'df' in st.session_state:
             fig = grafico_enriquecido(sim_elegido, usd_mxn, eur_mxn)
             st.plotly_chart(fig, use_container_width=True)
 
-st.caption("v3.0 — Corregido y optimizado" por Adrian López)
+st.caption("v3.0 — Corregido y optimizado por Adrian López")
