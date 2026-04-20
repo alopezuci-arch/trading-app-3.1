@@ -1416,8 +1416,7 @@ if 'df' in st.session_state:
     col3.metric("👀 Observar", len(observar))
     col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
     #AQUIIIIIIIIIIIIIIIIIIIIII
-        
-     # ========== TABLAS Y SECCIONES ORGANIZADAS EN PESTAÑAS ==========
+    # ========== TABLAS Y SECCIONES ORGANIZADAS EN PESTAÑAS ==========
     st.subheader("📊 Resultados detallados")
     (tab1, tab2, tab3, tab4, tab5, tab6, tab7) = st.tabs([
         "🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS",
@@ -1526,4 +1525,27 @@ if 'df' in st.session_state:
         else:
             st.info("No hay señales de compra para mostrar el top.")
 
-st.caption("v3.0 — Corregido y optimizado")
+    # ========== ANÁLISIS DE IA ==========
+    if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
+        with st.expander("🤖 Análisis de IA", expanded=True):
+            st.markdown(st.session_state['analisis_ia'])
+
+    # ========== GRÁFICO INDIVIDUAL CON SELECTOR ==========
+    if not df.empty:
+        todos_simbolos = df['Símbolo'].tolist()
+        sim_elegido = st.selectbox("Selecciona un símbolo para ver su gráfico completo", todos_simbolos, key="selector_grafico")
+        if sim_elegido:
+            fila = df[df['Símbolo'] == sim_elegido].iloc[0]
+            col_a, col_b, col_c, col_d = st.columns(4)
+            col_a.metric("Precio (MXN)", fila['Precio (MXN)'])
+            col_b.metric("Score", fila['Score'])
+            col_c.metric("RSI", fila['RSI'])
+            col_d.metric("Recomendación", fila['Recomendación'])
+            if st.session_state.get('PRECIO_COMPRA', {}).get(sim_elegido):
+                precio_compra = st.session_state['PRECIO_COMPRA'][sim_elegido]
+                ganancia = (fila['Precio (MXN)'] / precio_compra - 1) * 100
+                st.metric("Ganancia actual", f"{ganancia:+.2f}%")
+            fig = grafico_enriquecido(sim_elegido, usd_mxn, eur_mxn)
+            st.plotly_chart(fig, use_container_width=True)
+
+st.caption("v3.0 — Corregido y optimizado" por Adrian López)
