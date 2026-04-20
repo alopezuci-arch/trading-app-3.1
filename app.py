@@ -1415,14 +1415,7 @@ if 'df' in st.session_state:
     col2.metric("🔴 Ventas", len(ventas))
     col3.metric("👀 Observar", len(observar))
     col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
-
-     if not compras.empty:
-        st.subheader("🏆 Top 10 señales de compra más fuertes")
-        top10 = compras.nlargest(10, 'Score')[['Símbolo', 'Score', 'RSI', 'Precio (MXN)', 'Recomendación', 'Motivo']]
-        st.dataframe(top10, use_container_width=True)
-    else:
-        st.info("No hay señales de compra para mostrar el top.")
-
+    #AQUIIIIIIIIIIIIIIIIIIIIII
     # ========== MOSTRAR TABLAS DIRECTAMENTE ==========
     st.subheader("📊 Tablas de resultados")
     tab1, tab2, tab3, tab4 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS"])
