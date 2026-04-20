@@ -1549,8 +1549,4 @@ if 'df' in st.session_state:
             fig = grafico_enriquecido(sim_elegido, usd_mxn, eur_mxn)
             st.plotly_chart(fig, use_container_width=True)
 
-# ========== DASHBOARD DE RENDIMIENTO (historial de señales) ==========
-    st.subheader("📈 Rendimiento histórico de señales")
-    df_hist = cargar_historial_senales()
-    dashboard_rendimiento(df_hist)
 st.caption("v3.0 — Corregido y optimizado por Adrian López")
