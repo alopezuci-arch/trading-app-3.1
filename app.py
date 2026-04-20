@@ -1419,7 +1419,7 @@ if 'df' in st.session_state:
         
     # ========== MOSTRAR TABLAS DIRECTAMENTE ==========
     st.subheader("📊 Tablas de resultados")
-    tab1, tab2, tab3, tab4 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", tab5, tab6 = st.tabs(["💼 CARTERA ACTUAL", "📜 HISTORIAL TRANSACCIONES"])
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS", "💼 CARTERA ACTUAL", "📜 HISTORIAL TRANSACCIONES"])
     cols_base = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit','Unidades','Inversión (MXN)','% Capital','Peso Cartera','Inversión Asignada','Unidades Ajustadas','Recomendación','Motivo','Señales']
     with tab1:
         if not compras.empty:
