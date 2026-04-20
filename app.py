@@ -791,6 +791,7 @@ def analizar_sentimiento(simbolo: str) -> dict:
         return {'sentimiento': 'Error', 'score': 0, 'noticias': []}
 
 def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
+    st.write("DEBUG - Columnas después de optimizar:", compras.columns.tolist())
     """
     Asigna pesos de cartera a las acciones de compra. Si no se puede optimizar,
     usa pesos iguales. Siempre devuelve las columnas de gestión de cartera.
