@@ -1229,17 +1229,6 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     regime_bonus = regime_data['score_bonus'] if market_regime_check else 0
     trade_capital = capital_total * 0.25
 
-    # Panel Core + Satélite
-    etf_cap = round(capital_total * 0.65, 2)
-    trade_cap = round(capital_total * 0.25, 2)
-    conv_cap = round(capital_total * 0.10, 2)
-    st.markdown("### 💼 Estrategia recomendada: Core + Satélite")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("🏛️ Core ETFs (65%)", f"${etf_cap:,.0f} MXN")
-    col2.metric("⚡ Trading (25%)", f"${trade_cap:,.0f} MXN")
-    col3.metric("🎯 Alta convicción (10%)", f"${conv_cap:,.0f} MXN")
-    st.markdown("---")
-
     lista_acciones = mercado_opciones[mercado_seleccionado].copy()
     if PRECIO_COMPRA:
         for sim in PRECIO_COMPRA.keys():
@@ -1401,9 +1390,22 @@ if 'df' in st.session_state:
     usd_mxn = st.session_state['usd_mxn']
     eur_mxn = st.session_state['eur_mxn']
     regime_data = st.session_state['regime']
+    capital_total = st.session_state.get('capital', 100000.0)
 
     st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
 
+    # ========== PANEL CORE + SATÉLITE ==========
+    etf_cap = round(capital_total * 0.65, 2)
+    trade_cap = round(capital_total * 0.25, 2)
+    conv_cap = round(capital_total * 0.10, 2)
+    st.markdown("### 💼 Estrategia recomendada: Core + Satélite")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("🏛️ Core ETFs (65%)", f"${etf_cap:,.0f} MXN")
+    col2.metric("⚡ Trading (25%)", f"${trade_cap:,.0f} MXN")
+    col3.metric("🎯 Alta convicción (10%)", f"${conv_cap:,.0f} MXN")
+    st.markdown("---")
+
+    # ========== MARKET REGIME ==========
     icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴','DESCONOCIDO':'⚪'}.get(regime_data.get('regime','DESCONOCIDO'),'⚪')
     with st.expander(f"{icono_regime} Market Regime: {regime_data.get('regime','DESCONOCIDO')} — {regime_data.get('descripcion','')}", expanded=True):
         c1, c2, c3, c4 = st.columns(4)
@@ -1412,6 +1414,7 @@ if 'df' in st.session_state:
         c3.metric("RSI S&P", f"{regime_data.get('rsi_sp500',0)}")
         c4.metric("Ret. 1 mes", f"{regime_data.get('ret_1m',0):+.1f}%")
 
+   #hasta aquí 20.04.2026 01:00 pm
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("✅ Compras", len(compras))
