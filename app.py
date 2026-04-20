@@ -1438,6 +1438,54 @@ if 'df' in st.session_state:
             st.info("Sin observaciones.")
     with tab4:
         st.dataframe(df, use_container_width=True)
+        # ========== PESTAÑAS ADICIONALES: CARTERA E HISTORIAL ==========
+    tab5, tab6 = st.tabs(["💼 CARTERA ACTUAL", "📜 HISTORIAL TRANSACCIONES"])
+
+    with tab5:
+        st.subheader("Posiciones abiertas (compras registradas)")
+        if PRECIO_COMPRA:
+            df_cartera = pd.DataFrame([
+                {'Símbolo': k, 'Precio Compra (MXN)': v}
+                for k, v in PRECIO_COMPRA.items()
+            ])
+            # Añadir precio actual si está disponible en df
+            df_cartera['Precio Actual (MXN)'] = df_cartera['Símbolo'].apply(
+                lambda x: df[df['Símbolo'] == x]['Precio (MXN)'].iloc[0] if x in df['Símbolo'].values else None
+            )
+            df_cartera['Ganancia (%)'] = (df_cartera['Precio Actual (MXN)'] / df_cartera['Precio Compra (MXN)'] - 1) * 100
+            st.dataframe(df_cartera, use_container_width=True)
+        else:
+            st.info("No hay posiciones abiertas. Registra compras en el sidebar.")
+
+    with tab6:
+        st.subheader("📊 Historial de transacciones y rendimiento")
+        df_trans = cargar_transacciones()
+        if not df_trans.empty:
+            # Mostrar todas las transacciones
+            st.dataframe(df_trans.sort_values('fecha', ascending=False), use_container_width=True)
+            
+            # Calcular win rate solo para ventas (con ganancia_pct no nulo)
+            ventas_df = df_trans[df_trans['tipo'] == 'venta'].copy()
+            if not ventas_df.empty and 'ganancia_pct' in ventas_df.columns:
+                ventas_df['ganancia_pct'] = pd.to_numeric(ventas_df['ganancia_pct'], errors='coerce')
+                ventas_con_ganancia = ventas_df.dropna(subset=['ganancia_pct'])
+                if not ventas_con_ganancia.empty:
+                    win_rate = (ventas_con_ganancia['ganancia_pct'] > 0).mean() * 100
+                    ganancia_promedio = ventas_con_ganancia['ganancia_pct'].mean()
+                    st.metric("🏆 Win Rate", f"{win_rate:.1f}%")
+                    st.metric("📈 Ganancia promedio por venta", f"{ganancia_promedio:.2f}%")
+                    
+                    # Gráfico de ganancias por venta
+                    fig = px.bar(ventas_con_ganancia, x='fecha', y='ganancia_pct', color='ganancia_pct',
+                                 color_continuous_scale=['red', 'yellow', 'green'],
+                                 title='Rendimiento de ventas cerradas')
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("Aún no hay ventas con ganancia registrada.")
+            else:
+                st.info("No hay ventas registradas aún.")
+        else:
+            st.info("No hay transacciones registradas.")
 
     # ========== MOSTRAR ANÁLISIS DE IA ==========
     if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
@@ -1461,6 +1509,7 @@ if 'df' in st.session_state:
                 st.metric("Ganancia actual", f"{ganancia:+.2f}%")
             fig = grafico_enriquecido(sim_elegido, usd_mxn, eur_mxn)
             st.plotly_chart(fig, use_container_width=True)
+            
   # ========== GRÁFICO DE BARRAS VERTICALES: TOP 10 POR SCORE ==========
     if not compras.empty:
         st.subheader("🏆 Top 10 señales de compra (Score y zona RSI)")
