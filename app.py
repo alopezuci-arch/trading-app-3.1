@@ -1012,6 +1012,49 @@ def dashboard_rendimiento(df_hist: pd.DataFrame) -> None:
         df_hist['ret_acum'] = (1 + df_hist['retorno']/100).cumprod()
         st.plotly_chart(px.line(df_hist, x='fecha', y='ret_acum', title='Rendimiento acumulado'), use_container_width=True)
 
+#Aquí 20 de abril del 26 a las 01:20 hrs añadir funcion de dashboard
+def dashboard_rendimiento_ventas(df_hist: pd.DataFrame) -> None:
+    """Muestra gráfico de rendimiento acumulado y win rate de las señales de VENTA."""
+    if df_hist.empty:
+        st.info("Sin historial de ventas suficiente.")
+        return
+
+    # Filtrar solo señales de venta que tengan ganancia registrada
+    df_ventas = df_hist[df_hist['recomendacion'] == "VENDER"].copy()
+    df_ventas = df_ventas.dropna(subset=['ganancia_pct'])
+    if df_ventas.empty:
+        st.info("No hay ventas registradas con ganancia/pérdida en el historial.")
+        return
+
+    df_ventas = df_ventas.sort_values('fecha')
+    # Calcular retorno acumulado (suponiendo reinversión, solo visual)
+    df_ventas['ret_acum'] = (1 + df_ventas['ganancia_pct']/100).cumprod()
+
+    # Gráfico de rendimiento acumulado
+    fig = px.line(df_ventas, x='fecha', y='ret_acum', title='Rendimiento acumulado de señales de VENTA')
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Win rate y estadísticas
+    win_rate = (df_ventas['ganancia_pct'] > 0).mean() * 100
+    ganancia_promedio = df_ventas['ganancia_pct'].mean()
+    ganancia_media = df_ventas['ganancia_pct'].median()
+    total_ventas = len(df_ventas)
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("🏆 Win Rate (ventas)", f"{win_rate:.1f}%")
+    col2.metric("📈 Ganancia promedio", f"{ganancia_promedio:.2f}%")
+    col3.metric("📊 Ganancia mediana", f"{ganancia_media:.2f}%")
+    col4.metric("🔢 Total señales venta", total_ventas)
+
+    # Histograma de ganancias
+    fig_hist = px.histogram(df_ventas, x='ganancia_pct', nbins=20, title='Distribución de ganancias/pérdidas en ventas',
+                            labels={'ganancia_pct': 'Ganancia (%)'})
+    st.plotly_chart(fig_hist, use_container_width=True)
+
+    # Tabla de últimas ventas
+    st.subheader("Últimas señales de venta")
+    st.dataframe(df_ventas[['fecha', 'simbolo', 'ganancia_pct', 'score']].tail(10).sort_values('fecha', ascending=False), use_container_width=True)
+
 def guardar_en_drive(contenido_bytes: bytes, nombre_archivo: str):
     # (código original, se omite por brevedad, pero mantenlo)
     pass
@@ -1472,9 +1515,9 @@ if 'df' in st.session_state:
     
     # ========== TABLAS Y SECCIONES ORGANIZADAS EN PESTAÑAS ==========
     st.subheader("📊 Resultados detallados")
-    (tab1, tab2, tab3, tab4, tab5, tab6, tab7) = st.tabs([
+        (tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8) = st.tabs([
         "🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS",
-        "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10"
+        "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10", "📊 BACKTEST VENTAS"
     ])
 
     # --- Pestaña 1: Compras ---
