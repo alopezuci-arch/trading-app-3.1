@@ -1622,6 +1622,12 @@ if 'df' in st.session_state:
         else:
             st.info("No hay señales de compra para mostrar el top.")
 
+    # --- Pestaña 8: Backtest de señales de venta ---
+    with tab8:
+        st.subheader("📈 Rendimiento histórico de señales de VENTA (TP/SL)")
+        df_hist = cargar_historial_senales()
+        dashboard_rendimiento_ventas(df_hist)
+
     # ========== ANÁLISIS DE IA ==========
     if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
         with st.expander("🤖 Análisis de IA", expanded=True):
