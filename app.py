@@ -1409,6 +1409,37 @@ if 'df' in st.session_state:
         c3.metric("RSI S&P", f"{regime_data.get('rsi_sp500',0)}")
         c4.metric("Ret. 1 mes", f"{regime_data.get('ret_1m',0):+.1f}%")
 
+        # ========== GRÁFICO DE BARRAS: RSI por acción ==========
+    if not df.empty:
+        st.subheader("📊 Zonas de RSI (Sobrecompra / Neutral / Sobreventa)")
+        # Crear una copia del DataFrame con el RSI y el símbolo
+        df_rsi = df[['Símbolo', 'RSI']].copy()
+        df_rsi['RSI'] = pd.to_numeric(df_rsi['RSI'], errors='coerce')
+        df_rsi = df_rsi.dropna()
+        if not df_rsi.empty:
+            # Asignar color según zona
+            def zona_color(rsi):
+                if rsi > 70:
+                    return 'Sobrecompra'
+                elif rsi < 30:
+                    return 'Sobreventa'
+                else:
+                    return 'Neutral'
+            df_rsi['Zona'] = df_rsi['RSI'].apply(zona_color)
+            # Crear gráfico de barras horizontales
+            fig_rsi = px.bar(df_rsi.sort_values('RSI', ascending=True), 
+                             x='RSI', y='Símbolo', 
+                             color='Zona',
+                             color_discrete_map={'Sobrecompra': '#ef553b', 'Neutral': '#636efa', 'Sobreventa': '#00cc96'},
+                             title='RSI por Acción',
+                             labels={'RSI': 'RSI (14)', 'Símbolo': ''},
+                             orientation='h')
+            fig_rsi.add_vline(x=70, line_dash="dash", line_color="red", annotation_text="Sobrecompra")
+            fig_rsi.add_vline(x=30, line_dash="dash", line_color="green", annotation_text="Sobreventa")
+            st.plotly_chart(fig_rsi, use_container_width=True)
+        else:
+            st.info("No hay datos de RSI para mostrar.")
+
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("✅ Compras", len(compras))
     col2.metric("🔴 Ventas", len(ventas))
