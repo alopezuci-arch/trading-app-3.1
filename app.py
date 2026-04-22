@@ -359,58 +359,67 @@ def dashboard_rendimiento_real():
     df_trans = cargar_transacciones() 
     
     if df_trans is not None and not df_trans.empty:
-        # Forzamos a que 'tipo' sea minúscula para que coincida con tu CSV
-        df_trans['tipo'] = df_trans['tipo'].astype(str).str.lower()
+        # 1. Limpieza: Asegurar que 'tipo' no tenga espacios y sea minúscula
+        df_trans['tipo'] = df_trans['tipo'].astype(str).str.strip().str.lower()
         
-        # Filtramos las ventas y quitamos las que no tengan ganancia_pct (las compras)
+        # 2. Filtrar solo ventas
         ventas = df_trans[df_trans['tipo'] == 'venta'].copy()
+        
+        # 3. Forzar 'ganancia_pct' a ser número (importante por los datos de tu CSV)
         ventas['ganancia_pct'] = pd.to_numeric(ventas['ganancia_pct'], errors='coerce')
+        
+        # 4. Eliminar las que quedaron como NaN (compras o errores)
         ventas = ventas.dropna(subset=['ganancia_pct'])
         
         if not ventas.empty:
-            # Cálculos de métricas
             aciertos = ventas[ventas['ganancia_pct'] > 0]
-            win_rate = len(aciertos) / len(ventas) * 100
-            total_ganado = ventas['ganancia_pct'].mean()
+            win_rate = (len(aciertos) / len(ventas)) * 100
+            avg_ganancia = ventas['ganancia_pct'].mean()
             
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Win Rate Real", f"{win_rate:.1f}%")
-            col2.metric("Operaciones Cerradas", len(ventas))
-            col3.metric("Promedio G/P", f"{total_ganado:.2f}%")
+            # Métricas visuales
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Win Rate Real", f"{win_rate:.1f}%")
+            c2.metric("Ventas Cerradas", len(ventas))
+            c3.metric("Promedio G/P", f"{avg_ganancia:.2f}%")
             
-            # Gráfico con los datos de tu CSV
+            # Gráfico con ID único para evitar el error de Duplicate ID
             fig = px.bar(ventas, 
                          x='fecha', 
                          y='ganancia_pct', 
                          color='ganancia_pct',
                          hover_data=['simbolo', 'notas'],
-                         title="Cronología de Ganancias y Pérdidas Reales",
+                         title="Historial de Ventas Reales (Ganancias vs Pérdidas)",
                          color_continuous_scale='RdYlGn',
-                         labels={'ganancia_pct': 'Rendimiento %', 'fecha': 'Fecha de Operación'})
+                         range_color=[-50, 50]) # Ajusta según tus ganancias
             
-            st.plotly_chart(fig, use_container_width=True, key="grafico_rendimiento_real_final")
+            st.plotly_chart(fig, use_container_width=True, key="grafico_real_final_pers")
         else:
-            st.info("Aún no hay operaciones de 'venta' con ganancias calculadas en el archivo.")
+            st.info("Aún no hay operaciones de 'venta' con ganancias numéricas detectadas.")
     else:
-        st.warning("No se pudo cargar el archivo transacciones.csv o está vacío.")
-
+        st.warning("El archivo transacciones.csv no contiene datos válidos.")
+        
 def analizar_adn_exito():
     st.subheader("🧬 ADN de tus Aciertos (Aprendizaje LM)")
     df_hist = cargar_historial_senales()
-    # Filtramos las señales que resultaron en ganancias positivas
-    aciertos = df_hist[df_hist['ganancia_pct'] > 0]
     
-    if not aciertos.empty:
-        # Extraer y contar las señales técnicas presentes en los aciertos
-        todas_senales = ",".join(aciertos['señales'].astype(str)).split(',')
-        from collections import Counter
-        conteo = Counter([s.strip() for s in todas_senales if s.strip()])
+    if not df_hist.empty and 'ganancia_pct' in df_hist.columns:
+        # Asegurar que ganancia_pct sea numérico
+        df_hist['ganancia_pct'] = pd.to_numeric(df_hist['ganancia_pct'], errors='coerce')
+        aciertos = df_hist[df_hist['ganancia_pct'] > 0].copy()
         
-        st.write("Estos son los factores que el modelo está identificando como ganadores en tu estrategia:")
-        for factor, count in conteo.most_common(5):
-            st.success(f"✔️ {factor}: Presente en {count} operaciones exitosas")
+        if not aciertos.empty:
+            # Extraer señales (MACD, RSI, etc)
+            todas_senales = ",".join(aciertos['señales'].astype(str)).split(',')
+            from collections import Counter
+            conteo = Counter([s.strip() for s in todas_senales if s.strip() and s.strip() != 'nan'])
+            
+            st.write("Factores técnicos detectados en tus operaciones ganadoras:")
+            for factor, count in conteo.most_common(5):
+                st.success(f"✔️ {factor}: Identificado en {count} aciertos")
+        else:
+            st.write("El modelo está esperando más cierres de ventas para identificar patrones de éxito.")
     else:
-        st.write("El modelo aún necesita más datos de ventas exitosas para identificar patrones de éxito.")
+        st.write("Sin datos históricos de señales para analizar.")
 
 # ============================================================
 # LISTAS DE MERCADO (sin cambios)
