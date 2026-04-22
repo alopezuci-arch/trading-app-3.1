@@ -111,11 +111,14 @@ def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool
 
 def repo_cargar_posiciones() -> dict:
     contenido = _repo_leer("posiciones.json")
-    if contenido and contenido.strip() not in ("", "{}", "null"):
+    if contenido:
         try:
             data = json.loads(contenido)
-            if isinstance(data, dict) and data:
-                return {k.upper(): float(v) for k, v in data.items()}
+            # Si los datos viejos eran simples {Simb: Precio}, los convertimos al nuevo formato
+            for k, v in data.items():
+                if not isinstance(v, dict):
+                    data[k] = {"cantidad": 1.0, "precio": float(v)}
+            return data
         except:
             pass
     return {}
