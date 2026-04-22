@@ -377,7 +377,7 @@ def dashboard_rendimiento_real():
                          title="Historial de Ganancias/Pérdidas Reales",
                          labels={'ganancia_pct': 'Ganancia %', 'fecha': 'Fecha de Venta'},
                          color_continuous_scale='RdYlGn')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key="grafico_rendimiento_real")
         else:
             st.info("Aún no hay ventas registradas con cálculo de ganancia.")
     else:
