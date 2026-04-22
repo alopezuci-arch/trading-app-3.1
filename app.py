@@ -354,34 +354,45 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
     df = df[df['fecha'] >= cutoff]
     df.to_csv(HISTORIAL_FILE, index=False)
 
-
 def dashboard_rendimiento_real():
     st.subheader("📊 Rendimiento Real de mi Cartera")
     df_trans = cargar_transacciones() 
     
-    if not df_trans.empty and 'ganancia_pct' in df_trans.columns:
-        # Filtramos solo las filas que son de tipo 'venta' y tienen datos de ganancia
-        ventas = df_trans[df_trans['tipo'] == 'venta'].dropna(subset=['ganancia_pct'])
+    if df_trans is not None and not df_trans.empty:
+        # Forzamos a que 'tipo' sea minúscula para que coincida con tu CSV
+        df_trans['tipo'] = df_trans['tipo'].astype(str).str.lower()
+        
+        # Filtramos las ventas y quitamos las que no tengan ganancia_pct (las compras)
+        ventas = df_trans[df_trans['tipo'] == 'venta'].copy()
+        ventas['ganancia_pct'] = pd.to_numeric(ventas['ganancia_pct'], errors='coerce')
+        ventas = ventas.dropna(subset=['ganancia_pct'])
         
         if not ventas.empty:
+            # Cálculos de métricas
             aciertos = ventas[ventas['ganancia_pct'] > 0]
             win_rate = len(aciertos) / len(ventas) * 100
+            total_ganado = ventas['ganancia_pct'].mean()
             
             col1, col2, col3 = st.columns(3)
             col1.metric("Win Rate Real", f"{win_rate:.1f}%")
-            col2.metric("Total Ventas", len(ventas))
-            col3.metric("Ganancia Promedio", f"{ventas['ganancia_pct'].mean():.2f}%")
+            col2.metric("Operaciones Cerradas", len(ventas))
+            col3.metric("Promedio G/P", f"{total_ganado:.2f}%")
             
-            # Gráfico de barras de aciertos vs pérdidas
-            fig = px.bar(ventas, x='fecha', y='ganancia_pct', color='ganancia_pct',
-                         title="Historial de Ganancias/Pérdidas Reales",
-                         labels={'ganancia_pct': 'Ganancia %', 'fecha': 'Fecha de Venta'},
-                         color_continuous_scale='RdYlGn')
-            st.plotly_chart(fig, use_container_width=True, key="grafico_ventas_reales_unico")
+            # Gráfico con los datos de tu CSV
+            fig = px.bar(ventas, 
+                         x='fecha', 
+                         y='ganancia_pct', 
+                         color='ganancia_pct',
+                         hover_data=['simbolo', 'notas'],
+                         title="Cronología de Ganancias y Pérdidas Reales",
+                         color_continuous_scale='RdYlGn',
+                         labels={'ganancia_pct': 'Rendimiento %', 'fecha': 'Fecha de Operación'})
+            
+            st.plotly_chart(fig, use_container_width=True, key="grafico_rendimiento_real_final")
         else:
-            st.info("Aún no hay ventas registradas con cálculo de ganancia.")
+            st.info("Aún no hay operaciones de 'venta' con ganancias calculadas en el archivo.")
     else:
-        st.info("No hay datos en el archivo de transacciones.")
+        st.warning("No se pudo cargar el archivo transacciones.csv o está vacío.")
 
 def analizar_adn_exito():
     st.subheader("🧬 ADN de tus Aciertos (Aprendizaje LM)")
