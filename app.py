@@ -377,7 +377,7 @@ def dashboard_rendimiento_real():
                          title="Historial de Ganancias/Pérdidas Reales",
                          labels={'ganancia_pct': 'Ganancia %', 'fecha': 'Fecha de Venta'},
                          color_continuous_scale='RdYlGn')
-            st.plotly_chart(fig, use_container_width=True, key="grafico_rendimiento_real")
+            st.plotly_chart(fig, use_container_width=True, key="grafico_ventas_reales_unico")
         else:
             st.info("Aún no hay ventas registradas con cálculo de ganancia.")
     else:
@@ -1689,11 +1689,6 @@ if 'df' in st.session_state:
         # Esto es lo nuevo (Tus aciertos reales y el aprendizaje del modelo)
         dashboard_rendimiento_real() 
         analizar_adn_exito()
-        
-        # --- NUEVAS LLAMADAS AÑADIDAS AQUÍ ---
-        dashboard_rendimiento_real()
-        analizar_adn_exito()
-        # -------------------------------------
 
     # ========== ANÁLISIS DE IA ==========
     if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
