@@ -354,6 +354,53 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
     df = df[df['fecha'] >= cutoff]
     df.to_csv(HISTORIAL_FILE, index=False)
 
+
+def dashboard_rendimiento_real():
+    st.subheader("📊 Rendimiento Real de mi Cartera")
+    df_trans = cargar_transacciones() 
+    
+    if not df_trans.empty and 'ganancia_pct' in df_trans.columns:
+        # Filtramos solo las filas que son de tipo 'venta' y tienen datos de ganancia
+        ventas = df_trans[df_trans['tipo'] == 'venta'].dropna(subset=['ganancia_pct'])
+        
+        if not ventas.empty:
+            aciertos = ventas[ventas['ganancia_pct'] > 0]
+            win_rate = len(aciertos) / len(ventas) * 100
+            
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Win Rate Real", f"{win_rate:.1f}%")
+            col2.metric("Total Ventas", len(ventas))
+            col3.metric("Ganancia Promedio", f"{ventas['ganancia_pct'].mean():.2f}%")
+            
+            # Gráfico de barras de aciertos vs pérdidas
+            fig = px.bar(ventas, x='fecha', y='ganancia_pct', color='ganancia_pct',
+                         title="Historial de Ganancias/Pérdidas Reales",
+                         labels={'ganancia_pct': 'Ganancia %', 'fecha': 'Fecha de Venta'},
+                         color_continuous_scale='RdYlGn')
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Aún no hay ventas registradas con cálculo de ganancia.")
+    else:
+        st.info("No hay datos en el archivo de transacciones.")
+
+def analizar_adn_exito():
+    st.subheader("🧬 ADN de tus Aciertos (Aprendizaje LM)")
+    df_hist = cargar_historial_senales()
+    # Filtramos las señales que resultaron en ganancias positivas
+    aciertos = df_hist[df_hist['ganancia_pct'] > 0]
+    
+    if not aciertos.empty:
+        # Extraer y contar las señales técnicas presentes en los aciertos
+        todas_senales = ",".join(aciertos['señales'].astype(str)).split(',')
+        from collections import Counter
+        conteo = Counter([s.strip() for s in todas_senales if s.strip()])
+        
+        st.write("Estos son los factores que el modelo está identificando como ganadores en tu estrategia:")
+        for factor, count in conteo.most_common(5):
+            st.success(f"✔️ {factor}: Presente en {count} operaciones exitosas")
+    else:
+        st.write("El modelo aún necesita más datos de ventas exitosas para identificar patrones de éxito.")
+
 # ============================================================
 # LISTAS DE MERCADO (sin cambios)
 # ============================================================
@@ -1633,7 +1680,20 @@ if 'df' in st.session_state:
     with tab8:
         st.subheader("📈 Rendimiento histórico de señales de VENTA (TP/SL)")
         df_hist = cargar_historial_senales()
-        dashboard_rendimiento_ventas(df_hist)
+        
+        # Esto es lo que ya tenías (Rendimiento de predicciones)
+        dashboard_rendimiento_ventas(df_hist) 
+        
+        st.divider() # Una línea divisoria para separar
+        
+        # Esto es lo nuevo (Tus aciertos reales y el aprendizaje del modelo)
+        dashboard_rendimiento_real() 
+        analizar_adn_exito()
+        
+        # --- NUEVAS LLAMADAS AÑADIDAS AQUÍ ---
+        dashboard_rendimiento_real()
+        analizar_adn_exito()
+        # -------------------------------------
 
     # ========== ANÁLISIS DE IA ==========
     if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
