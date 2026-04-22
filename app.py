@@ -127,27 +127,47 @@ def repo_guardar_posiciones(posiciones: dict) -> bool:
 def repo_cargar_transacciones() -> pd.DataFrame:
     cols = ['fecha','simbolo','cantidad','precio','tipo','total','notas','ganancia_pct']
     contenido = _repo_leer("transacciones.csv")
-    if contenido and len(contenido) > 60:
+    
+    # Eliminamos el len > 60 para que lea archivos aunque sean pequeños
+    if contenido and contenido.strip():
         try:
             from io import StringIO
             df = pd.read_csv(StringIO(contenido))
-            df['fecha'] = pd.to_datetime(df['fecha'])
+            
+            # 1. Limpieza de nombres de columnas (quita espacios invisibles)
+            df.columns = [c.strip() for c in df.columns]
+            
+            # 2. Aseguramos que la columna de ganancia exista y sea numérica
             if 'ganancia_pct' not in df.columns:
                 df['ganancia_pct'] = np.nan
+            else:
+                df['ganancia_pct'] = pd.to_numeric(df['ganancia_pct'], errors='coerce')
+            
+            # 3. Convertimos la fecha forzando errores a NaT (Not a Time)
+            df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+            
+            # Guardamos copia local para consistencia del sistema
             df.to_csv(TRANSACCIONES_FILE, index=False)
             return df
-        except:
-            pass
+        except Exception as e:
+            st.error(f"Error procesando transacciones desde GitHub: {e}")
+            
     return pd.DataFrame(columns=cols)
+
 def repo_guardar_transacciones() -> bool:
+    # Esta función se mantiene casi igual pero asegura la codificación correcta
     if not os.path.exists(TRANSACCIONES_FILE):
         return False
     try:
         with open(TRANSACCIONES_FILE, 'r', encoding='utf-8') as f:
             contenido = f.read()
+        if not contenido.strip():
+            return False
         return _repo_escribir("transacciones.csv", contenido, "sincronizar transacciones")
-    except:
+    except Exception as e:
+        st.error(f"Error al subir a GitHub: {e}")
         return False
+        
 def repo_cargar_historial() -> pd.DataFrame:
     cols = ['fecha','simbolo','score','precio','recomendacion','señales']
     contenido = _repo_leer("historial_senales.csv")
@@ -356,48 +376,43 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
 
 def dashboard_rendimiento_real():
     st.subheader("📊 Rendimiento Real de mi Cartera")
-    df_trans = cargar_transacciones() 
+    
+    # IMPORTANTE: Usamos la función de REPO para asegurar que traiga lo de GitHub
+    df_trans = repo_cargar_transacciones() 
     
     if df_trans is not None and not df_trans.empty:
-        # 1. Limpieza: Asegurar que 'tipo' no tenga espacios y sea minúscula
+        # Limpieza profunda de strings y espacios
         df_trans['tipo'] = df_trans['tipo'].astype(str).str.strip().str.lower()
         
-        # 2. Filtrar solo ventas
+        # Filtro de ventas
         ventas = df_trans[df_trans['tipo'] == 'venta'].copy()
         
-        # 3. Forzar 'ganancia_pct' a ser número (importante por los datos de tu CSV)
+        # Convertir ganancia a número, forzando errores a NaN y luego eliminándolos
         ventas['ganancia_pct'] = pd.to_numeric(ventas['ganancia_pct'], errors='coerce')
-        
-        # 4. Eliminar las que quedaron como NaN (compras o errores)
         ventas = ventas.dropna(subset=['ganancia_pct'])
         
         if not ventas.empty:
             aciertos = ventas[ventas['ganancia_pct'] > 0]
             win_rate = (len(aciertos) / len(ventas)) * 100
-            avg_ganancia = ventas['ganancia_pct'].mean()
             
-            # Métricas visuales
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Win Rate Real", f"{win_rate:.1f}%")
-            c2.metric("Ventas Cerradas", len(ventas))
-            c3.metric("Promedio G/P", f"{avg_ganancia:.2f}%")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Win Rate Real", f"{win_rate:.1f}%")
+            col2.metric("Ventas", len(ventas))
+            col3.metric("Promedio", f"{ventas['ganancia_pct'].mean():.2f}%")
             
-            # Gráfico con ID único para evitar el error de Duplicate ID
-            fig = px.bar(ventas, 
-                         x='fecha', 
-                         y='ganancia_pct', 
-                         color='ganancia_pct',
+            # Gráfico con escala de colores fija para que resalten pérdidas y ganancias
+            fig = px.bar(ventas, x='fecha', y='ganancia_pct', color='ganancia_pct',
                          hover_data=['simbolo', 'notas'],
-                         title="Historial de Ventas Reales (Ganancias vs Pérdidas)",
-                         color_continuous_scale='RdYlGn',
-                         range_color=[-50, 50]) # Ajusta según tus ganancias
+                         title="Historial Real de Trading",
+                         color_continuous_scale=[(0, "red"), (0.5, "yellow"), (1, "green")])
             
-            st.plotly_chart(fig, use_container_width=True, key="grafico_real_final_pers")
+            st.plotly_chart(fig, use_container_width=True, key="dash_real_definitivo")
         else:
-            st.info("Aún no hay operaciones de 'venta' con ganancias numéricas detectadas.")
+            st.warning("Se leyó el archivo pero no se detectaron filas de 'venta' con porcentaje de ganancia.")
     else:
-        st.warning("El archivo transacciones.csv no contiene datos válidos.")
+        st.error("No se pudieron cargar datos desde el repositorio. Revisa la conexión con GitHub.")
         
+#Analisis de ADN de exito      
 def analizar_adn_exito():
     st.subheader("🧬 ADN de tus Aciertos (Aprendizaje LM)")
     df_hist = cargar_historial_senales()
