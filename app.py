@@ -761,7 +761,7 @@ def obtener_regimen_diario() -> pd.Series:
 
 def obtener_fundamentales_profundos(simbolo: str) -> dict:
     try:
-        info = yf.Ticker(simbolo, session=_YF_SESSION).info
+        info = yf.Ticker(simbolo).info
         dy = info.get('dividendYield')
         roe = info.get('returnOnEquity')
         rg = info.get('revenueGrowth')
@@ -790,7 +790,7 @@ def obtener_fundamentales_profundos(simbolo: str) -> dict:
 
 def backtest_realista(simbolo: str, precio_entrada: float, atr: float, window_dias=30) -> dict:
     try:
-        ticker = yf.Ticker(simbolo, session=_YF_SESSION)
+        ticker = yf.Ticker(simbolo)
         hist = safe_history(ticker, "6mo")
         if hist.empty:
             return {'resultado': 0, 'tipo': 'error'}
@@ -869,7 +869,7 @@ def entrenar_modelo_ml(simbolo: str, usd_mxn: float, eur_mxn: float) -> dict:
         cache[simbolo] = {'model': clf_repo, 'acc': acc_repo, 'ts': datetime.now()}
         return {'model': clf_repo, 'accuracy': acc_repo, 'fuente': '☁️ repo'}
     try:
-        ticker = yf.Ticker(simbolo, session=_YF_SESSION)
+        ticker = yf.Ticker(simbolo)
         hist = safe_history(ticker, "3y")
         if hist.empty or len(hist) < 200:
             return None
@@ -1004,74 +1004,8 @@ def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, 
     compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
     compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
     return compras_df
-    # --- BLOQUE DE GESTIÓN ---
-
-    with st.sidebar.expander("📝 Registrar Ventas"):
-        v_input = st.sidebar.text_area("Símbolo,Cantidad,Precio", height=100, key="v_sidebar_new")
-        if st.sidebar.button("Procesar Ventas", key="btn_v_sidebar_new"):
-            if v_input:
-                procesar_ventas(v_input)
-                st.rerun()
-
-    with st.sidebar.expander("🗑️ Limpiar Posición"):
-        s_borrar = st.sidebar.text_input("Ticker a borrar", key="clean_sidebar_new").upper().strip()
-        if st.sidebar.button("Borrar permanentemente", key="btn_c_sidebar_new"):
-            if s_borrar:
-                pos = repo_cargar_posiciones()
-                if s_borrar in pos:
-                    del pos[s_borrar]
-                    repo_guardar_posiciones(pos)
-                    st.sidebar.success(f"Eliminado: {s_borrar}")
-                    st.rerun()
-    st.sidebar.divider()
     
-    # Intentar obtener precios históricos para todos los símbolos
-    # Línea 1111 de tu archivo
-    opcion_mercado = st.sidebar.selectbox("Selecciona Mercado:", list(mercado_opciones.keys()))
-    tickers_seleccionados = mercado_opciones[opcion_mercado]
-
-    # === GESTIÓN DE CARTERA ===
-    st.sidebar.divider()
-    with st.sidebar.expander("📝 Registrar Ventas"):
-        v_input = st.sidebar.text_area("Símbolo,Cantidad,Precio", height=100, key="v_sidebar_final")
-        if st.sidebar.button("Procesar Ventas", key="btn_v_sidebar_final"):
-            if v_input:
-                procesar_ventas(v_input)
-                st.rerun()
-
-    with st.sidebar.expander("🗑️ Limpiar Posición"):
-        s_borrar = st.sidebar.text_input("Ticker a borrar", key="clean_sidebar_final").upper().strip()
-        if st.sidebar.button("Borrar permanentemente", key="btn_c_sidebar_final"):
-            if s_borrar:
-                pos = repo_cargar_posiciones()
-                if s_borrar in pos:
-                    del pos[s_borrar]
-                    repo_guardar_posiciones(pos)
-                    st.sidebar.success(f"Eliminado: {s_borrar}")
-                    st.rerun()
-    st.sidebar.divider()
-    # === PANEL DE GESTIÓN (UBICACIÓN REAL) ===
-    st.sidebar.divider()
-    with st.sidebar.expander("📝 Registrar Ventas"):
-        v_input = st.sidebar.text_area("Símbolo,Cantidad,Precio", height=100, key="v_sidebar_final")
-        if st.sidebar.button("Procesar Ventas", key="btn_v_sidebar_final"):
-            if v_input:
-                procesar_ventas(v_input)
-                st.rerun()
-
-    with st.sidebar.expander("🗑️ Limpiar Posición"):
-        s_borrar = st.sidebar.text_input("Ticker a borrar", key="clean_sidebar_final").upper().strip()
-        if st.sidebar.button("Borrar permanentemente", key="btn_c_sidebar_final"):
-            if s_borrar:
-                pos = repo_cargar_posiciones()
-                if s_borrar in pos:
-                    del pos[s_borrar]
-                    repo_guardar_posiciones(pos)
-                    st.sidebar.success(f"Eliminado: {s_borrar}")
-                    st.rerun()
-    st.sidebar.divider()
-    
-    precios = {}
+        precios = {}
     for sim in symbols:
         try:
             ticker = yf.Ticker(sim, session=_YF_SESSION)
@@ -1181,7 +1115,7 @@ def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame, resu
     </body></html>"""
 
 def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figure:
-    hist = safe_history(yf.Ticker(simbolo, session=_YF_SESSION), "6mo")
+    hist = safe_history(yf.Ticker(simbolo), "6mo")
     if hist.empty:
         return go.Figure()
     factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
@@ -1349,7 +1283,7 @@ def analizar_accion(args: tuple) -> dict | None:
     simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt, regime_bonus, capital, riesgo_pct = args
     try:
         periodo = "6mo" if incluir_bt else "3mo"
-        ticker = yf.Ticker(simbolo, session=_YF_SESSION)
+        ticker = yf.Ticker(simbolo)
         hist = safe_history(ticker, periodo)
         if hist.empty or len(hist) < 20:
             return None
