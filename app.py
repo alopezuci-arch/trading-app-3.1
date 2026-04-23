@@ -1561,8 +1561,6 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         compras = compras[filtro].copy()
         if compras.empty:
             st.warning("⚠️ No hay señales que cumplan los criterios de alta confianza. Desactiva el filtro para ver todas.")
-        if alta_confianza and compras.empty:
-            st.warning("⚠️ No hay señales que cumplan los criterios de alta confianza. Desactiva el filtro para ver todas.")
     
     # ========== FILTRO DE FUNDAMENTALES SÓLIDOS ==========
     if filtro_fundamentales and fundamentales_check and not compras.empty:
