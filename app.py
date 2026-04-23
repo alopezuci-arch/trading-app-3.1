@@ -1249,7 +1249,8 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
 # FUNCIÓN ANALIZAR ACCIÓN (CORREGIDA: SIN FILTRO DE VOLUMEN EXCESIVO)
 # ============================================================
 def analizar_accion(args: tuple) -> dict | None:
-    simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt, regime_bonus, capital, riesgo_pct = args
+    (simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt,
+     regime_bonus, capital, riesgo_pct, trailing_enabled, trailing_pct) = args
     try:
         periodo = "6mo" if incluir_bt else "3mo"
         ticker = yf.Ticker(simbolo)
@@ -1283,6 +1284,23 @@ def analizar_accion(args: tuple) -> dict | None:
         señales_venta = []
         if p_compra:
             ganancia = ((precio / p_compra) - 1) * 100
+            
+            # === TRAILING STOP DINÁMICO ===
+            if trailing_enabled and ganancia > 0:
+                # Inicializar o recuperar el precio máximo registrado para este símbolo
+                if 'HIGHEST_PRICE' not in st.session_state:
+                    st.session_state['HIGHEST_PRICE'] = {}
+                highest = st.session_state['HIGHEST_PRICE'].get(simbolo, p_compra)
+                if precio > highest:
+                    highest = precio
+                    st.session_state['HIGHEST_PRICE'][simbolo] = highest
+                # Calcular stop dinámico basado en el máximo
+                trailing_stop_price = highest * (1 - trailing_pct / 100)
+                # Si el precio actual está por debajo o igual al trailing stop, señal de venta
+                if precio <= trailing_stop_price:
+                    señales_venta.append(f"📉 Trailing Stop activado (máx {highest:.2f} → stop {trailing_stop_price:.2f})")
+            # ====================================
+            
             if ganancia >= 15:
                 señales_venta.append(f"🎯 Take Profit +{ganancia:.1f}%")
             elif ganancia <= -7:
@@ -1395,6 +1413,11 @@ st.sidebar.markdown("### 💼 Gestión de capital")
 capital_total = st.sidebar.number_input("Capital (MXN)", min_value=1000.0, value=100_000.0, step=1000.0)
 riesgo_pct = st.sidebar.slider("Riesgo por operación (%)", 0.5, 3.0, 1.0, 0.25)
 
+#Añadido el 23 de abril a las 01:13 am
+st.sidebar.markdown("### 📉 Trailing Stop")
+trailing_enabled = st.sidebar.checkbox("Activar Trailing Stop dinámico", value=False)
+trailing_pct = st.sidebar.slider("Trailing stop (%)", 1.0, 10.0, 5.0, 0.5, disabled=not trailing_enabled)
+
 st.sidebar.markdown("### 🔔 Alertas")
 alerta_email = st.sidebar.checkbox("📧 Alertas email", value=True)
 alerta_whatsapp = st.sidebar.checkbox("💬 Alertas WhatsApp", value=False)
@@ -1413,6 +1436,7 @@ drive_upload = st.sidebar.checkbox("💾 Guardar en Drive", value=False)
 #de aquí hasta el siguiente apartado 12:48 pm
 if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     PRECIO_COMPRA = dict(st.session_state.get('PRECIO_COMPRA', {}))
+    st.session_state['HIGHEST_PRICE'] = {}
 
     if compra_input and compra_input.strip():
         for linea in compra_input.strip().split('\n'):
@@ -1455,6 +1479,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         args_list = [
             (sim, PRECIO_COMPRA, usd_mxn, eur_mxn, fundamentales_check,
              backtesting_check, regime_bonus, trade_capital, riesgo_pct)
+             trailing_enabled, trailing_pct)
             for sim in lista_acciones
         ]
 
