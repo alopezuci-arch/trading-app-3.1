@@ -1604,15 +1604,32 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 # ============================================================
 # PRESENTACIÓN DE RESULTADOS (si existen)
 # ============================================================
-if 'df' in st.session_state:
-    df = st.session_state['df']
-    compras = st.session_state['compras']
-    ventas = st.session_state['ventas']
-    observar = st.session_state['observar']
-    usd_mxn = st.session_state['usd_mxn']
-    eur_mxn = st.session_state['eur_mxn']
-    regime_data = st.session_state['regime']
-    capital_total = st.session_state.get('capital', 100000.0)
+    # Asegurar que los tipos de cambio estén en session_state
+if 'usd_mxn' not in st.session_state:
+    usd_mxn, eur_mxn = obtener_tipo_cambio()
+    st.session_state['usd_mxn'] = usd_mxn
+    st.session_state['eur_mxn'] = eur_mxn
+
+# Ahora sí, leer los valores de sesión (ya existen)
+usd_mxn = st.session_state['usd_mxn']
+eur_mxn = st.session_state['eur_mxn']
+
+# Verificar si hay resultados del análisis
+    if 'df' in st.session_state:
+        df = st.session_state['df']
+        compras = st.session_state['compras']
+        ventas = st.session_state['ventas']
+        observar = st.session_state['observar']
+        regime_data = st.session_state['regime']
+        capital_total = st.session_state.get('capital', 100000.0)  # Nota: valor por defecto 100k, no 10k
+    else:
+        # Opcional: manejar caso sin análisis
+        df = pd.DataFrame()
+        compras = pd.DataFrame()
+        ventas = pd.DataFrame()
+        observar = pd.DataFrame()
+        regime_data = {}
+        capital_total = 100000.0
 
     st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
 
