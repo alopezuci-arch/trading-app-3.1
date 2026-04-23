@@ -384,14 +384,21 @@ def cargar_historial_senales() -> pd.DataFrame:
     return pd.DataFrame(columns=['fecha','simbolo','score','precio','recomendacion','señales','ganancia_pct'])
 
 def guardar_senal_en_historial(senal: dict, fecha: str):
-    """Guarda una señal (compra/venta) en el archivo historial_senales.csv."""
     import re
     if os.path.exists(HISTORIAL_FILE):
         df = pd.read_csv(HISTORIAL_FILE, on_bad_lines='skip')
-        df['fecha'] = pd.to_datetime(df['fecha'])
+        # Asegurar que la columna 'fecha' existe y es string
+        if 'fecha' in df.columns:
+            df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+            # Eliminar filas con fecha inválida (NaT)
+            df = df.dropna(subset=['fecha'])
+        else:
+            df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
     else:
         df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
-
+    
+    # ... el resto de la función (extraer ganancia, crear nueva fila, concatenar, etc.)
+    
     # Extraer ganancia porcentual si es una señal de venta
     ganancia = None
     if senal['Recomendación'] == "VENDER" and 'Motivo' in senal:
