@@ -1605,16 +1605,16 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 # PRESENTACIÓN DE RESULTADOS (si existen)
 # ============================================================
     # Asegurar que los tipos de cambio estén en session_state
-if 'usd_mxn' not in st.session_state:
-    usd_mxn, eur_mxn = obtener_tipo_cambio()
-    st.session_state['usd_mxn'] = usd_mxn
-    st.session_state['eur_mxn'] = eur_mxn
-
-# Ahora sí, leer los valores de sesión (ya existen)
-usd_mxn = st.session_state['usd_mxn']
-eur_mxn = st.session_state['eur_mxn']
-
-# Verificar si hay resultados del análisis
+    if 'usd_mxn' not in st.session_state:
+        usd_mxn, eur_mxn = obtener_tipo_cambio()
+        st.session_state['usd_mxn'] = usd_mxn
+        st.session_state['eur_mxn'] = eur_mxn
+    
+    # Ahora sí, leer los valores de sesión (ya existen)
+    usd_mxn = st.session_state['usd_mxn']
+    eur_mxn = st.session_state['eur_mxn']
+    
+    # Verificar si hay resultados del análisis
     if 'df' in st.session_state:
         df = st.session_state['df']
         compras = st.session_state['compras']
