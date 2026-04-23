@@ -965,7 +965,35 @@ def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, 
         compras_df['Inversión Asignada'] = capital
         compras_df['Unidades Ajustadas'] = capital / compras_df['Precio (MXN)'].astype(float)
         return compras_df
+# === GESTIÓN DE CARTERA (VENTAS Y LIMPIEZA) ===
+    st.sidebar.divider()
+    
+    with st.sidebar.expander("📝 Registrar Ventas (SÍMBOLO,CANTIDAD,PRECIO)"):
+        v_input = st.text_area("Formato: Símbolo,Cantidad,Precio", height=100, key="v_input_m")
+        if st.button("Procesar Ventas", key="btn_v_m"):
+            if v_input:
+                procesar_ventas(v_input)
+                st.rerun()
+            else:
+                st.sidebar.error("Ingresa datos")
 
+    with st.sidebar.expander("🗑️ Limpiar Posición"):
+        s_borrar = st.text_input("Ticker a borrar (ej: AMD)", key="clean_m").upper().strip()
+        if st.button("Eliminar permanentemente", key="btn_c_m"):
+            if s_borrar:
+                pos = repo_cargar_posiciones()
+                if s_borrar in pos:
+                    del pos[s_borrar]
+                    repo_guardar_posiciones(pos)
+                    if 'PRECIO_COMPRA' in st.session_state and s_borrar in st.session_state['PRECIO_COMPRA']:
+                        del st.session_state['PRECIO_COMPRA'][s_borrar]
+                    st.sidebar.success(f"Eliminado: {s_borrar}")
+                    st.rerun()
+                else:
+                    st.sidebar.error("No encontrado")
+    
+    st.sidebar.divider()
+    
     # Intentar obtener precios históricos para todos los símbolos
     symbols = compras_df['Símbolo'].tolist()
     precios = {}
