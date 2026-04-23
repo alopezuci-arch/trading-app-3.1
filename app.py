@@ -420,7 +420,7 @@ def dashboard_rendimiento_real():
     st.subheader("📊 Rendimiento Real de mi Cartera")
     
     # IMPORTANTE: Usamos la función de REPO para asegurar que traiga lo de GitHub
-    df_trans = repo_cargar_transacciones() 
+    df_trans = cargar_transacciones() 
     
     if df_trans is not None and not df_trans.empty:
         # Limpieza profunda de strings y espacios
