@@ -1604,8 +1604,15 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
             st.session_state['analisis_ia'] = texto_ia
 
     # ========== ALERTAS ==========
-    compras_alerta = compras[compras['Score'] >= umbral_score]
+   compras_alerta = compras  # sin filtrar por score
     resumen_ia = st.session_state.get('analisis_ia', '')
+
+    # === DEPURACIÓN: ver qué se va a enviar ===
+    st.write("DEBUG compras (primeras 3):", compras.head(3) if not compras.empty else "Vacío")
+    st.write("DEBUG ventas (primeras 3):", ventas.head(3) if not ventas.empty else "Vacío")
+    st.write("DEBUG umbral_score:", umbral_score)
+    st.write("DEBUG compras_alerta (primeras 3):", compras_alerta.head(3) if not compras_alerta.empty else "Vacío")
+    # =====================================
     if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
         with st.spinner("📤 Enviando alertas..."):
             if alerta_email:
