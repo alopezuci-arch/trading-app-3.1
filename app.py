@@ -1580,7 +1580,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
     # ========== OPTIMIZACIÓN DE CARTERA ==========
     if not compras.empty:
-        compras = optimizar_cartera(compras, trade_capital, usd_mxn, eur_mxn)
+        compras = optimizar_portafolio(compras, trade_capital, usd_mxn, eur_mxn)
 
     # ========== GUARDAR EN SESSION STATE ==========
     st.session_state['df'] = df
