@@ -1142,7 +1142,11 @@ def dashboard_rendimiento(df_hist: pd.DataFrame) -> None:
 
 #Aquí 20 de abril del 26 a las 01:20 hrs añadir funcion de dashboard
 def dashboard_rendimiento_ventas(df_hist: pd.DataFrame) -> None:
-    """Muestra gráfico de rendimiento acumulado y win rate de las señales de VENTA."""
+    # === LÍNEAS DE DEPURACIÓN (puedes eliminarlas después) ===
+    st.write(f"Depuración: historial_senales.csv tiene {len(df_hist)} filas")
+    st.write(f"Ventas en historial: {len(df_hist[df_hist['recomendacion'] == 'VENDER'])}")
+    # ========================================================
+
     if df_hist.empty:
         st.info("Sin historial de ventas suficiente.")
         return
