@@ -1013,37 +1013,6 @@ def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, 
         compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
         return compras_df
 
-    # Construir DataFrame de precios y calcular retornos
-    df_prices = pd.DataFrame(precios).dropna()
-    if df_prices.empty:
-        compras_df['Peso Cartera'] = 1.0 / n
-        compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
-        compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
-        return compras_df
-
-    returns = df_prices.pct_change().dropna()
-    cov = returns.cov() * 252
-    expected_returns = compras_df.set_index('Símbolo')['Score'] / 100
-
-    try:
-        inv_cov = np.linalg.pinv(cov.values)
-        ret_vec = expected_returns.reindex(cov.index).values
-        w = inv_cov @ ret_vec
-        w = w / w.sum()
-        w = np.maximum(w, 0)   # sin posiciones cortas
-        w = w / w.sum()
-        asignacion = {sym: w[i] for i, sym in enumerate(cov.index)}
-    except:
-        # Fallback: pesos iguales
-        asignacion = {sym: 1.0 / n for sym in symbols}
-
-    # Aplicar asignación
-    compras_df['Peso Cartera'] = compras_df['Símbolo'].map(asignacion).fillna(1.0 / n)
-    compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
-    compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
-
-    return compras_df
-
 # ============================================================
 # ALERTAS Y GRÁFICOS (simplificados pero funcionales)
 # ============================================================
