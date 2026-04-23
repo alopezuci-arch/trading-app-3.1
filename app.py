@@ -592,7 +592,7 @@ mercado_opciones = {
 def obtener_tipo_cambio() -> tuple[float, float]:
     try:
         usd = yf.Ticker("USDMXN=X").history(period="5d")
-        eur = yf.Ticker("EURMXN=X", session=_YF_SESSION).history(period="5d")
+        eur = yf.Ticker("EURMXN=X").history(period="5d")
         return (float(usd['Close'].iloc[-1]) if not usd.empty else 20.0,
                 float(eur['Close'].iloc[-1]) if not eur.empty else 21.5)
     except Exception as e:
@@ -978,7 +978,7 @@ def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, 
     precios = {}
     for sim in symbols:
         try:
-            ticker = yf.Ticker(sim, session=_YF_SESSION)
+            ticker = yf.Ticker(sim)
             hist = safe_history(ticker, "6mo")
             if hist.empty:
                 continue
