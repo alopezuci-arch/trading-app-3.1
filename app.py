@@ -1692,14 +1692,7 @@ if 'df' in st.session_state:
             for simb, datos in posiciones_json.items():
                 p_compra = datos.get('precio', 0)
                 cant = datos.get('cantidad', 0)
-                
-                # Intentar sacar precio del escáner (df)
-                p_actual = None
-                if 'df' in locals() and not df.empty and simb in df['Símbolo'].values:
-                    p_actual = df[df['Símbolo'] == simb]['Precio (MXN)'].iloc[0]
-                
-                # Si no está en el escáner, consultamos Yahoo Finance directamente
-                if p_actual is None or pd.isna(p_actual):
+
                 p_actual = None
                 if 'df' in locals() and not df.empty and simb in df['Símbolo'].values:
                     p_actual = df[df['Símbolo'] == simb]['Precio (MXN)'].iloc[0]
