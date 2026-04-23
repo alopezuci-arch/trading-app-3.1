@@ -375,7 +375,7 @@ def procesar_compras_ppp(input_text: str):
 
 def cargar_historial_senales() -> pd.DataFrame:
     if os.path.exists(HISTORIAL_FILE):
-        df = pd.read_csv(HISTORIAL_FILE)
+        df = pd.read_csv(HISTORIAL_FILE, on_bad_lines='skip')
         df['fecha'] = pd.to_datetime(df['fecha'])
         # Asegurar que la columna ganancia_pct exista
         if 'ganancia_pct' not in df.columns:
@@ -387,7 +387,7 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
     """Guarda una señal (compra/venta) en el archivo historial_senales.csv."""
     import re
     if os.path.exists(HISTORIAL_FILE):
-        df = pd.read_csv(HISTORIAL_FILE)
+        df = pd.read_csv(HISTORIAL_FILE, on_bad_lines='skip')
         df['fecha'] = pd.to_datetime(df['fecha'])
     else:
         df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
