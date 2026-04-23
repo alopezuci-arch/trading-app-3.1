@@ -975,7 +975,8 @@ def analizar_sentimiento(simbolo: str) -> dict:
                     st.sidebar.error("No encontrado")
     
     st.sidebar.divider()
-    def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
+    
+def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
     """Asigna pesos óptimos a las señales de compra usando Markowitz (max Sharpe)"""
     if compras_df.empty:
         return compras_df
