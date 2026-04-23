@@ -1622,7 +1622,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 
     # ========== OPTIMIZACIÓN DE CARTERA ==========
     if not compras.empty:
-        compras = optimizar_cartera(compras, trade_capital, usd_mxn, eur_mxn)
+        compras = optimizar_portafolio(compras, trade_capital, usd_mxn, eur_mxn)
 
     # ========== GUARDAR EN SESSION STATE ==========
     st.session_state['df'] = df
@@ -1755,36 +1755,32 @@ if 'df' in st.session_state:
     with tab4:
         st.dataframe(df, use_container_width=True)
         
-    # --- Pestaña 5: Cartera actual (posiciones abiertas) ---
+    # --- Pestaña 5: Cartera actual ---
     with tab5:
         st.subheader("Posiciones abiertas")
-        
-        # Cargamos las posiciones directamente desde el archivo para obtener cantidad y precio
         posiciones_json = repo_cargar_posiciones() 
         
         if posiciones_json:
             filas_cartera = []
             for simb, datos in posiciones_json.items():
-                # Extraemos datos del JSON (usando tus llaves reales: 'precio' y 'cantidad')
                 p_compra = datos.get('precio', 0)
                 cant = datos.get('cantidad', 0)
                 
-                # 1. Intentamos obtener el precio desde el escáner actual (df)
+                # Intentar sacar precio del escáner (df)
                 p_actual = None
                 if 'df' in locals() and not df.empty and simb in df['Símbolo'].values:
                     p_actual = df[df['Símbolo'] == simb]['Precio (MXN)'].iloc[0]
                 
-                # 2. Si no estaba en el escáner (porque no pasó el filtro), lo descargamos de Yahoo
+                # Si no está en el escáner, consultamos Yahoo Finance directamente
                 if p_actual is None or pd.isna(p_actual):
                     try:
                         tk = yf.Ticker(simb)
-                        # Intentamos obtener el precio más reciente disponible
                         p_actual = tk.info.get('regularMarketPrice') or tk.info.get('currentPrice')
                         if not p_actual:
                             h = tk.history(period="1d")
                             p_actual = h['Close'].iloc[-1] if not h.empty else p_compra
                     except:
-                        p_actual = p_compra # Si todo falla, igualamos a compra para evitar None
+                        p_actual = p_compra 
 
                 filas_cartera.append({
                     'Símbolo': simb,
@@ -1795,18 +1791,16 @@ if 'df' in st.session_state:
                 })
 
             df_cartera = pd.DataFrame(filas_cartera)
-            
-            # Mostramos la tabla con formato de moneda y porcentajes
             st.dataframe(
                 df_cartera.style.format({
-                    'Precio Compra': '${:,.2f}',
-                    'Precio Actual': '${:,.2f}',
+                    'Precio Compra': '${:,.2f}', 
+                    'Precio Actual': '${:,.2f}', 
                     'Ganancia (%)': '{:.2f}%'
                 }), 
                 use_container_width=True
             )
         else:
-            st.info("No hay posiciones abiertas en el registro. Agrega compras desde la barra lateral.")
+            st.info("No hay posiciones registradas.")
             
     # --- Pestaña 6: Historial de transacciones y rendimiento ---
     with tab6:
