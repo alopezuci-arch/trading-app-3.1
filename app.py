@@ -1693,22 +1693,34 @@ if 'df' in st.session_state:
                 p_compra = datos.get('precio', 0)
                 cant = datos.get('cantidad', 0)
 
-                p_actual = None
-                if 'df' in locals() and not df.empty and simb in df['Símbolo'].values:
-                    p_actual = df[df['Símbolo'] == simb]['Precio (MXN)'].iloc[0]
-                else:
-                    p_actual = obtener_precio_actual(simb)
-                if p_actual is None:
-                    p_actual = p_compra 
+                # Determinar factor de conversión a MXN según el sufijo del símbolo
+            if simb.endswith('.MX'):
+                factor = 1.0
+            elif simb.endswith('.MC'):
+                factor = st.session_state.get('eur_mxn', eur_mxn)  # usar el de session o el global
+            else:
+                factor = st.session_state.get('usd_mxn', usd_mxn)
 
-                filas_cartera.append({
-                    'Símbolo': simb,
-                    'Títulos': cant,
-                    'Precio Compra': p_compra,
-                    'Precio Actual': p_actual,
-                    'Ganancia (%)': ((p_actual / p_compra) - 1) * 100 if p_compra > 0 else 0
-                })
+            # Obtener precio en moneda original
+            p_actual_original = None
+            if 'df' in locals() and not df.empty and simb in df['Símbolo'].values:
+                p_actual_original = df[df['Símbolo'] == simb]['Precio (MXN)'].iloc[0] / factor  # porque df ya está en MXN
+            else:
+                p_actual_original = obtener_precio_actual(simb)
 
+            # Convertir a MXN
+            if p_actual_original is not None:
+                p_actual_mxn = p_actual_original * factor
+            else:
+                p_actual_mxn = p_compra  # fallback
+
+            filas_cartera.append({
+                'Símbolo': simb,
+                'Títulos': cant,
+                'Precio Compra': p_compra,
+                'Precio Actual': p_actual_mxn,
+                'Ganancia (%)': ((p_actual_mxn / p_compra) - 1) * 100 if p_compra > 0 else 0
+            })
             df_cartera = pd.DataFrame(filas_cartera)
             st.dataframe(
                 df_cartera.style.format({
