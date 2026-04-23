@@ -1747,45 +1747,45 @@ if 'df' in st.session_state:
             
     # --- Pestaña 6: Historial de transacciones y rendimiento ---
     with tab6:
-    st.subheader("Historial de transacciones")
-    df_trans = cargar_transacciones()
-    if not df_trans.empty:
-        st.dataframe(df_trans.sort_values('fecha', ascending=False), use_container_width=True)
-        ventas_df = df_trans[df_trans['tipo'] == 'venta'].copy()
-        if not ventas_df.empty and 'ganancia_pct' in ventas_df.columns:
-            ventas_df['ganancia_pct'] = pd.to_numeric(ventas_df['ganancia_pct'], errors='coerce')
-            ventas_con_ganancia = ventas_df.dropna(subset=['ganancia_pct'])
-            if not ventas_con_ganancia.empty:
-                # Calcular ganancia en MXN
-                ventas_con_ganancia['ganancia_mxn'] = ventas_con_ganancia['total'] * (ventas_con_ganancia['ganancia_pct'] / 100) / (1 + ventas_con_ganancia['ganancia_pct'] / 100)
-                ventas_con_ganancia['ganancia_mxn'] = ventas_con_ganancia['ganancia_mxn'].round(2)
-                
-                # Suma total en MXN
-                ganancia_total_mxn = ventas_con_ganancia['ganancia_mxn'].sum()
-                
-                win_rate = (ventas_con_ganancia['ganancia_pct'] > 0).mean() * 100
-                ganancia_promedio = ventas_con_ganancia['ganancia_pct'].mean()
-                
-                col_wr, col_gp, col_total = st.columns(3)
-                col_wr.metric("🏆 Win Rate", f"{win_rate:.1f}%")
-                col_gp.metric("📈 Ganancia promedio por venta", f"{ganancia_promedio:.2f}%")
-                col_total.metric("💰 Ganancia Total (MXN)", f"${ganancia_total_mxn:,.2f}")
-                
-                # Mostrar tabla con la nueva columna
-                st.dataframe(ventas_con_ganancia[['fecha','simbolo','cantidad','precio','total','ganancia_pct','ganancia_mxn','notas']].sort_values('fecha', ascending=False), use_container_width=True)
-                
-                # Gráfico
-                fig = px.bar(ventas_con_ganancia, x='fecha', y='ganancia_pct', color='ganancia_pct',
-                             hover_data=['simbolo', 'notas', 'ganancia_mxn'],
-                             title='Rendimiento de ventas cerradas',
-                             color_continuous_scale=['red', 'yellow', 'green'])
-                st.plotly_chart(fig, use_container_width=True)
+        st.subheader("Historial de transacciones")
+        df_trans = cargar_transacciones()
+        if not df_trans.empty:
+            st.dataframe(df_trans.sort_values('fecha', ascending=False), use_container_width=True)
+            ventas_df = df_trans[df_trans['tipo'] == 'venta'].copy()
+            if not ventas_df.empty and 'ganancia_pct' in ventas_df.columns:
+                ventas_df['ganancia_pct'] = pd.to_numeric(ventas_df['ganancia_pct'], errors='coerce')
+                ventas_con_ganancia = ventas_df.dropna(subset=['ganancia_pct'])
+                if not ventas_con_ganancia.empty:
+                    # Calcular ganancia en MXN
+                    ventas_con_ganancia['ganancia_mxn'] = ventas_con_ganancia['total'] * (ventas_con_ganancia['ganancia_pct'] / 100) / (1 + ventas_con_ganancia['ganancia_pct'] / 100)
+                    ventas_con_ganancia['ganancia_mxn'] = ventas_con_ganancia['ganancia_mxn'].round(2)
+                    
+                    # Suma total en MXN
+                    ganancia_total_mxn = ventas_con_ganancia['ganancia_mxn'].sum()
+                    
+                    win_rate = (ventas_con_ganancia['ganancia_pct'] > 0).mean() * 100
+                    ganancia_promedio = ventas_con_ganancia['ganancia_pct'].mean()
+                    
+                    col_wr, col_gp, col_total = st.columns(3)
+                    col_wr.metric("🏆 Win Rate", f"{win_rate:.1f}%")
+                    col_gp.metric("📈 Ganancia promedio por venta", f"{ganancia_promedio:.2f}%")
+                    col_total.metric("💰 Ganancia Total (MXN)", f"${ganancia_total_mxn:,.2f}")
+                    
+                    # Mostrar tabla con la nueva columna
+                    st.dataframe(ventas_con_ganancia[['fecha','simbolo','cantidad','precio','total','ganancia_pct','ganancia_mxn','notas']].sort_values('fecha', ascending=False), use_container_width=True)
+                    
+                    # Gráfico
+                    fig = px.bar(ventas_con_ganancia, x='fecha', y='ganancia_pct', color='ganancia_pct',
+                                 hover_data=['simbolo', 'notas', 'ganancia_mxn'],
+                                 title='Rendimiento de ventas cerradas',
+                                 color_continuous_scale=['red', 'yellow', 'green'])
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("Aún no hay ventas con ganancia registrada.")
             else:
-                st.info("Aún no hay ventas con ganancia registrada.")
+                st.info("No hay ventas registradas aún.")
         else:
-            st.info("No hay ventas registradas aún.")
-    else:
-        st.info("No hay transacciones registradas.")
+            st.info("No hay transacciones registradas.")
         
     # --- Pestaña 7: Top 10 señales de compra (gráfico de barras) ---
     with tab7:
