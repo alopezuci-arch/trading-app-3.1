@@ -1005,17 +1005,6 @@ def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, 
     compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
     return compras_df
     
-    for sim in symbols:
-        try:
-            ticker = yf.Ticker(sim, session=_YF_SESSION)
-            hist = safe_history(ticker, "6mo")
-            if hist.empty:
-                continue
-            factor = 1.0 if sim.endswith('.MX') else (eur_mxn if sim.endswith('.MC') else usd_mxn)
-            precios[sim] = hist['Close'] * factor
-        except:
-            continue
-
     # Si no se obtuvieron suficientes datos, usar pesos iguales
     if len(precios) < 2:
         st.warning("⚠️ No hay suficientes datos históricos para optimizar la cartera. Se usarán pesos iguales.")
