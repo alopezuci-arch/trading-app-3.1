@@ -1125,7 +1125,7 @@ def dashboard_rendimiento(df_hist: pd.DataFrame) -> None:
     returns = []
     for _, row in df_hist.iterrows():
         try:
-            ticker = yf.Ticker(row['simbolo'], session=_YF_SESSION)
+            ticker = yf.Ticker(row['simbolo'])
             hist = ticker.history(start=row['fecha'] - timedelta(days=5), end=row['fecha'] + timedelta(days=10))
             if hist.empty:
                 continue
@@ -1700,14 +1700,13 @@ if 'df' in st.session_state:
                 
                 # Si no está en el escáner, consultamos Yahoo Finance directamente
                 if p_actual is None or pd.isna(p_actual):
-                    try:
-                        tk = yf.Ticker(simb)
-                        p_actual = tk.info.get('regularMarketPrice') or tk.info.get('currentPrice')
-                        if not p_actual:
-                            h = tk.history(period="1d")
-                            p_actual = h['Close'].iloc[-1] if not h.empty else p_compra
-                    except:
-                        p_actual = p_compra 
+                p_actual = None
+                if 'df' in locals() and not df.empty and simb in df['Símbolo'].values:
+                    p_actual = df[df['Símbolo'] == simb]['Precio (MXN)'].iloc[0]
+                else:
+                    p_actual = obtener_precio_actual(simb)
+                if p_actual is None:
+                    p_actual = p_compra 
 
                 filas_cartera.append({
                     'Símbolo': simb,
