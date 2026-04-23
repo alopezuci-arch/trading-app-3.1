@@ -1604,7 +1604,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
             st.session_state['analisis_ia'] = texto_ia
 
     # ========== ALERTAS ==========
-   compras_alerta = compras  # sin filtrar por score
+    compras_alerta = compras  # sin filtrar por score
     resumen_ia = st.session_state.get('analisis_ia', '')
 
     # === DEPURACIÓN: ver qué se va a enviar ===
