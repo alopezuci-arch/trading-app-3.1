@@ -949,24 +949,6 @@ def analizar_sentimiento(simbolo: str) -> dict:
         return {'sentimiento': sentimiento, 'score': round(avg_score,2), 'noticias': titles}
     except:
         return {'sentimiento': 'Error', 'score': 0, 'noticias': []}
-
-def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
-    """
-    Asigna pesos de cartera a las acciones de compra. Si no se puede optimizar,
-    usa pesos iguales. Siempre devuelve las columnas de gestión de cartera.
-    """
-    if compras_df.empty:
-        return compras_df
-
-    n = len(compras_df)
-    # Si solo hay un activo, el peso es 1.0
-    if n == 1:
-        compras_df['Peso Cartera'] = 1.0
-        compras_df['Inversión Asignada'] = capital
-        compras_df['Unidades Ajustadas'] = capital / compras_df['Precio (MXN)'].astype(float)
-        return compras_df
-# === GESTIÓN DE CARTERA (VENTAS Y LIMPIEZA) ===
-    st.sidebar.divider()
     
     with st.sidebar.expander("📝 Registrar Ventas (SÍMBOLO,CANTIDAD,PRECIO)"):
         v_input = st.text_area("Formato: Símbolo,Cantidad,Precio", height=100, key="v_input_m")
@@ -995,7 +977,10 @@ def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, 
     st.sidebar.divider()
     
     # Intentar obtener precios históricos para todos los símbolos
-    symbols = compras_df['Símbolo'].tolist()
+    # Línea 1111 de tu archivo
+    opcion_mercado = st.sidebar.selectbox("Selecciona Mercado:", list(mercado_opciones.keys()))
+    tickers_seleccionados = mercado_opciones[opcion_mercado]
+    
     precios = {}
     for sim in symbols:
         try:
