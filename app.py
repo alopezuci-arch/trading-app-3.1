@@ -1478,7 +1478,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         completados = 0
         args_list = [
             (sim, PRECIO_COMPRA, usd_mxn, eur_mxn, fundamentales_check,
-             backtesting_check, regime_bonus, trade_capital, riesgo_pct
+             backtesting_check, regime_bonus, trade_capital, riesgo_pct,
              trailing_enabled, trailing_pct)
             for sim in lista_acciones
         ]
