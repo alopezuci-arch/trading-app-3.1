@@ -1005,7 +1005,6 @@ def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, 
     compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
     return compras_df
     
-        precios = {}
     for sim in symbols:
         try:
             ticker = yf.Ticker(sim, session=_YF_SESSION)
