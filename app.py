@@ -1417,6 +1417,14 @@ riesgo_pct = st.sidebar.slider("Riesgo por operación (%)", 0.5, 3.0, 1.0, 0.25)
 st.sidebar.markdown("### 📉 Trailing Stop")
 trailing_enabled = st.sidebar.checkbox("Activar Trailing Stop dinámico", value=False)
 trailing_pct = st.sidebar.slider("Trailing stop (%)", 1.0, 10.0, 5.0, 0.5, disabled=not trailing_enabled)
+#filtro de alta confianza 23-04-3036 13:01 hrs
+st.sidebar.markdown("### 🎯 Filtro de Alta Confianza")
+alta_confianza = st.sidebar.checkbox("Mostrar solo señales de alta confianza", value=False)
+if alta_confianza:
+    filtro_score = st.sidebar.checkbox("Score >= 8", value=True)
+    filtro_rsi = st.sidebar.checkbox("RSI entre 45 y 65", value=True)
+    filtro_ml = st.sidebar.checkbox("ML predicción positiva", value=False)
+    filtro_sentimiento = st.sidebar.checkbox("Sentimiento positivo", value=False)
 
 st.sidebar.markdown("### 🔔 Alertas")
 alerta_email = st.sidebar.checkbox("📧 Alertas email", value=True)
@@ -1518,6 +1526,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
     compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
     observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
+   
     #Aquí 20 de abril del 26 a las 13:17 hrs
     # ========== GUARDAR SEÑALES EN HISTORIAL ==========
     fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1537,6 +1546,24 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         
         guardar_senal_en_historial(senal, fecha_actual)
     #hasta aca
+
+        # ========== FILTRO DE ALTA CONFIANZA ==========
+    if alta_confianza:
+        filtro = pd.Series([True] * len(compras))
+        if filtro_score:
+            filtro = filtro & (compras['Score'] >= 8)
+        if filtro_rsi:
+            filtro = filtro & (compras['RSI'].between(45, 65))
+        if filtro_ml and 'ML Predicción' in compras.columns:
+            filtro = filtro & (compras['ML Predicción'].str.contains("Subida", na=False))
+        if filtro_sentimiento and 'Sentimiento' in compras.columns:
+            filtro = filtro & (compras['Sentimiento'] == 'positivo')
+        compras = compras[filtro].copy()
+        if compras.empty:
+            st.warning("⚠️ No hay señales que cumplan los criterios de alta confianza. Desactiva el filtro para ver todas.")
+        if alta_confianza and compras.empty:
+    st.warning("⚠️ No hay señales que cumplan los criterios de alta confianza. Desactiva el filtro para ver todas.")
+    
     # ========== FILTRO DE FUNDAMENTALES SÓLIDOS ==========
     if filtro_fundamentales and fundamentales_check and not compras.empty:
         required_cols = ['ROE (%)', 'Debt/Equity', 'EPS Growth (%)', 'Net Margin (%)']
@@ -1673,6 +1700,11 @@ if 'df' in st.session_state:
     col2.metric("⚡ Trading (25%)", f"${trade_cap:,.0f} MXN")
     col3.metric("🎯 Alta convicción (10%)", f"${conv_cap:,.0f} MXN")
     st.markdown("---")
+
+    # ========== INDICADOR DE FILTRO ACTIVO ==========
+    if alta_confianza and not compras.empty:
+        total_original = len(df[df['Recomendación'].str.startswith('COMPRAR')])
+        st.info(f"🔍 Filtro de alta confianza activado: {len(compras)} señales de {total_original} totales")
 
     # ========== MARKET REGIME ==========
     icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴','DESCONOCIDO':'⚪'}.get(regime_data.get('regime','DESCONOCIDO'),'⚪')
