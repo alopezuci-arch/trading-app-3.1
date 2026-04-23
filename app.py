@@ -975,6 +975,59 @@ def analizar_sentimiento(simbolo: str) -> dict:
                     st.sidebar.error("No encontrado")
     
     st.sidebar.divider()
+    def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
+    """Asigna pesos óptimos a las señales de compra usando Markowitz (max Sharpe)"""
+    if compras_df.empty:
+        return compras_df
+    
+    n = len(compras_df)
+    symbols = compras_df['Símbolo'].tolist()
+    
+    # Obtener precios históricos
+    precios = {}
+    for sim in symbols:
+        try:
+            ticker = yf.Ticker(sim, session=_YF_SESSION)
+            hist = safe_history(ticker, "6mo")
+            if hist.empty:
+                continue
+            factor = 1.0 if sim.endswith('.MX') else (eur_mxn if sim.endswith('.MC') else usd_mxn)
+            precios[sim] = hist['Close'] * factor
+        except:
+            continue
+    
+    if len(precios) < 2:
+        compras_df['Peso Cartera'] = 1.0 / n
+        compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
+        compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
+        return compras_df
+    
+    df_prices = pd.DataFrame(precios).dropna()
+    if df_prices.empty:
+        compras_df['Peso Cartera'] = 1.0 / n
+        compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
+        compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
+        return compras_df
+    
+    returns = df_prices.pct_change().dropna()
+    cov = returns.cov() * 252
+    expected_returns = compras_df.set_index('Símbolo')['Score'] / 100
+    
+    try:
+        inv_cov = np.linalg.pinv(cov.values)
+        ret_vec = expected_returns.reindex(cov.index).values
+        w = inv_cov @ ret_vec
+        w = w / w.sum()
+        w = np.maximum(w, 0)
+        w = w / w.sum()
+        asignacion = {sym: w[i] for i, sym in enumerate(cov.index)}
+    except:
+        asignacion = {sym: 1.0 / n for sym in symbols}
+    
+    compras_df['Peso Cartera'] = compras_df['Símbolo'].map(asignacion).fillna(1.0 / n)
+    compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
+    compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
+    return compras_df
     # --- BLOQUE DE GESTIÓN ---
 
     with st.sidebar.expander("📝 Registrar Ventas"):
