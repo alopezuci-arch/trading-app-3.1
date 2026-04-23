@@ -1755,6 +1755,7 @@ if 'df' in st.session_state:
             if not ventas_df.empty and 'ganancia_pct' in ventas_df.columns:
                 ventas_df['ganancia_pct'] = pd.to_numeric(ventas_df['ganancia_pct'], errors='coerce')
                 ventas_con_ganancia = ventas_df.dropna(subset=['ganancia_pct'])
+                st.dataframe(ventas_con_ganancia[['fecha','simbolo','ganancia_pct']].head())
                 if not ventas_con_ganancia.empty:
                     # Calcular ganancia en MXN
                     ventas_con_ganancia['ganancia_mxn'] = ventas_con_ganancia['total'] * (ventas_con_ganancia['ganancia_pct'] / 100) / (1 + ventas_con_ganancia['ganancia_pct'] / 100)
