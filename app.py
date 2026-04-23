@@ -949,31 +949,6 @@ def analizar_sentimiento(simbolo: str) -> dict:
         return {'sentimiento': sentimiento, 'score': round(avg_score,2), 'noticias': titles}
     except:
         return {'sentimiento': 'Error', 'score': 0, 'noticias': []}
-    
-    with st.sidebar.expander("📝 Registrar Ventas (SÍMBOLO,CANTIDAD,PRECIO)"):
-        v_input = st.text_area("Formato: Símbolo,Cantidad,Precio", height=100, key="v_input_m")
-        if st.button("Procesar Ventas", key="btn_v_m"):
-            if v_input:
-                procesar_ventas(v_input)
-                st.rerun()
-            else:
-                st.sidebar.error("Ingresa datos")
-
-    with st.sidebar.expander("🗑️ Limpiar Posición"):
-        s_borrar = st.text_input("Ticker a borrar (ej: AMD)", key="clean_m").upper().strip()
-        if st.button("Eliminar permanentemente", key="btn_c_m"):
-            if s_borrar:
-                pos = repo_cargar_posiciones()
-                if s_borrar in pos:
-                    del pos[s_borrar]
-                    repo_guardar_posiciones(pos)
-                    if 'PRECIO_COMPRA' in st.session_state and s_borrar in st.session_state['PRECIO_COMPRA']:
-                        del st.session_state['PRECIO_COMPRA'][s_borrar]
-                    st.sidebar.success(f"Eliminado: {s_borrar}")
-                    st.rerun()
-                else:
-                    st.sidebar.error("No encontrado")
-    
     st.sidebar.divider()
     
 def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
