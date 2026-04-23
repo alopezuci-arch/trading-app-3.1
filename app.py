@@ -975,7 +975,26 @@ def analizar_sentimiento(simbolo: str) -> dict:
                     st.sidebar.error("No encontrado")
     
     st.sidebar.divider()
-    
+    # --- BLOQUE DE GESTIÓN ---
+
+    with st.sidebar.expander("📝 Registrar Ventas"):
+        v_input = st.sidebar.text_area("Símbolo,Cantidad,Precio", height=100, key="v_sidebar_new")
+        if st.sidebar.button("Procesar Ventas", key="btn_v_sidebar_new"):
+            if v_input:
+                procesar_ventas(v_input)
+                st.rerun()
+
+    with st.sidebar.expander("🗑️ Limpiar Posición"):
+        s_borrar = st.sidebar.text_input("Ticker a borrar", key="clean_sidebar_new").upper().strip()
+        if st.sidebar.button("Borrar permanentemente", key="btn_c_sidebar_new"):
+            if s_borrar:
+                pos = repo_cargar_posiciones()
+                if s_borrar in pos:
+                    del pos[s_borrar]
+                    repo_guardar_posiciones(pos)
+                    st.sidebar.success(f"Eliminado: {s_borrar}")
+                    st.rerun()
+    st.sidebar.divider()
     # Intentar obtener precios históricos para todos los símbolos
     # Línea 1111 de tu archivo
     opcion_mercado = st.sidebar.selectbox("Selecciona Mercado:", list(mercado_opciones.keys()))
