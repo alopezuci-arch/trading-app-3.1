@@ -1604,13 +1604,14 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
 # ============================================================
 # PRESENTACIÓN DE RESULTADOS (si existen)
 # ============================================================
+
 # Asegurar que los tipos de cambio estén en session_state
 if 'usd_mxn' not in st.session_state:
     usd_mxn, eur_mxn = obtener_tipo_cambio()
     st.session_state['usd_mxn'] = usd_mxn
     st.session_state['eur_mxn'] = eur_mxn
 
-# Ahora sí, leer los valores de sesión (ya existen)
+# Leer valores de sesión
 usd_mxn = st.session_state['usd_mxn']
 eur_mxn = st.session_state['eur_mxn']
 
@@ -1621,16 +1622,8 @@ if 'df' in st.session_state:
     ventas = st.session_state['ventas']
     observar = st.session_state['observar']
     regime_data = st.session_state['regime']
-    capital_total = st.session_state.get('capital', 100000.0)  # Nota: valor por defecto 100k, no 10k
-else:
-    # Opcional: manejar caso sin análisis
-    df = pd.DataFrame()
-    compras = pd.DataFrame()
-    ventas = pd.DataFrame()
-    observar = pd.DataFrame()
-    regime_data = {}
-    capital_total = 100000.0
-
+    capital_total = st.session_state.get('capital', 100000.0)
+    
     st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
 
     # ========== PANEL CORE + SATÉLITE ==========
@@ -1652,15 +1645,12 @@ else:
         c2.metric("EMA 200", f"{regime_data.get('ema200',0):,.0f}")
         c3.metric("RSI S&P", f"{regime_data.get('rsi_sp500',0)}")
         c4.metric("Ret. 1 mes", f"{regime_data.get('ret_1m',0):+.1f}%")
-
-   #hasta aquí 20.04.2026 01:00 pm
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("✅ Compras", len(compras))
     col2.metric("🔴 Ventas", len(ventas))
     col3.metric("👀 Observar", len(observar))
     col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
-    #AQUIIIIIIIIIIIIIIIIIIIIII
     
     # ========== TABLAS Y SECCIONES ORGANIZADAS EN PESTAÑAS ==========
     st.subheader("📊 Resultados detallados")
@@ -1711,33 +1701,33 @@ else:
                 cant = datos.get('cantidad', 0)
 
                 # Determinar factor de conversión a MXN según el sufijo del símbolo
-            if simb.endswith('.MX'):
-                factor = 1.0
-            elif simb.endswith('.MC'):
-                factor = st.session_state.get('eur_mxn', eur_mxn)  # usar el de session o el global
-            else:
-                factor = st.session_state.get('usd_mxn', usd_mxn)
+                if simb.endswith('.MX'):
+                    factor = 1.0
+                elif simb.endswith('.MC'):
+                    factor = st.session_state.get('eur_mxn', eur_mxn)
+                else:
+                    factor = st.session_state.get('usd_mxn', usd_mxn)
 
-            # Obtener precio en moneda original
-            p_actual_original = None
-            if 'df' in locals() and not df.empty and simb in df['Símbolo'].values:
-                p_actual_original = df[df['Símbolo'] == simb]['Precio (MXN)'].iloc[0] / factor  # porque df ya está en MXN
-            else:
-                p_actual_original = obtener_precio_actual(simb)
+                # Obtener precio en MXN
+                p_actual_mxn = None
+                if 'df' in locals() and not df.empty and simb in df['Símbolo'].values:
+                    # El precio en df ya está en MXN
+                    p_actual_mxn = df[df['Símbolo'] == simb]['Precio (MXN)'].iloc[0]
+                else:
+                    # Obtener precio original y convertir
+                    p_original = obtener_precio_actual(simb)
+                    if p_original is not None:
+                        p_actual_mxn = p_original * factor
+                    else:
+                        p_actual_mxn = p_compra
 
-            # Convertir a MXN
-            if p_actual_original is not None:
-                p_actual_mxn = p_actual_original * factor
-            else:
-                p_actual_mxn = p_compra  # fallback
-
-            filas_cartera.append({
-                'Símbolo': simb,
-                'Títulos': cant,
-                'Precio Compra': p_compra,
-                'Precio Actual': p_actual_mxn,
-                'Ganancia (%)': ((p_actual_mxn / p_compra) - 1) * 100 if p_compra > 0 else 0
-            })
+                filas_cartera.append({
+                    'Símbolo': simb,
+                    'Títulos': cant,
+                    'Precio Compra': p_compra,
+                    'Precio Actual': p_actual_mxn,
+                    'Ganancia (%)': ((p_actual_mxn / p_compra) - 1) * 100 if p_compra > 0 else 0
+                })
             df_cartera = pd.DataFrame(filas_cartera)
             st.dataframe(
                 df_cartera.style.format({
@@ -1808,13 +1798,8 @@ else:
     with tab8:
         st.subheader("📈 Rendimiento histórico de señales de VENTA (TP/SL)")
         df_hist = cargar_historial_senales()
-        
-        # Esto es lo que ya tenías (Rendimiento de predicciones)
         dashboard_rendimiento_ventas(df_hist) 
-        
-        st.divider() # Una línea divisoria para separar
-        
-        # Esto es lo nuevo (Tus aciertos reales y el aprendizaje del modelo)
+        st.divider()
         dashboard_rendimiento_real() 
         analizar_adn_exito()
 
@@ -1825,10 +1810,8 @@ else:
 
     # ========== GRÁFICO INDIVIDUAL CON SELECTOR ==========
     if not df.empty:
-        # Usamos 'df' que es la variable que sí existe en este bloque
         col_ok = 'Símbolo' if 'Símbolo' in df.columns else df.columns[0]
         todos_simbolos = df[col_ok].tolist()
-        
         sim_elegido = st.selectbox("Selecciona un símbolo para ver su gráfico completo", todos_simbolos, key="selector_grafico")
         if sim_elegido:
             fila = df[df['Símbolo'] == sim_elegido].iloc[0]
@@ -1843,5 +1826,8 @@ else:
                 st.metric("Ganancia actual", f"{ganancia:+.2f}%")
             fig = grafico_enriquecido(sim_elegido, usd_mxn, eur_mxn)
             st.plotly_chart(fig, use_container_width=True)
+
+else:
+    st.info("🔍 Aún no has ejecutado un análisis. Ve a la barra lateral y haz clic en 'ANALIZAR' para obtener señales de trading.")
 
 st.caption("v3.0 — Corregido y optimizado por Adrian López")
