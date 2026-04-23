@@ -1848,9 +1848,10 @@ if 'df' in st.session_state:
 
     # ========== GRÁFICO INDIVIDUAL CON SELECTOR ==========
     if not df.empty:
-        col_sim_graf = 'Símbolo' if 'Símbolo' in df.columns else df.columns[0]
-        col_sim = 'Símbolo' if 'Símbolo' in compras_df.columns else compras_df.columns[0]
-        symbols = compras_df[col_sim].tolist()
+        # Usamos 'df' que es la variable que sí existe en este bloque
+        col_ok = 'Símbolo' if 'Símbolo' in df.columns else df.columns[0]
+        todos_simbolos = df[col_ok].tolist()
+        
         sim_elegido = st.selectbox("Selecciona un símbolo para ver su gráfico completo", todos_simbolos, key="selector_grafico")
         if sim_elegido:
             fila = df[df['Símbolo'] == sim_elegido].iloc[0]
