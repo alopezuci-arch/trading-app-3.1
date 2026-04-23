@@ -1756,6 +1756,9 @@ if 'df' in st.session_state:
                 ventas_df['ganancia_pct'] = pd.to_numeric(ventas_df['ganancia_pct'], errors='coerce')
                 ventas_con_ganancia = ventas_df.dropna(subset=['ganancia_pct'])
                 st.dataframe(ventas_con_ganancia[['fecha','simbolo','ganancia_pct']].head())
+                st.write("DEBUG: ventas_con_ganancia tiene", len(ventas_con_ganancia), "filas")
+                st.write("Columnas:", ventas_con_ganancia.columns.tolist())
+                st.write("Tipos de dato:", ventas_con_ganancia.dtypes)
                 if not ventas_con_ganancia.empty:
                     # Calcular ganancia en MXN
                     ventas_con_ganancia['ganancia_mxn'] = ventas_con_ganancia['total'] * (ventas_con_ganancia['ganancia_pct'] / 100) / (1 + ventas_con_ganancia['ganancia_pct'] / 100)
@@ -1777,6 +1780,9 @@ if 'df' in st.session_state:
                                  title='Rendimiento de ventas cerradas',
                                  color_continuous_scale=['red', 'yellow', 'green'])
                     st.plotly_chart(fig, use_container_width=True)
+                    st.write("DEBUG: Vamos a mostrar el dashboard mensual")
+                    st.write(f"Filas en ventas_con_ganancia: {len(ventas_con_ganancia)}")
+                    st.write("Columnas disponibles:", ventas_con_ganancia.columns.tolist())
                     
                     # ========== NUEVO: Dashboard de rendimiento mensual ==========
                     st.subheader("📆 Rendimiento Mensual (MXN)")
