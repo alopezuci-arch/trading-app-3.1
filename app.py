@@ -375,41 +375,52 @@ def procesar_compras_ppp(input_text: str):
 
 def cargar_historial_senales() -> pd.DataFrame:
     if os.path.exists(HISTORIAL_FILE):
-        df = pd.read_csv(HISTORIAL_FILE, on_bad_lines='skip')
-        if not df.empty:
-            # Asegurar que la columna fecha existe y tiene valores válidos
+        try:
+            df = pd.read_csv(HISTORIAL_FILE, on_bad_lines='skip')
+            # Asegurar que la columna 'fecha' existe y es convertible
             if 'fecha' in df.columns:
                 df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
                 # Eliminar filas con fecha inválida
                 df = df.dropna(subset=['fecha'])
             else:
-                # Si no hay columna fecha, crear vacío
-                df = pd.DataFrame(columns=['fecha','simbolo','score','precio','recomendacion','señales','ganancia_pct'])
-        else:
-            df = pd.DataFrame(columns=['fecha','simbolo','score','precio','recomendacion','señales','ganancia_pct'])
-        # Asegurar que ganancia_pct sea numérica
-        if 'ganancia_pct' in df.columns:
-            df['ganancia_pct'] = pd.to_numeric(df['ganancia_pct'], errors='coerce')
-        return df
-    return pd.DataFrame(columns=['fecha','simbolo','score','precio','recomendacion','señales','ganancia_pct'])
+                # Si no hay columna fecha, crear una vacía
+                df['fecha'] = pd.NaT
+            
+            # Asegurar que existe la columna ganancia_pct
+            if 'ganancia_pct' not in df.columns:
+                df['ganancia_pct'] = np.nan
+            else:
+                df['ganancia_pct'] = pd.to_numeric(df['ganancia_pct'], errors='coerce')
+            
+            # Asegurar otras columnas necesarias
+            columnas_necesarias = ['simbolo', 'score', 'precio', 'recomendacion', 'señales']
+            for col in columnas_necesarias:
+                if col not in df.columns:
+                    df[col] = ''
+            return df
+        except Exception as e:
+            st.error(f"Error al cargar historial: {e}")
+    # Si no existe o hay error, devolver DataFrame vacío con todas las columnas necesarias
+    return pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
     
 def guardar_senal_en_historial(senal: dict, fecha: str):
     import re
+    # Cargar historial existente o crear DataFrame vacío
     if os.path.exists(HISTORIAL_FILE):
-        df = pd.read_csv(HISTORIAL_FILE, on_bad_lines='skip')
-        # Asegurar que la columna 'fecha' existe y es string
-        if 'fecha' in df.columns:
-            df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
-            # Eliminar filas con fecha inválida (NaT)
-            df = df.dropna(subset=['fecha'])
-        else:
+        try:
+            df = pd.read_csv(HISTORIAL_FILE, on_bad_lines='skip')
+            # Limpiar fechas
+            if 'fecha' in df.columns:
+                df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+                df = df.dropna(subset=['fecha'])
+            else:
+                df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
+        except:
             df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
     else:
         df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
-    
-    # ... el resto de la función (extraer ganancia, crear nueva fila, concatenar, etc.)
-    
-    # Extraer ganancia porcentual si es una señal de venta
+
+    # Extraer ganancia porcentual si es señal de venta
     ganancia = None
     if senal['Recomendación'] == "VENDER" and 'Motivo' in senal:
         motivo = senal['Motivo']
@@ -418,7 +429,7 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
             ganancia = float(match.group(1))
 
     nueva = pd.DataFrame([{
-        'fecha': fecha,
+        'fecha': pd.to_datetime(fecha, errors='coerce'),
         'simbolo': senal['Símbolo'],
         'score': senal['Score'],
         'precio': senal['Precio MXN'],
@@ -428,7 +439,7 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
     }])
 
     df = pd.concat([df, nueva], ignore_index=True)
-    df['fecha'] = pd.to_datetime(df['fecha'])
+    # Mantener solo últimos 90 días
     cutoff = datetime.now() - timedelta(days=90)
     df = df[df['fecha'] >= cutoff]
     df.to_csv(HISTORIAL_FILE, index=False)
@@ -1160,54 +1171,57 @@ def dashboard_rendimiento(df_hist: pd.DataFrame) -> None:
 
 #Aquí 20 de abril del 26 a las 01:20 hrs añadir funcion de dashboard
 def dashboard_rendimiento_ventas(df_hist: pd.DataFrame) -> None:
-    # === LÍNEAS DE DEPURACIÓN (puedes eliminarlas después) ===
+    # Depuración
     st.write(f"Depuración: historial_senales.csv tiene {len(df_hist)} filas")
-    st.write(f"Ventas en historial: {len(df_hist[df_hist['recomendacion'] == 'VENDER'])}")
-    # ========================================================
-
+    if 'recomendacion' in df_hist.columns:
+        st.write(f"Ventas en historial: {len(df_hist[df_hist['recomendacion'] == 'VENDER'])}")
+    else:
+        st.write("La columna 'recomendacion' no existe en el historial.")
+    
     if df_hist.empty:
         st.info("Sin historial de ventas suficiente.")
         return
-
-    # Filtrar solo señales de venta que tengan ganancia registrada
+    
+    # Verificar si existe la columna 'recomendacion'
+    if 'recomendacion' not in df_hist.columns:
+        st.info("El historial no contiene información de recomendaciones.")
+        return
+    
     df_ventas = df_hist[df_hist['recomendacion'] == "VENDER"].copy()
+    
+    # Verificar si existe la columna 'ganancia_pct'
+    if 'ganancia_pct' not in df_ventas.columns:
+        st.info("No hay datos de ganancia en el historial.")
+        return
+    
     df_ventas = df_ventas.dropna(subset=['ganancia_pct'])
     if df_ventas.empty:
         st.info("No hay ventas registradas con ganancia/pérdida en el historial.")
         return
-
+    
+    # Resto de la función igual...
     df_ventas = df_ventas.sort_values('fecha')
-    # Calcular retorno acumulado (suponiendo reinversión, solo visual)
     df_ventas['ret_acum'] = (1 + df_ventas['ganancia_pct']/100).cumprod()
-
-    # Gráfico de rendimiento acumulado
     fig = px.line(df_ventas, x='fecha', y='ret_acum', title='Rendimiento acumulado de señales de VENTA')
     st.plotly_chart(fig, use_container_width=True)
-
-    # Win rate y estadísticas
+    
     win_rate = (df_ventas['ganancia_pct'] > 0).mean() * 100
     ganancia_promedio = df_ventas['ganancia_pct'].mean()
     ganancia_media = df_ventas['ganancia_pct'].median()
     total_ventas = len(df_ventas)
-
+    
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("🏆 Win Rate (ventas)", f"{win_rate:.1f}%")
     col2.metric("📈 Ganancia promedio", f"{ganancia_promedio:.2f}%")
     col3.metric("📊 Ganancia mediana", f"{ganancia_media:.2f}%")
     col4.metric("🔢 Total señales venta", total_ventas)
-
-    # Histograma de ganancias
+    
     fig_hist = px.histogram(df_ventas, x='ganancia_pct', nbins=20, title='Distribución de ganancias/pérdidas en ventas',
                             labels={'ganancia_pct': 'Ganancia (%)'})
     st.plotly_chart(fig_hist, use_container_width=True)
-
-    # Tabla de últimas ventas
+    
     st.subheader("Últimas señales de venta")
     st.dataframe(df_ventas[['fecha', 'simbolo', 'ganancia_pct', 'score']].tail(10).sort_values('fecha', ascending=False), use_container_width=True)
-
-def guardar_en_drive(contenido_bytes: bytes, nombre_archivo: str):
-    # (código original, se omite por brevedad, pero mantenlo)
-    pass
 
 # ============================================================
 # ANÁLISIS IA
