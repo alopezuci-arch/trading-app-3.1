@@ -376,13 +376,23 @@ def procesar_compras_ppp(input_text: str):
 def cargar_historial_senales() -> pd.DataFrame:
     if os.path.exists(HISTORIAL_FILE):
         df = pd.read_csv(HISTORIAL_FILE, on_bad_lines='skip')
-        df['fecha'] = pd.to_datetime(df['fecha'])
-        # Asegurar que la columna ganancia_pct exista
-        if 'ganancia_pct' not in df.columns:
-            df['ganancia_pct'] = np.nan
+        if not df.empty:
+            # Asegurar que la columna fecha existe y tiene valores válidos
+            if 'fecha' in df.columns:
+                df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+                # Eliminar filas con fecha inválida
+                df = df.dropna(subset=['fecha'])
+            else:
+                # Si no hay columna fecha, crear vacío
+                df = pd.DataFrame(columns=['fecha','simbolo','score','precio','recomendacion','señales','ganancia_pct'])
+        else:
+            df = pd.DataFrame(columns=['fecha','simbolo','score','precio','recomendacion','señales','ganancia_pct'])
+        # Asegurar que ganancia_pct sea numérica
+        if 'ganancia_pct' in df.columns:
+            df['ganancia_pct'] = pd.to_numeric(df['ganancia_pct'], errors='coerce')
         return df
     return pd.DataFrame(columns=['fecha','simbolo','score','precio','recomendacion','señales','ganancia_pct'])
-
+    
 def guardar_senal_en_historial(senal: dict, fecha: str):
     import re
     if os.path.exists(HISTORIAL_FILE):
