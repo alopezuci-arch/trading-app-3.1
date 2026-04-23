@@ -591,7 +591,7 @@ mercado_opciones = {
 @st.cache_data(ttl=3600)
 def obtener_tipo_cambio() -> tuple[float, float]:
     try:
-        usd = yf.Ticker("USDMXN=X", session=_YF_SESSION).history(period="5d")
+        usd = yf.Ticker("USDMXN=X").history(period="5d")
         eur = yf.Ticker("EURMXN=X", session=_YF_SESSION).history(period="5d")
         return (float(usd['Close'].iloc[-1]) if not usd.empty else 20.0,
                 float(eur['Close'].iloc[-1]) if not eur.empty else 21.5)
@@ -618,6 +618,22 @@ def safe_history(ticker, period="6mo", max_retries=3):
     if last_err:
         print(f"[safe_history] {ticker.ticker if hasattr(ticker,'ticker') else '?'}: {last_err}")
     return pd.DataFrame()
+
+def obtener_precio_actual(simbolo: str) -> float | None:
+    """Obtiene el precio actual de un símbolo usando info o historial reciente con reintentos."""
+    try:
+        ticker = yf.Ticker(simbolo)
+        # Primero intentar con info (rápido)
+        precio = ticker.info.get('regularMarketPrice') or ticker.info.get('currentPrice')
+        if precio:
+            return float(precio)
+        # Si no, usar historial reciente con reintentos
+        hist = safe_history(ticker, period="2d")
+        if not hist.empty:
+            return float(hist['Close'].iloc[-1])
+    except:
+        pass
+    return None
 
 def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist = hist.copy()
@@ -706,7 +722,7 @@ def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
 
 def obtener_market_regime() -> dict:
     try:
-        sp = yf.Ticker("^GSPC", session=_YF_SESSION).history(period="1y")
+        sp = yf.Ticker("^GSPC").history(period="1y")
         if sp.empty or len(sp) < 200:
             return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0,
                     'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Sin datos'}
@@ -747,7 +763,7 @@ def position_size(precio: float, atr: float, capital: float, riesgo_pct: float) 
 
 @st.cache_data(ttl=3600)
 def obtener_regimen_diario() -> pd.Series:
-    sp = yf.Ticker("^GSPC", session=_YF_SESSION).history(period="3y")
+    sp = yf.Ticker("^GSPC").history(period="3y")
     if sp.empty:
         return pd.Series()
     sp['EMA200'] = sp['Close'].ewm(span=200).mean()
@@ -851,7 +867,7 @@ def backtest_optimizar_parametros(hist_anual: pd.DataFrame) -> dict:
 
 @st.cache_data(ttl=86400)
 def get_backtest_optimization():
-    sp_hist = yf.Ticker("^GSPC", session=_YF_SESSION).history(period="2y")
+    sp_hist = yf.Ticker("^GSPC").history(period="2y")
     if sp_hist.empty:
         return None
     sp_hist = calcular_indicadores(sp_hist)
@@ -949,7 +965,6 @@ def analizar_sentimiento(simbolo: str) -> dict:
         return {'sentimiento': sentimiento, 'score': round(avg_score,2), 'noticias': titles}
     except:
         return {'sentimiento': 'Error', 'score': 0, 'noticias': []}
-    st.sidebar.divider()
     
 def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, eur_mxn: float) -> pd.DataFrame:
     """Asigna pesos óptimos a las señales de compra usando Markowitz (max Sharpe)"""
@@ -1004,14 +1019,6 @@ def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, 
     compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
     compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
     return compras_df
-    
-    # Si no se obtuvieron suficientes datos, usar pesos iguales
-    if len(precios) < 2:
-        st.warning("⚠️ No hay suficientes datos históricos para optimizar la cartera. Se usarán pesos iguales.")
-        compras_df['Peso Cartera'] = 1.0 / n
-        compras_df['Inversión Asignada'] = compras_df['Peso Cartera'] * capital
-        compras_df['Unidades Ajustadas'] = compras_df['Inversión Asignada'] / compras_df['Precio (MXN)'].astype(float)
-        return compras_df
 
 # ============================================================
 # ALERTAS Y GRÁFICOS (simplificados pero funcionales)
