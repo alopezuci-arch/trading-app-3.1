@@ -114,13 +114,13 @@ def repo_cargar_posiciones() -> dict:
     if contenido:
         try:
             data = json.loads(contenido)
-            # Si los datos viejos eran simples {Simb: Precio}, los convertimos al nuevo formato
+            # Normalización: Si detecta el formato viejo {SIMB: PRECIO}, lo convierte al nuevo
             for k, v in data.items():
                 if not isinstance(v, dict):
                     data[k] = {"cantidad": 1.0, "precio": float(v)}
             return data
-        except:
-            pass
+        except Exception as e:
+            print(f"Error parseando posiciones: {e}")
     return {}
 def repo_guardar_posiciones(posiciones: dict) -> bool:
     if not posiciones:
@@ -297,42 +297,81 @@ def procesar_ventas(input_text: str):
     if not input_text or not input_text.strip():
         st.sidebar.warning("No se ingresaron ventas.")
         return
-    if 'PRECIO_COMPRA' not in st.session_state:
-        st.session_state['PRECIO_COMPRA'] = {}
-    PRECIO_COMPRA = st.session_state['PRECIO_COMPRA']
+    
+    posiciones = repo_cargar_posiciones()
     ventas_registradas = 0
-    errores = []
+    
     for linea in input_text.strip().split('\n'):
-        if not linea.strip():
-            continue
         partes = linea.split(',')
-        if len(partes) != 3:
-            errores.append(f"Formato incorrecto: {linea}. Debe ser SÍMBOLO,CANTIDAD,PRECIO")
-            continue
+        if len(partes) != 3: continue
+        
         simbolo = partes[0].strip().upper()
         try:
-            cantidad = float(partes[1].strip())
+            cant_vender = float(partes[1].strip())
             precio_venta = float(partes[2].strip())
-        except:
-            errores.append(f"Cantidad o precio inválido: {linea}")
-            continue
-        if simbolo not in PRECIO_COMPRA:
-            errores.append(f"No hay compra registrada para {simbolo}.")
-            continue
-        precio_compra = PRECIO_COMPRA[simbolo]
-        ganancia_pct = ((precio_venta / precio_compra) - 1) * 100
-        guardar_transaccion(simbolo, cantidad, precio_venta, "venta", notas="Venta manual", ganancia_pct=ganancia_pct)
-        del PRECIO_COMPRA[simbolo]
-        ventas_registradas += 1
-    if errores:
-        for err in errores:
-            st.sidebar.error(err)
+        except: continue
+
+        if simbolo in posiciones:
+            pos = posiciones[simbolo]
+            precio_compra_promedio = pos['precio']
+            
+            # Cálculo de ganancia real sobre el promedio
+            ganancia_pct = ((precio_venta / precio_compra_promedio) - 1) * 100
+            
+            guardar_transaccion(simbolo, cant_vender, precio_venta, "venta", 
+                               notas="Venta manual (PPP)", ganancia_pct=ganancia_pct)
+            
+            # Actualizamos o eliminamos la posición
+            nueva_cant = pos['cantidad'] - cant_vender
+            if nueva_cant <= 0:
+                del posiciones[simbolo]
+            else:
+                posiciones[simbolo]['cantidad'] = nueva_cant
+            
+            ventas_registradas += 1
+            
     if ventas_registradas:
-        st.sidebar.success(f"✅ {ventas_registradas} venta(s) registrada(s).")
-        st.session_state['PRECIO_COMPRA'] = PRECIO_COMPRA
-        repo_guardar_posiciones(PRECIO_COMPRA)
+        repo_guardar_posiciones(posiciones)
         repo_guardar_transacciones()
+        st.session_state['PRECIO_COMPRA'] = {k: v['precio'] for k, v in posiciones.items()}
+        st.sidebar.success(f"✅ {ventas_registradas} ventas procesadas.")
         st.rerun()
+
+
+def procesar_compras_ppp(input_text: str):
+    posiciones = repo_cargar_posiciones()
+    compras_ok = 0
+    
+    for linea in input_text.strip().split('\n'):
+        partes = linea.split(',')
+        if len(partes) != 3: continue
+        
+        simbolo = partes[0].strip().upper()
+        cant_nueva = float(partes[1].strip())
+        precio_nuevo = float(partes[2].strip())
+        
+        if simbolo in posiciones:
+            # Lógica de Promedio Ponderado
+            cant_actual = posiciones[simbolo]['cantidad']
+            prec_actual = posiciones[simbolo]['precio']
+            
+            nueva_cantidad_total = cant_actual + cant_nueva
+            nuevo_ppp = ((cant_actual * prec_actual) + (cant_nueva * precio_nuevo)) / nueva_cantidad_total
+            
+            posiciones[simbolo] = {'cantidad': nueva_cantidad_total, 'precio': nuevo_ppp}
+        else:
+            posiciones[simbolo] = {'cantidad': cant_nueva, 'precio': precio_nuevo}
+        
+        guardar_transaccion(simbolo, cant_nueva, precio_nuevo, "compra", notas="Compra manual (PPP)")
+        compras_ok += 1
+        
+    if compras_ok:
+        repo_guardar_posiciones(posiciones)
+        repo_guardar_transacciones()
+        st.session_state['PRECIO_COMPRA'] = {k: v['precio'] for k, v in posiciones.items()}
+        st.sidebar.success(f"✅ {compras_ok} compras promediadas.")
+        st.rerun()
+
 
 def cargar_historial_senales() -> pd.DataFrame:
     if os.path.exists(HISTORIAL_FILE):
