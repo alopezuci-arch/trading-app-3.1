@@ -1754,8 +1754,8 @@ if 'df' in st.session_state:
     # --- Pestaña 4: Todas las acciones ---
     with tab4:
         st.dataframe(df, use_container_width=True)
-
-   with tab5:
+    # --- Pestaña 5: Cartera actual (posiciones abiertas) ---
+    with tab5:
         st.subheader("Posiciones abiertas")
         posiciones_cartera = st.session_state.get('PRECIO_COMPRA', {})
         if posiciones_cartera:
@@ -1771,6 +1771,7 @@ if 'df' in st.session_state:
             st.dataframe(df_cartera, use_container_width=True)
         else:
             st.info("No hay posiciones abiertas. Registra compras en el sidebar.")
+
             
     # --- Pestaña 6: Historial de transacciones y rendimiento ---
     with tab6:
