@@ -995,10 +995,52 @@ def analizar_sentimiento(simbolo: str) -> dict:
                     st.sidebar.success(f"Eliminado: {s_borrar}")
                     st.rerun()
     st.sidebar.divider()
+    
     # Intentar obtener precios históricos para todos los símbolos
     # Línea 1111 de tu archivo
     opcion_mercado = st.sidebar.selectbox("Selecciona Mercado:", list(mercado_opciones.keys()))
     tickers_seleccionados = mercado_opciones[opcion_mercado]
+
+    # === GESTIÓN DE CARTERA ===
+    st.sidebar.divider()
+    with st.sidebar.expander("📝 Registrar Ventas"):
+        v_input = st.sidebar.text_area("Símbolo,Cantidad,Precio", height=100, key="v_sidebar_final")
+        if st.sidebar.button("Procesar Ventas", key="btn_v_sidebar_final"):
+            if v_input:
+                procesar_ventas(v_input)
+                st.rerun()
+
+    with st.sidebar.expander("🗑️ Limpiar Posición"):
+        s_borrar = st.sidebar.text_input("Ticker a borrar", key="clean_sidebar_final").upper().strip()
+        if st.sidebar.button("Borrar permanentemente", key="btn_c_sidebar_final"):
+            if s_borrar:
+                pos = repo_cargar_posiciones()
+                if s_borrar in pos:
+                    del pos[s_borrar]
+                    repo_guardar_posiciones(pos)
+                    st.sidebar.success(f"Eliminado: {s_borrar}")
+                    st.rerun()
+    st.sidebar.divider()
+    # === PANEL DE GESTIÓN (UBICACIÓN REAL) ===
+    st.sidebar.divider()
+    with st.sidebar.expander("📝 Registrar Ventas"):
+        v_input = st.sidebar.text_area("Símbolo,Cantidad,Precio", height=100, key="v_sidebar_final")
+        if st.sidebar.button("Procesar Ventas", key="btn_v_sidebar_final"):
+            if v_input:
+                procesar_ventas(v_input)
+                st.rerun()
+
+    with st.sidebar.expander("🗑️ Limpiar Posición"):
+        s_borrar = st.sidebar.text_input("Ticker a borrar", key="clean_sidebar_final").upper().strip()
+        if st.sidebar.button("Borrar permanentemente", key="btn_c_sidebar_final"):
+            if s_borrar:
+                pos = repo_cargar_posiciones()
+                if s_borrar in pos:
+                    del pos[s_borrar]
+                    repo_guardar_posiciones(pos)
+                    st.sidebar.success(f"Eliminado: {s_borrar}")
+                    st.rerun()
+    st.sidebar.divider()
     
     precios = {}
     for sim in symbols:
@@ -1806,7 +1848,9 @@ if 'df' in st.session_state:
 
     # ========== GRÁFICO INDIVIDUAL CON SELECTOR ==========
     if not df.empty:
-        todos_simbolos = df['Símbolo'].tolist()
+        col_sim_graf = 'Símbolo' if 'Símbolo' in df.columns else df.columns[0]
+        col_sim = 'Símbolo' if 'Símbolo' in compras_df.columns else compras_df.columns[0]
+        symbols = compras_df[col_sim].tolist()
         sim_elegido = st.selectbox("Selecciona un símbolo para ver su gráfico completo", todos_simbolos, key="selector_grafico")
         if sim_elegido:
             fila = df[df['Símbolo'] == sim_elegido].iloc[0]
