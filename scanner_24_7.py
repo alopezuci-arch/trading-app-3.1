@@ -1072,10 +1072,15 @@ def ejecutar_scanner():
     if ops_compras or ops_ventas:
         ia_texto = analisis_ia(ops_compras, regime, usd_mxn, posiciones, ops_ventas)
 
+    # Justo antes de llamar a construir_email_html o enviar_email
+    print(f"📨 Enviando correo con {len(ops_compras)} compras y {len(ops_ventas)} ventas")
+    html = construir_email(ops_compras, ops_ventas, regime, ia_texto, hora)
+    enviar_email(...)
+    
     # 11. Construir email
     hora = datetime.now().strftime("%d/%m %H:%M")
     html = construir_email(ops_compras, ops_ventas, regime, ia_texto, hora)
-
+    
     # 12. Enviar email
     enviar_email("📈 Scanner Trading — Actualización", html)
 
