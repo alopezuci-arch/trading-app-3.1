@@ -365,7 +365,36 @@ def sincronizar_cache_ia_repo():
 # ============================================================
 # INDICADORES, SCORING, MARKET REGIME
 # ============================================================
+# --- Funciones auxiliares (mismas que en app.py) ---
+def safe_history(ticker, period="6mo", max_retries=3):
+    last_err = None
+    for intento in range(max_retries):
+        try:
+            hist = ticker.history(period=period, auto_adjust=True)
+            if not hist.empty and len(hist) >= 20:
+                return hist
+            time.sleep(1 + intento)
+        except Exception as e:
+            last_err = e
+            msg = str(e)
+            if "Rate limit" in msg or "429" in msg or "Too Many Requests" in msg:
+                time.sleep(2 ** intento)
+            else:
+                time.sleep(1)
+    if last_err:
+        print(f"[safe_history] {ticker.ticker}: {last_err}")
+    return pd.DataFrame()
 
+def obtener_tipo_cambio() -> tuple[float, float]:
+    try:
+        usd = yf.Ticker("USDMXN=X").history(period="5d")
+        eur = yf.Ticker("EURMXN=X").history(period="5d")
+        return (float(usd['Close'].iloc[-1]) if not usd.empty else 20.0,
+                float(eur['Close'].iloc[-1]) if not eur.empty else 21.5)
+    except Exception as e:
+        print(f"[tipo_cambio] Error: {e}")
+        return 20.0, 21.5
+        
 def calcular_indicadores(hist: pd.DataFrame) -> pd.DataFrame:
     hist = hist.copy()
 
@@ -992,12 +1021,8 @@ def ejecutar_scanner():
     regime_bonus = regime.get('score_bonus', 0)
 
     # 5. Obtener tipo de cambio USD/MXN y EUR/MXN
-    try:
-        usd_mxn = yf.Ticker("MXN=X").history(period="1d")['Close'].iloc[-1]
-        eur_mxn = yf.Ticker("EURMXN=X").history(period="1d")['Close'].iloc[-1]
-    except:
-        usd_mxn = 20.0
-        eur_mxn = 21.5
+    usd_mxn, eur_mxn = obtener_tipo_cambio()
+    print(f"💱 USD/MXN = {usd_mxn:.2f}, EUR/MXN = {eur_mxn:.2f}")
 
     print(f"💱 USD/MXN = {usd_mxn:.2f}, EUR/MXN = {eur_mxn:.2f}")
 
