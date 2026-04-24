@@ -210,10 +210,7 @@ def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool
 # CARGA DE POSICIONES (normalización de claves)
 # ============================================================
 def cargar_posiciones_repo() -> dict:
-    """Carga las posiciones abiertas desde el mismo repositorio que usa la app (formato con cantidad y precio)"""
     posiciones = {}
-    
-    # 1. Intentar desde archivo local (si existe)
     ruta_local = os.path.join("data", "posiciones.json")
     if os.path.exists(ruta_local):
         try:
@@ -222,15 +219,13 @@ def cargar_posiciones_repo() -> dict:
             if isinstance(data, dict):
                 for simbolo, info in data.items():
                     if isinstance(info, dict) and "precio" in info:
-                        # Normalizar clave (quitar .MX si existe)
                         clave = simbolo.upper().replace('.MX', '')
                         posiciones[clave] = info["precio"]
                 print(f"✅ Posiciones desde {ruta_local}: {list(posiciones.keys())}")
                 return posiciones
         except Exception as e:
             print(f"⚠️ Error leyendo {ruta_local}: {e}")
-    
-    # 2. Fallback: leer desde GitHub
+    # Fallback a GitHub
     if _repo_disponible():
         contenido = _repo_leer("posiciones.json")
         if contenido:
@@ -244,24 +239,9 @@ def cargar_posiciones_repo() -> dict:
                 return posiciones
             except Exception as e:
                 print(f"⚠️ Error parseando posiciones.json: {e}")
-    
     print("ℹ️ No se encontraron posiciones abiertas.")
     return posiciones
     
-    # Fallback a GitHub (solo si no hay transacciones local)
-    if _repo_disponible():
-        contenido_json = _repo_leer("posiciones.json")
-        if contenido_json:
-            try:
-                data = json.loads(contenido_json)
-                posiciones = {k.upper().replace('.MX', ''): float(v) for k, v in data.items()}
-                print(f"📦 Posiciones desde GitHub: {list(posiciones.keys())}")
-                return posiciones
-            except:
-                pass
-    
-    return {}
-
     # 2. Intentar cargar desde data/transacciones.csv
     ruta_csv = os.path.join("data", "transacciones.csv")
     if os.path.exists(ruta_csv):
