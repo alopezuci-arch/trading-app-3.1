@@ -489,7 +489,7 @@ def dashboard_rendimiento_real():
                          title="Historial Real de Trading",
                          labels={'ganancia_mxn': 'Ganancia (MXN)'},
                          color_continuous_scale=[(0, "red"), (0.5, "yellow"), (1, "green")])
-            st.plotly_chart(fig, use_container_width=True, key="dash_real_definitivo")
+            st.plotly_chart(fig, width='stretch', key="dash_real_definitivo")
         else:
             st.warning("Se leyó el archivo pero no se detectaron filas de 'venta' con porcentaje de ganancia.")
     else:
@@ -1179,7 +1179,7 @@ def dashboard_rendimiento(df_hist: pd.DataFrame) -> None:
     if returns:
         df_hist['retorno'] = returns
         df_hist['ret_acum'] = (1 + df_hist['retorno']/100).cumprod()
-        st.plotly_chart(px.line(df_hist, x='fecha', y='ret_acum', title='Rendimiento acumulado'), use_container_width=True)
+        st.plotly_chart(px.line(df_hist, x='fecha', y='ret_acum', title='Rendimiento acumulado'), width='stretch')
 
 #Aquí 20 de abril del 26 a las 01:20 hrs añadir funcion de dashboard
 def dashboard_rendimiento_ventas(df_hist: pd.DataFrame) -> None:
@@ -1224,7 +1224,7 @@ def dashboard_rendimiento_ventas(df_hist: pd.DataFrame) -> None:
                   labels={'factor': 'Multiplicador del capital (1 = capital inicial)', 'fecha': 'Fecha'})
     fig.update_layout(yaxis_tickformat = '.2f')  # Muestra dos decimales
     fig.add_hline(y=1, line_dash="dash", line_color="gray", annotation_text="Capital inicial")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
     
     # ========== Estadísticas básicas ==========
     win_rate = (df_ventas['ganancia_pct'] > 0).mean() * 100
@@ -1255,14 +1255,14 @@ def dashboard_rendimiento_ventas(df_hist: pd.DataFrame) -> None:
     fig_hist = px.histogram(df_ventas, x='ganancia_pct', nbins=20, 
                             title='Distribución de ganancias/pérdidas de las señales de venta',
                             labels={'ganancia_pct': 'Ganancia (%)'})
-    st.plotly_chart(fig_hist, use_container_width=True)
+    st.plotly_chart(fig_hist, width='stretch')
     
     # ========== Tabla de últimas ventas (con formato de moneda si tuviera, pero no) ==========
     st.subheader("Últimas señales de venta")
     st.dataframe(df_ventas[['fecha', 'simbolo', 'ganancia_pct', 'score']]
                  .tail(10).sort_values('fecha', ascending=False)
                  .style.format({'ganancia_pct': '{:.2f}%'}),
-                 use_container_width=True)
+                 width='stretch')
 # ============================================================
 # ANÁLISIS IA
 # ============================================================
@@ -1810,7 +1810,7 @@ if 'df' in st.session_state:
             cols_compras = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit',
                             'Unidades','Inversión (MXN)','% Capital','Peso Cartera','Inversión Asignada',
                             'Unidades Ajustadas','Recomendación','Motivo','Señales']
-            st.dataframe(compras[[c for c in cols_compras if c in compras.columns]], use_container_width=True)
+            st.dataframe(compras[[c for c in cols_compras if c in compras.columns]], width='stretch')
         else:
             st.info("Sin compras.")
 
@@ -1818,7 +1818,7 @@ if 'df' in st.session_state:
     with tab2:
         if not ventas.empty:
             cols_ventas = ['Símbolo','Precio (MXN)','Score','RSI','Stop Loss','Take Profit','Recomendación','Motivo']
-            st.dataframe(ventas[[c for c in cols_ventas if c in ventas.columns]], use_container_width=True)
+            st.dataframe(ventas[[c for c in cols_ventas if c in ventas.columns]], width='stretch')
         else:
             st.info("Sin ventas.")
 
@@ -1826,13 +1826,13 @@ if 'df' in st.session_state:
     with tab3:
         if not observar.empty:
             cols_obs = ['Símbolo','Precio (MXN)','Score','RSI','Stop Loss','Take Profit','Motivo']
-            st.dataframe(observar[[c for c in cols_obs if c in observar.columns]], use_container_width=True)
+            st.dataframe(observar[[c for c in cols_obs if c in observar.columns]], width='stretch')
         else:
             st.info("Sin observaciones.")
 
     # --- Pestaña 4: Todas las acciones ---
     with tab4:
-        st.dataframe(df, use_container_width=True)
+        st.dataframe(df, width='stretch')
         
     # --- Pestaña 5: Cartera actual ---
     with tab5:
@@ -1880,7 +1880,7 @@ if 'df' in st.session_state:
                     'Precio Actual': '${:,.2f}', 
                     'Ganancia (%)': '{:.2f}%'
                 }), 
-                use_container_width=True
+                width='stretch'
             )
         else:
             st.info("No hay posiciones registradas.")
@@ -1890,7 +1890,7 @@ if 'df' in st.session_state:
         st.subheader("Historial de transacciones")
         df_trans = cargar_transacciones()
         if not df_trans.empty:
-            st.dataframe(df_trans.sort_values('fecha', ascending=False), use_container_width=True)
+            st.dataframe(df_trans.sort_values('fecha', ascending=False), width='stretch')
             ventas_df = df_trans[df_trans['tipo'] == 'venta'].copy()
             if not ventas_df.empty and 'ganancia_pct' in ventas_df.columns:
                 ventas_df['ganancia_pct'] = pd.to_numeric(ventas_df['ganancia_pct'], errors='coerce')
@@ -1909,13 +1909,13 @@ if 'df' in st.session_state:
                     col_gp.metric("📈 Ganancia promedio por venta", f"{ganancia_promedio:.2f}%")
                     col_total.metric("💰 Ganancia Total (MXN)", f"${ganancia_total_mxn:,.2f}")
                     
-                    st.dataframe(ventas_con_ganancia[['fecha','simbolo','cantidad','precio','total','ganancia_pct','ganancia_mxn','notas']].sort_values('fecha', ascending=False), use_container_width=True)
+                    st.dataframe(ventas_con_ganancia[['fecha','simbolo','cantidad','precio','total','ganancia_pct','ganancia_mxn','notas']].sort_values('fecha', ascending=False), width='stretch')
                     
                     fig = px.bar(ventas_con_ganancia, x='fecha', y='ganancia_pct', color='ganancia_pct',
                                  hover_data=['simbolo', 'notas', 'ganancia_mxn'],
                                  title='Rendimiento de ventas cerradas',
                                  color_continuous_scale=['red', 'yellow', 'green'])
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
                     
                     # ========== NUEVO: Dashboard de rendimiento mensual ==========
                     st.subheader("📆 Rendimiento Mensual (MXN)")
@@ -1936,7 +1936,7 @@ if 'df' in st.session_state:
                                          labels={'ganancia_total_mxn': 'Ganancia (MXN)', 'mes_str': 'Mes'},
                                          text='ganancia_total_mxn')
                     fig_monthly.update_traces(texttemplate='$%{text:.2f}', textposition='outside')
-                    st.plotly_chart(fig_monthly, use_container_width=True)
+                    st.plotly_chart(fig_monthly, width='stretch')
                     
                     st.dataframe(monthly[['mes_str', 'num_operaciones', 'ganancia_total_mxn', 'ganancia_promedio_pct', 'win_rate']].rename(columns={
                         'mes_str': 'Mes', 'num_operaciones': 'Operaciones', 'ganancia_total_mxn': 'Ganancia Total (MXN)',
@@ -1945,7 +1945,7 @@ if 'df' in st.session_state:
                         'Ganancia Total (MXN)': '${:,.2f}',
                         'Ganancia Promedio (%)': '{:.2f}%',
                         'Win Rate (%)': '{:.1f}%'
-                    }), use_container_width=True)
+                    }), width='stretch')
                 else:
                     st.info("Aún no hay ventas con ganancia registrada.")
             else:
@@ -1976,7 +1976,7 @@ if 'df' in st.session_state:
             fig.add_hline(y=4, line_dash="dash", line_color="gray", annotation_text="Umbral observar")
             fig.update_traces(textposition='outside')
             fig.update_layout(height=450, xaxis_tickangle=-45)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         else:
             st.info("No hay señales de compra para mostrar el top.")
 
@@ -2011,7 +2011,7 @@ if 'df' in st.session_state:
                 ganancia = (fila['Precio (MXN)'] / precio_compra - 1) * 100
                 st.metric("Ganancia actual", f"{ganancia:+.2f}%")
             fig = grafico_enriquecido(sim_elegido, usd_mxn, eur_mxn)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
 else:
     st.info("🔍 Aún no has ejecutado un análisis. Ve a la barra lateral y haz clic en 'ANALIZAR' para obtener señales de trading.")
