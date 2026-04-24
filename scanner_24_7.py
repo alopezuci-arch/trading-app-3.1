@@ -521,7 +521,7 @@ def position_size(precio: float, atr: float) -> dict:
 
 def analizar(args) -> dict | None:
     simbolo, usd_mxn, eur_mxn, regime_bonus, posiciones = args
-    debug = simbolo in ['T', 'AMD', 'TECL']  # activar logs para estos
+    debug = simbolo in ['T', 'AMD', 'TECL', 'INTC']  # añadido INTC para depurar
 
     try:
         if debug:
@@ -538,11 +538,13 @@ def analizar(args) -> dict | None:
             factor = usd_mxn
 
         ticker = yf.Ticker(simbolo)
-        hist = ticker.history(period="6mo")  # Cambiado a 6 meses para más datos
+        hist = safe_history(ticker, period="6mo")  # usa safe_history con reintentos
         if hist.empty:
-            if debug: print(f"   ❌ hist vacío")
+            if debug:
+                print(f"   ❌ hist vacío")
             return None
-        if debug: print(f"   ✅ hist obtenido, len={len(hist)}")
+        if debug:
+            print(f"   ✅ hist obtenido, len={len(hist)}")
 
         # Convertir a MXN
         for col in ['Open', 'High', 'Low', 'Close']:
@@ -551,7 +553,8 @@ def analizar(args) -> dict | None:
         hist = calcular_indicadores(hist)
         hist = hist.dropna(subset=['RSI', 'MACD', 'EMA20', 'EMA50', 'ATR', 'STOCH_K', 'STOCH_D'])
         if len(hist) < 2:
-            if debug: print(f"   ❌ después de dropna, hist tiene solo {len(hist)} filas")
+            if debug:
+                print(f"   ❌ después de dropna, hist tiene solo {len(hist)} filas")
             return None
 
         ultimo = hist.iloc[-1].to_dict()
@@ -581,9 +584,13 @@ def analizar(args) -> dict | None:
         # Lógica de venta
         if precio_compra is not None:
             ganancia_pct = ((precio_actual / precio_compra) - 1) * 100
-            print(f"📊 {simbolo_limpio}: precio_compra={precio_compra:.2f}, precio_actual={precio_actual:.2f}, ganancia={ganancia_pct:.2f}%")
+            # DEBUG siempre imprime la ganancia para INTC
+            if simbolo_limpio == 'INTC':
+                print(f"📊 INTC: compra={precio_compra:.2f} actual={precio_actual:.2f} ganancia={ganancia_pct:.2f}%")
+            if debug:
+                print(f"   ganancia_pct = {ganancia_pct:.2f}%")
             if ganancia_pct >= 15:
-                        recomendacion = "VENDER"
+                recomendacion = "VENDER"
                 motivo = f"🎯 Take Profit +{ganancia_pct:.1f}%"
                 senales_venta.append(motivo)
                 print(f"🔔 Venta detectada: {simbolo_limpio} - {motivo}")
@@ -633,7 +640,7 @@ def analizar(args) -> dict | None:
         if debug:
             print(f"   ❌ Excepción: {e}")
         return None
-
+        
 # ============================================================
 # HISTORIAL, IA Y ALERTAS
 # ============================================================
