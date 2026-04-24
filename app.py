@@ -27,6 +27,15 @@ import pickle
 import warnings
 warnings.filterwarnings('ignore')
 
+import yfinance as yf
+from curl_cffi import requests as curl_requests
+
+# Parche para yfinance: reemplazar la sesión de requests por curl_requests
+def _patched_requests_session():
+    return curl_requests.Session(impersonate="chrome124")
+
+yf.shared._requests = _patched_requests_session
+
 # --- Sesión con impersonación de navegador para evitar bloqueos de Yahoo en Streamlit Cloud ---
 try:
     from curl_cffi import requests as curl_requests
