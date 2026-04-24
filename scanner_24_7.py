@@ -221,11 +221,14 @@ def cargar_posiciones_repo() -> dict:
                     if isinstance(info, dict) and "precio" in info:
                         clave = simbolo.upper().replace('.MX', '')
                         posiciones[clave] = info["precio"]
+                    elif isinstance(info, (int, float)):
+                        # Formato antiguo
+                        clave = simbolo.upper().replace('.MX', '')
+                        posiciones[clave] = float(info)
                 print(f"✅ Posiciones desde {ruta_local}: {list(posiciones.keys())}")
                 return posiciones
         except Exception as e:
             print(f"⚠️ Error leyendo {ruta_local}: {e}")
-    # Fallback a GitHub
     if _repo_disponible():
         contenido = _repo_leer("posiciones.json")
         if contenido:
@@ -235,6 +238,9 @@ def cargar_posiciones_repo() -> dict:
                     if isinstance(info, dict) and "precio" in info:
                         clave = simbolo.upper().replace('.MX', '')
                         posiciones[clave] = info["precio"]
+                    elif isinstance(info, (int, float)):
+                        clave = simbolo.upper().replace('.MX', '')
+                        posiciones[clave] = float(info)
                 print(f"📦 Posiciones desde GitHub: {list(posiciones.keys())}")
                 return posiciones
             except Exception as e:
@@ -242,53 +248,6 @@ def cargar_posiciones_repo() -> dict:
     print("ℹ️ No se encontraron posiciones abiertas.")
     return posiciones
     
-    # 2. Intentar cargar desde data/transacciones.csv
-    ruta_csv = os.path.join("data", "transacciones.csv")
-    if os.path.exists(ruta_csv):
-        try:
-            df = pd.read_csv(ruta_csv)
-            df['simbolo'] = df['simbolo'].str.upper().str.replace('.MX', '')
-            df['tipo'] = df['tipo'].str.lower().str.strip()
-            df['fecha'] = pd.to_datetime(df['fecha'])
-
-            # Calcular cantidad neta por símbolo
-            from collections import defaultdict
-            neto = defaultdict(float)
-            for _, row in df.iterrows():
-                if row['tipo'] == 'compra':
-                    neto[row['simbolo']] += row['cantidad']
-                else:
-                    neto[row['simbolo']] -= row['cantidad']
-
-            for sim, cant in neto.items():
-                if cant > 0.001:
-                    # Obtener el último precio de compra (por si hubo múltiples compras)
-                    compras_sim = df[(df['simbolo'] == sim) & (df['tipo'] == 'compra')].sort_values('fecha')
-                    if not compras_sim.empty:
-                        posiciones[sim] = float(compras_sim.iloc[-1]['precio'])
-            print(f" ✅ Portafolio reconstruido desde {ruta_csv} ({len(posiciones)} activos).")
-            return posiciones
-        except Exception as e:
-            print(f" ⚠️ Error leyendo {ruta_csv}: {e}")
-
-    # 3. Fallback: intentar desde GitHub (usando DATA_PATH)
-    if _repo_disponible():
-        print("📡 Intentando cargar desde GitHub...")
-        contenido_json = _repo_leer("posiciones.json")  # _repo_leer ya usa DATA_PATH
-        if contenido_json and contenido_json.strip() not in ("", "{}", "null"):
-            try:
-                data = json.loads(contenido_json)
-                if isinstance(data, dict):
-                    for k, v in data.items():
-                        clave_limpia = k.upper().replace('.MX', '')
-                        posiciones[clave_limpia] = float(v)
-                    print(f" ✅ Portafolio cargado desde GitHub ({len(posiciones)} activos).")
-                    return posiciones
-            except Exception as e:
-                print(f" ⚠️ Error parseando posiciones.json de GitHub: {e}")
-
-    print("ℹ️ Sin posiciones abiertas.")
-    return posiciones    
 # ============================================================
 # HISTORIAL
 # ============================================================
