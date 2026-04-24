@@ -1645,19 +1645,17 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     
     # ========== FORZAR SEÑALES DE VENTA PARA LA CARTERA (INDEPENDIENTE DEL ANÁLISIS) ==========
     # Esto garantiza que si una posición tiene ganancia >15% o pérdida <-7%, aparezca en VENTAS
+        # ========== FORZAR SEÑALES DE VENTA PARA LA CARTERA (usando precios ya obtenidos) ==========
     ventas_forzadas = []
     for simbolo, datos in PRECIO_COMPRA.items():
         precio_compra = datos if isinstance(datos, (int, float)) else datos.get('precio', 0)
         if precio_compra <= 0:
             continue
         
-        # Obtener precio actual con el método que funciona en la cartera
-        precio_actual = obtener_precio_actual(simbolo)
-        if precio_actual is None:
+        # Usar el precio que ya tenemos en precios_actuales (calculado antes del análisis)
+        if simbolo not in precios_actuales:
             continue
-        
-        factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
-        precio_actual_mxn = precio_actual * factor
+        precio_actual_mxn = precios_actuales[simbolo]
         ganancia = ((precio_actual_mxn / precio_compra) - 1) * 100
         
         if ganancia >= 15:
