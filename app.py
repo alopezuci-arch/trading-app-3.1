@@ -1329,48 +1329,48 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
 # FUNCIÓN ANALIZAR ACCIÓN (CORREGIDA: SIN FILTRO DE VOLUMEN EXCESIVO)
 # ============================================================
 def analizar_accion(args: tuple) -> dict | None:
-    (simbolo, precio_compra_dict, usd_mxn, eur_mxn, incluir_fund, incluir_bt,
+    (simbolo, precio_compra_dict, precios_actuales, usd_mxn, eur_mxn, incluir_fund, incluir_bt,
      regime_bonus, capital, riesgo_pct, trailing_enabled, trailing_pct) = args
     try:
         periodo = "6mo" if incluir_bt else "3mo"
         ticker = yf.Ticker(simbolo)
 
-        # ========== OBTENER PRECIO ACTUAL (COMO EN CARTERA) ==========
-        precio_actual = obtener_precio_actual(simbolo)
-        factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
-        if precio_actual is None:
-            # Fallback: historial de 2 días
-            hist_fallback = safe_history(ticker, period="2d")
-            if hist_fallback.empty:
+        # ========== OBTENER PRECIO ACTUAL (usar diccionario precalculado si existe) ==========
+        if simbolo in precios_actuales:
+            precio_actual_mxn = precios_actuales[simbolo]
+        else:
+            # Para símbolos no posicionados, obtener precio normalmente (puede fallar, pero no importa)
+            precio_actual = obtener_precio_actual(simbolo)
+            if precio_actual is None:
                 return None
-            precio_actual = float(hist_fallback['Close'].iloc[-1])
-        precio_actual_mxn = precio_actual * factor
+            factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
+            precio_actual_mxn = precio_actual * factor
 
-        # ========== INDICADORES (necesitan historial largo) ==========
-        # Si falla, no pasa nada, podemos seguir con la venta igual
-        hist = safe_history(ticker, periodo)
+        # ========== OBTENER HISTORIAL PARA INDICADORES (necesario para compras y para mostrar) ==========
+        hist = safe_history(ticker, period=periodo)
         if hist.empty or len(hist) < 20:
-            # No hay suficientes datos para indicadores, pero igual evaluamos venta
-            atr = precio_actual_mxn * 0.02  # estimación
+            # No hay suficientes datos para indicadores, pero podemos evaluar venta igual
+            atr = precio_actual_mxn * 0.02
             score = 0
             señales = []
             ultimo = {}
         else:
-            for col in ['Close','Open','High','Low']:
+            factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
+            for col in ['Close', 'Open', 'High', 'Low']:
                 hist[col] = hist[col] * factor
             hist = calcular_indicadores(hist)
-            hist = hist.dropna(subset=['RSI','MACD','EMA20','EMA50','ATR','STOCH_K','STOCH_D'])
-            if len(hist) < 2:
-                atr = precio_actual_mxn * 0.02
-                score = 0
-                señales = []
-                ultimo = {}
-            else:
+            hist = hist.dropna(subset=['RSI', 'MACD', 'EMA20', 'EMA50', 'ATR', 'STOCH_K', 'STOCH_D'])
+            if len(hist) >= 2:
                 ultimo = hist.iloc[-1].to_dict()
                 penultimo = hist.iloc[-2].to_dict()
                 atr = ultimo['ATR']
                 score_base, señales = calcular_score(ultimo, penultimo)
                 score = max(0, score_base + regime_bonus)
+            else:
+                atr = precio_actual_mxn * 0.02
+                score = 0
+                señales = []
+                ultimo = {}
 
         # ========== TAMAÑO DE POSICIÓN ==========
         ps = position_size(precio_actual_mxn, atr, capital, riesgo_pct)
@@ -1380,11 +1380,11 @@ def analizar_accion(args: tuple) -> dict | None:
         señales_venta = []
         if p_compra:
             ganancia = ((precio_actual_mxn / p_compra) - 1) * 100
-            # Depuración para INTC
+            # Depuración para INTC (puedes eliminar después)
             if simbolo == 'INTC':
                 st.write(f"🔍 INTC: compra={p_compra:.2f}, actual={precio_actual_mxn:.2f}, ganancia={ganancia:.2f}%")
-            
-            # Trailing stop (sin cambios)
+
+            # Trailing stop dinámico
             if trailing_enabled and ganancia > 0:
                 if 'HIGHEST_PRICE' not in st.session_state:
                     st.session_state['HIGHEST_PRICE'] = {}
@@ -1418,7 +1418,7 @@ def analizar_accion(args: tuple) -> dict | None:
             recomendacion = "EVITAR"
             motivo = f"Score {score}/14"
 
-        # ========== RESULTADO (igual que antes) ==========
+        # ========== RESULTADO ==========
         resultado = {
             'Símbolo': simbolo,
             'Precio (MXN)': round(precio_actual_mxn, 2),
@@ -1433,7 +1433,7 @@ def analizar_accion(args: tuple) -> dict | None:
             'Dist EMA50': round((precio_actual_mxn / ultimo['EMA50'] - 1) * 100, 2) if ultimo else 0,
             'Recomendación': recomendacion,
             'Motivo': motivo,
-            'Señales': " | ".join(señales),
+            'Señales': " | ".join(señales)
         }
         if incluir_fund:
             resultado.update(obtener_fundamentales_profundos(simbolo))
@@ -1445,7 +1445,6 @@ def analizar_accion(args: tuple) -> dict | None:
     except Exception as e:
         print(f"[analizar_accion] {simbolo}: {type(e).__name__}: {e}")
         return None
-
 # ============================================================
 # SIDEBAR Y RESTAURACIÓN DE DATOS (mismo código que tenías, lo resumo)
 # ============================================================
@@ -1584,13 +1583,25 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     total = len(lista_acciones)
     st.info(f"Analizando {total} acciones...")
 
+    # ========== OBTENER PRECIOS ACTUALES DE LAS POSICIONES (secuencialmente) ==========
+    precios_actuales = {}
+    if PRECIO_COMPRA:
+        st.info("🔄 Obteniendo precios actuales de la cartera...")
+        for sim in PRECIO_COMPRA.keys():
+            precio = obtener_precio_actual(sim)
+            if precio is not None:
+                factor = 1.0 if sim.endswith('.MX') else (eur_mxn if sim.endswith('.MC') else usd_mxn)
+                precios_actuales[sim] = precio * factor
+            time.sleep(0.5)  # Pequeña pausa para evitar rate limit
+        st.info(f"✅ Precios obtenidos para {len(precios_actuales)} posiciones.")
+
     with st.spinner(f"Analizando {total} acciones en paralelo..."):
         resultados = []
         progress_bar = st.progress(0)
         status_text = st.empty()
         completados = 0
         args_list = [
-            (sim, PRECIO_COMPRA, usd_mxn, eur_mxn, fundamentales_check,
+            (sim, PRECIO_COMPRA, precios_actuales, usd_mxn, eur_mxn, fundamentales_check,
              backtesting_check, regime_bonus, trade_capital, riesgo_pct,
              trailing_enabled, trailing_pct)
             for sim in lista_acciones
