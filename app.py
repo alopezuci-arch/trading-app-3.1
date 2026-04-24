@@ -1479,31 +1479,31 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     PRECIO_COMPRA = dict(st.session_state.get('PRECIO_COMPRA', {}))
     st.session_state['HIGHEST_PRICE'] = {}
 
-if compra_input and compra_input.strip():
-    nuevas_compras = 0
-    for linea in compra_input.strip().split('\n'):
-        if not linea.strip():
-            continue
-        partes = linea.split(',')
-        if len(partes) == 3:
-            sim = partes[0].strip().upper()
-            try:
-                cantidad = float(partes[1].strip())
-                precio = float(partes[2].strip())
-                guardar_transaccion(sim, cantidad, precio, "compra")
-                # Si el símbolo no estaba en PRECIO_COMPRA, contamos como compra nueva
-                if sim not in PRECIO_COMPRA:
-                    nuevas_compras += 1
-                PRECIO_COMPRA[sim] = precio
-            except:
-                pass
-    if nuevas_compras > 0:
-        st.sidebar.success(f"✅ {nuevas_compras} compra(s) nueva(s) registrada(s).")
-    elif compra_input.strip():
-        st.sidebar.warning("No se detectaron compras nuevas (los símbolos ya existían o hubo errores de formato).")
-    # Siempre guardamos las posiciones actualizadas (aunque no haya nuevas, por si cambió precio)
-    repo_guardar_posiciones(PRECIO_COMPRA)
-    repo_guardar_transacciones()
+    if compra_input and compra_input.strip():
+        nuevas_compras = 0
+        for linea in compra_input.strip().split('\n'):
+            if not linea.strip():
+                continue
+            partes = linea.split(',')
+            if len(partes) == 3:
+                sim = partes[0].strip().upper()
+                try:
+                    cantidad = float(partes[1].strip())
+                    precio = float(partes[2].strip())
+                    guardar_transaccion(sim, cantidad, precio, "compra")
+                    # Si el símbolo no estaba en PRECIO_COMPRA, contamos como compra nueva
+                    if sim not in PRECIO_COMPRA:
+                        nuevas_compras += 1
+                    PRECIO_COMPRA[sim] = precio
+                except:
+                    pass
+        if nuevas_compras > 0:
+            st.sidebar.success(f"✅ {nuevas_compras} compra(s) nueva(s) registrada(s).")
+        elif compra_input.strip():
+            st.sidebar.warning("No se detectaron compras nuevas (los símbolos ya existían o hubo errores de formato).")
+        # Siempre guardamos las posiciones actualizadas (aunque no haya nuevas, por si cambió precio)
+        repo_guardar_posiciones(PRECIO_COMPRA)
+        repo_guardar_transacciones()
     
     usd_mxn, eur_mxn = obtener_tipo_cambio()
     regime_data = obtener_market_regime()
