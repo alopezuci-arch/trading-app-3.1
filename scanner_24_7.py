@@ -49,7 +49,7 @@ HISTORICO_FILE = "historial_senales.csv"
 POSICIONES_FILE = "posiciones.json"
 
 # Parámetros de filtro de alta confianza (sincronizados con app.py)
-ALTA_CONFIANZA = os.environ.get("ALTA_CONFIANZA", "False").lower() == "true"
+ALTA_CONFIANZA = os.environ.get("ALTA_CONFIANZA", "True").lower() == "true"
 FILTRO_SCORE_MIN = int(os.environ.get("FILTRO_SCORE_MIN", "8"))
 FILTRO_RSI = os.environ.get("FILTRO_RSI", "True").lower() == "true"
 FILTRO_ML = os.environ.get("FILTRO_ML", "False").lower() == "true"  # opcional
@@ -1074,13 +1074,12 @@ def ejecutar_scanner():
 
     # Justo antes de llamar a construir_email_html o enviar_email
     print(f"📨 Enviando correo con {len(ops_compras)} compras y {len(ops_ventas)} ventas")
-    html = construir_email(ops_compras, ops_ventas, regime, ia_texto, hora)
-    enviar_email(...)
     
     # 11. Construir email
     hora = datetime.now().strftime("%d/%m %H:%M")
     html = construir_email(ops_compras, ops_ventas, regime, ia_texto, hora)
-    
+
+    print(f"📧 ANTES DE ENVIAR: ops_compras tiene {len(ops_compras)} elementos")
     # 12. Enviar email
     enviar_email("📈 Scanner Trading — Actualización", html)
 
