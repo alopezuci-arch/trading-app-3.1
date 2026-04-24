@@ -1194,14 +1194,12 @@ def dashboard_rendimiento_ventas(df_hist: pd.DataFrame) -> None:
         st.info("Sin historial de ventas suficiente.")
         return
     
-    # Verificar si existe la columna 'recomendacion'
     if 'recomendacion' not in df_hist.columns:
         st.info("El historial no contiene información de recomendaciones.")
         return
     
     df_ventas = df_hist[df_hist['recomendacion'] == "VENDER"].copy()
     
-    # Verificar si existe la columna 'ganancia_pct'
     if 'ganancia_pct' not in df_ventas.columns:
         st.info("No hay datos de ganancia en el historial.")
         return
@@ -1211,30 +1209,60 @@ def dashboard_rendimiento_ventas(df_hist: pd.DataFrame) -> None:
         st.info("No hay ventas registradas con ganancia/pérdida en el historial.")
         return
     
-    # Resto de la función igual...
+    # ========== MEJORA 1: Advertencia por pocas muestras ==========
+    total_ventas = len(df_ventas)
+    if total_ventas < 10:
+        st.warning(f"⚠️ Solo tienes {total_ventas} operación(es) registrada(s). Las estadísticas son poco fiables con pocas muestras.")
+    
+    # ========== MEJORA 2: Formateo del gráfico de rendimiento acumulado ==========
     df_ventas = df_ventas.sort_values('fecha')
-    df_ventas['ret_acum'] = (1 + df_ventas['ganancia_pct']/100).cumprod()
-    fig = px.line(df_ventas, x='fecha', y='ret_acum', title='Rendimiento acumulado de señales de VENTA')
+    # Calcular factor de crecimiento (empezando desde 1)
+    df_ventas['factor'] = (1 + df_ventas['ganancia_pct']/100).cumprod()
+    
+    fig = px.line(df_ventas, x='fecha', y='factor', 
+                  title='Crecimiento acumulado de $1 invertido en las señales de VENTA',
+                  labels={'factor': 'Multiplicador del capital (1 = capital inicial)', 'fecha': 'Fecha'})
+    fig.update_layout(yaxis_tickformat = '.2f')  # Muestra dos decimales
+    fig.add_hline(y=1, line_dash="dash", line_color="gray", annotation_text="Capital inicial")
     st.plotly_chart(fig, use_container_width=True)
     
+    # ========== Estadísticas básicas ==========
     win_rate = (df_ventas['ganancia_pct'] > 0).mean() * 100
     ganancia_promedio = df_ventas['ganancia_pct'].mean()
     ganancia_media = df_ventas['ganancia_pct'].median()
-    total_ventas = len(df_ventas)
+    ganancia_total_pct = (df_ventas['factor'].iloc[-1] - 1) * 100
     
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("🏆 Win Rate (ventas)", f"{win_rate:.1f}%")
+    col1.metric("🏆 Win Rate", f"{win_rate:.1f}%")
     col2.metric("📈 Ganancia promedio", f"{ganancia_promedio:.2f}%")
     col3.metric("📊 Ganancia mediana", f"{ganancia_media:.2f}%")
-    col4.metric("🔢 Total señales venta", total_ventas)
+    col4.metric("🔢 Total señales", total_ventas)
     
-    fig_hist = px.histogram(df_ventas, x='ganancia_pct', nbins=20, title='Distribución de ganancias/pérdidas en ventas',
+    # ========== MEJORA 3: Mensaje resumen en lenguaje natural ==========
+    if total_ventas > 0:
+        if win_rate > 70:
+            rendimiento = "excelente"
+        elif win_rate > 50:
+            rendimiento = "bueno"
+        else:
+            rendimiento = "mejorable"
+        st.info(f"📊 **Resumen:** Hasta ahora has registrado {total_ventas} señal(es) de venta. "
+                f"Tuviste un acierto del {win_rate:.1f}% con una ganancia promedio del {ganancia_promedio:.2f}%. "
+                f"Tu capital habría crecido un {ganancia_total_pct:.1f}% si hubieras seguido todas las señales. "
+                f"**Este desempeño es {rendimiento}.**")
+    
+    # ========== Histograma (sin cambios, solo ajuste de título) ==========
+    fig_hist = px.histogram(df_ventas, x='ganancia_pct', nbins=20, 
+                            title='Distribución de ganancias/pérdidas de las señales de venta',
                             labels={'ganancia_pct': 'Ganancia (%)'})
     st.plotly_chart(fig_hist, use_container_width=True)
     
+    # ========== Tabla de últimas ventas (con formato de moneda si tuviera, pero no) ==========
     st.subheader("Últimas señales de venta")
-    st.dataframe(df_ventas[['fecha', 'simbolo', 'ganancia_pct', 'score']].tail(10).sort_values('fecha', ascending=False), use_container_width=True)
-
+    st.dataframe(df_ventas[['fecha', 'simbolo', 'ganancia_pct', 'score']]
+                 .tail(10).sort_values('fecha', ascending=False)
+                 .style.format({'ganancia_pct': '{:.2f}%'}),
+                 use_container_width=True)
 # ============================================================
 # ANÁLISIS IA
 # ============================================================
