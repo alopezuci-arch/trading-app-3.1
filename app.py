@@ -424,11 +424,20 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
 
     # Extraer ganancia porcentual si es señal de venta
     ganancia = None
+        # Extraer ganancia porcentual si es señal de venta
+    ganancia = None
     if senal['Recomendación'] == "VENDER" and 'Motivo' in senal:
         motivo = senal['Motivo']
-        match = re.search(r'([+-]\d+\.?\d*)%', motivo)
+        # Intento 1: patrón estándar con signo y decimales
+        match = re.search(r'([+-]\d+(?:\.\d+)?)%', motivo)
+        if not match:
+            # Intento 2: buscar cualquier número decimal (puede ser sin signo explícito)
+            match = re.search(r'(\d+(?:\.\d+)?)%', motivo)
         if match:
             ganancia = float(match.group(1))
+        else:
+            # Depuración: mostrar el motivo que no se pudo parsear
+            st.warning(f"No se pudo extraer ganancia de: {motivo}")
 
     nueva = pd.DataFrame([{
         'fecha': pd.to_datetime(fecha, errors='coerce'),
@@ -444,6 +453,7 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
     # Mantener solo últimos 90 días
     cutoff = datetime.now() - timedelta(days=90)
     df = df[df['fecha'] >= cutoff]
+    st.write(f"DEBUG: Guardando señal - simbolo: {senal['Símbolo']}, ganancia: {ganancia}")
     df.to_csv(HISTORIAL_FILE, index=False)
 
 def dashboard_rendimiento_real():
