@@ -1642,6 +1642,70 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     ventas = df[(df['Recomendación'] == 'VENDER') & (df['Símbolo'].isin(PRECIO_COMPRA.keys()))].copy() if PRECIO_COMPRA else pd.DataFrame()
     compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
     observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
+    
+    # ========== FORZAR SEÑALES DE VENTA PARA LA CARTERA (INDEPENDIENTE DEL ANÁLISIS) ==========
+    # Esto garantiza que si una posición tiene ganancia >15% o pérdida <-7%, aparezca en VENTAS
+    ventas_forzadas = []
+    for simbolo, datos in PRECIO_COMPRA.items():
+        precio_compra = datos if isinstance(datos, (int, float)) else datos.get('precio', 0)
+        if precio_compra <= 0:
+            continue
+        
+        # Obtener precio actual con el método que funciona en la cartera
+        precio_actual = obtener_precio_actual(simbolo)
+        if precio_actual is None:
+            continue
+        
+        factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
+        precio_actual_mxn = precio_actual * factor
+        ganancia = ((precio_actual_mxn / precio_compra) - 1) * 100
+        
+        if ganancia >= 15:
+            ventas_forzadas.append({
+                'Símbolo': simbolo,
+                'Precio (MXN)': round(precio_actual_mxn, 2),
+                'Score': 0,
+                'RSI': 0,
+                'Stop Loss': 0,
+                'Take Profit': 0,
+                'Recomendación': 'VENDER',
+                'Motivo': f'🎯 Take Profit +{ganancia:.1f}%',
+                'Señales': '',
+                'Unidades': 0,
+                'Inversión (MXN)': 0,
+                '% Capital': 0,
+                'Dist EMA50': 0
+            })
+        elif ganancia <= -7:
+            ventas_forzadas.append({
+                'Símbolo': simbolo,
+                'Precio (MXN)': round(precio_actual_mxn, 2),
+                'Score': 0,
+                'RSI': 0,
+                'Stop Loss': 0,
+                'Take Profit': 0,
+                'Recomendación': 'VENDER',
+                'Motivo': f'🛑 Stop Loss {ganancia:.1f}%',
+                'Señales': '',
+                'Unidades': 0,
+                'Inversión (MXN)': 0,
+                '% Capital': 0,
+                'Dist EMA50': 0
+            })
+    
+    # Agregar estas ventas forzadas al DataFrame df (para que aparezcan en pestañas)
+    if ventas_forzadas:
+        df_ventas_forzadas = pd.DataFrame(ventas_forzadas)
+        # Evitar duplicados: si ya existe una señal de venta para el mismo símbolo en df, no la agregamos
+        if 'ventas' in locals() and not ventas.empty:
+            simbolos_ya_venta = ventas['Símbolo'].tolist()
+            ventas_forzadas = [v for v in ventas_forzadas if v['Símbolo'] not in simbolos_ya_venta]
+        if ventas_forzadas:
+            df_ventas_forzadas = pd.DataFrame(ventas_forzadas)
+            df = pd.concat([df, df_ventas_forzadas], ignore_index=True)
+            # Actualizar también la variable ventas (que se usa en pestañas y alertas)
+            ventas = df[df['Recomendación'] == 'VENDER'].copy()
+            st.success(f"✅ Se añadieron {len(ventas_forzadas)} señal(es) de venta forzada (Take Profit / Stop Loss).")
    
     #Aquí 20 de abril del 26 a las 13:17 hrs
     # ========== GUARDAR SEÑALES EN HISTORIAL ==========
