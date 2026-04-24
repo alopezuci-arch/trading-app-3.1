@@ -1863,6 +1863,38 @@ if 'df' in st.session_state:
     observar = st.session_state['observar']
     regime_data = st.session_state['regime']
     capital_total = st.session_state.get('capital', 100000.0)
+
+    # ========== FORZAR VENTAS DESDE LA CARTERA (usando precios ya disponibles) ==========
+    # Recorrer las posiciones abiertas
+    posiciones_cartera = st.session_state.get('PRECIO_COMPRA', {})
+    for simbolo, datos in posiciones_cartera.items():
+        precio_compra = datos if isinstance(datos, (int, float)) else datos.get('precio', 0)
+        if precio_compra <= 0:
+            continue
+        
+        # Obtener precio actual desde el df si ya fue analizado (mejor opción)
+        if simbolo in df['Símbolo'].values:
+            precio_actual_mxn = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
+            ganancia = ((precio_actual_mxn / precio_compra) - 1) * 100
+            if ganancia >= 15 and simbolo not in ventas['Símbolo'].values:
+                nueva_fila = pd.DataFrame([{
+                    'Símbolo': simbolo,
+                    'Precio (MXN)': precio_actual_mxn,
+                    'Score': 0,
+                    'RSI': 0,
+                    'Stop Loss': 0,
+                    'Take Profit': 0,
+                    'Recomendación': 'VENDER',
+                    'Motivo': f'🎯 Take Profit +{ganancia:.1f}%',
+                    'Señales': '',
+                    'Unidades': 0,
+                    'Inversión (MXN)': 0,
+                    '% Capital': 0,
+                    'Dist EMA50': 0
+                }])
+                df = pd.concat([df, nueva_fila], ignore_index=True)
+                ventas = df[df['Recomendación'] == 'VENDER'].copy()
+                st.success(f"✅ Venta forzada añadida: {simbolo} +{ganancia:.1f}%")
     
     st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
 
