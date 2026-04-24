@@ -35,7 +35,16 @@
     "cantidad": 1.0,
     "precio": 2224.79
   },
-  "ADM": 6083.28,
-  "TECL": 2568.95,
-  "T": 461.0
+  "ADM": {
+    "cantidad": 1.0,
+    "precio": 6083.28
+  },
+  "TECL": {
+    "cantidad": 1.0,
+    "precio": 2568.95
+  },
+  "T": {
+    "cantidad": 1.0,
+    "precio": 461.0
+  }
 }
