@@ -1,38 +1,14 @@
 {
-  "BBAJIOO.MX": {
-    "cantidad": 1.0,
-    "precio": 55.7
-  },
-  "GFNORTEO.MX": {
-    "cantidad": 1.0,
-    "precio": 190.02
-  },
-  "FEMSAUBD.MX": {
-    "cantidad": 1.0,
-    "precio": 196.83
-  },
-  "FUNO11": {
-    "cantidad": 1.0,
-    "precio": 29.01
-  },
-  "INTC": {
-    "cantidad": 1.0,
-    "precio": 1179.99
-  },
-  "RIVN": {
-    "cantidad": 1.0,
-    "precio": 274.89
-  },
-  "DDOG": {
-    "cantidad": 1.0,
-    "precio": 2310.71
-  },
-  "PINFRA.MX": {
-    "cantidad": 1.0,
-    "precio": 294.782
-  },
-  "WMT": {
-    "cantidad": 1.0,
-    "precio": 2224.79
-  }
+  "BBAJIOO.MX": 55.7,
+  "GFNORTEO.MX": 190.02,
+  "FEMSAUBD.MX": 196.83,
+  "FUNO11": 29.01,
+  "INTC": 1179.99,
+  "RIVN": 274.89,
+  "DDOG": 2310.71,
+  "PINFRA.MX": 294.782,
+  "WMT": 2224.79,
+  "T": 461.0,
+  "TECL": 2568.95,
+  "AMD": 6083.28
 }
