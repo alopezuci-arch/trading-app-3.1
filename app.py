@@ -1479,7 +1479,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     PRECIO_COMPRA = dict(st.session_state.get('PRECIO_COMPRA', {}))
     st.session_state['HIGHEST_PRICE'] = {}
 
-    if compra_input and compra_input.strip():
+if compra_input and compra_input.strip():
     nuevas_compras = 0
     for linea in compra_input.strip().split('\n'):
         if not linea.strip():
