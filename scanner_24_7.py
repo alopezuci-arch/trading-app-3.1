@@ -581,10 +581,9 @@ def analizar(args) -> dict | None:
         # Lógica de venta
         if precio_compra is not None:
             ganancia_pct = ((precio_actual / precio_compra) - 1) * 100
-            if debug:
-                print(f"   ganancia_pct = {ganancia_pct:.2f}%")
+            print(f"📊 {simbolo_limpio}: precio_compra={precio_compra:.2f}, precio_actual={precio_actual:.2f}, ganancia={ganancia_pct:.2f}%")
             if ganancia_pct >= 15:
-                recomendacion = "VENDER"
+                        recomendacion = "VENDER"
                 motivo = f"🎯 Take Profit +{ganancia_pct:.1f}%"
                 senales_venta.append(motivo)
                 print(f"🔔 Venta detectada: {simbolo_limpio} - {motivo}")
