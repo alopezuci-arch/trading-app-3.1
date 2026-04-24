@@ -1053,6 +1053,11 @@ def ejecutar_scanner():
         if FILTRO_RSI:
             ops_compras = [c for c in ops_compras if 45 <= c['RSI'] <= 65]
         print(f"🔍 Filtro de alta confianza activado: {len(ops_compras)} señales de {original_count} totales")
+    
+    # === DEPURACIÓN: comprobación antes de enviar ===
+    print(f"📧 COMPRAS A ENVIAR: {len(ops_compras)}")
+    if ops_compras:
+        print(f"   Ejemplo: {ops_compras[0]['Símbolo']} (score {ops_compras[0]['Score']}, RSI {ops_compras[0]['RSI']})")
 
     # 9. Guardar historial
     fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
