@@ -210,45 +210,43 @@ def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool
 # CARGA DE POSICIONES (normalización de claves)
 # ============================================================
 def cargar_posiciones_repo() -> dict:
-    """Calcula posiciones abiertas reales desde transacciones.csv (neto compras - ventas)"""
-    import pandas as pd
-    from collections import defaultdict
-    
+    """Carga las posiciones abiertas desde el mismo repositorio que usa la app (formato con cantidad y precio)"""
     posiciones = {}
-    ruta_csv = os.path.join("data", "transacciones.csv")
     
-    if os.path.exists(ruta_csv):
+    # 1. Intentar desde archivo local (si existe)
+    ruta_local = os.path.join("data", "posiciones.json")
+    if os.path.exists(ruta_local):
         try:
-            df = pd.read_csv(ruta_csv)
-            df['simbolo'] = df['simbolo'].str.upper().str.replace('.MX', '')
-            df['tipo'] = df['tipo'].str.lower().str.strip()
-            df['fecha'] = pd.to_datetime(df['fecha'])
-            
-            neto = defaultdict(float)
-            ultimo_precio = {}
-            
-            for _, row in df.sort_values('fecha').iterrows():
-                sim = row['simbolo']
-                cant = float(row['cantidad'])
-                precio = float(row['precio'])
-                if row['tipo'] == 'compra':
-                    neto[sim] += cant
-                    ultimo_precio[sim] = precio  # precio de la última compra
-                else:  # venta
-                    neto[sim] -= cant
-                    if neto[sim] <= 0:
-                        neto[sim] = 0
-                        if sim in ultimo_precio:
-                            del ultimo_precio[sim]
-            
-            for sim, cant in neto.items():
-                if cant > 0.001 and sim in ultimo_precio:
-                    posiciones[sim] = ultimo_precio[sim]
-            
-            print(f"✅ Posiciones desde transacciones.csv: {list(posiciones.keys())}")
-            return posiciones
+            with open(ruta_local, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict):
+                for simbolo, info in data.items():
+                    if isinstance(info, dict) and "precio" in info:
+                        # Normalizar clave (quitar .MX si existe)
+                        clave = simbolo.upper().replace('.MX', '')
+                        posiciones[clave] = info["precio"]
+                print(f"✅ Posiciones desde {ruta_local}: {list(posiciones.keys())}")
+                return posiciones
         except Exception as e:
-            print(f"⚠️ Error leyendo {ruta_csv}: {e}")
+            print(f"⚠️ Error leyendo {ruta_local}: {e}")
+    
+    # 2. Fallback: leer desde GitHub
+    if _repo_disponible():
+        contenido = _repo_leer("posiciones.json")
+        if contenido:
+            try:
+                data = json.loads(contenido)
+                for simbolo, info in data.items():
+                    if isinstance(info, dict) and "precio" in info:
+                        clave = simbolo.upper().replace('.MX', '')
+                        posiciones[clave] = info["precio"]
+                print(f"📦 Posiciones desde GitHub: {list(posiciones.keys())}")
+                return posiciones
+            except Exception as e:
+                print(f"⚠️ Error parseando posiciones.json: {e}")
+    
+    print("ℹ️ No se encontraron posiciones abiertas.")
+    return posiciones
     
     # Fallback a GitHub (solo si no hay transacciones local)
     if _repo_disponible():
@@ -994,7 +992,8 @@ def ejecutar_scanner():
 
     # 1. Cargar posiciones reales
     posiciones = cargar_posiciones_repo()
-    print(f"📊 Posiciones activas: {list(posiciones.keys())}")
+    print(f"📊 Posiciones activas según scanner: {list(posiciones.keys())}")   # <-- aquí
+    print(f"📊 Posiciones activas según scanner: {list(posiciones.keys())}")
 
     # 2. Cargar historial
     historial = cargar_historial_repo()
@@ -1043,11 +1042,10 @@ def ejecutar_scanner():
     for v in ops_ventas:
         print(f"   ✅ {v['Símbolo']} - {v['Motivo']}")
 
-    #8.5 ========== APLICAR FILTRO DE ALTA CONFIANZA (mismo que app.py) ==========
-    ALTA_CONFIANZA = os.environ.get("ALTA_CONFIANZA", "True").lower() == "true"  # Por defecto True
-    FILTRO_SCORE_MIN = int(os.environ.get("FILTRO_SCORE_MIN", "8"))
-    FILTRO_RSI = os.environ.get("FILTRO_RSI", "True").lower() == "true"
-    
+    # === DEPURACIÓN: ventas detectadas ===
+    print(f"🔴 Ventas detectadas: {[(v['Símbolo'], v['Motivo']) for v in ops_ventas]}")
+
+    # 8.5 Filtro de alta confianza
     if ALTA_CONFIANZA:
         original_count = len(ops_compras)
         if FILTRO_SCORE_MIN:
@@ -1055,14 +1053,12 @@ def ejecutar_scanner():
         if FILTRO_RSI:
             ops_compras = [c for c in ops_compras if 45 <= c['RSI'] <= 65]
         print(f"🔍 Filtro de alta confianza activado: {len(ops_compras)} señales de {original_count} totales")
-        if not ops_compras:
-            print("⚠️ No hay señales que cumplan los criterios de alta confianza.")
 
     # 9. Guardar historial
     fecha = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     for senal in resultados:
         guardar_senal_en_historial(senal, fecha)
-
+        
     sincronizar_historial_repo()
     sincronizar_cache_ia_repo()
 
