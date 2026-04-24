@@ -1643,68 +1643,6 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     compras = df[df['Recomendación'].str.startswith('COMPRAR')].sort_values('Score', ascending=False).copy()
     observar = df[df['Recomendación'] == 'OBSERVAR'].sort_values('Score', ascending=False).copy()
     
-    # ========== FORZAR SEÑALES DE VENTA PARA LA CARTERA (INDEPENDIENTE DEL ANÁLISIS) ==========
-    # Esto garantiza que si una posición tiene ganancia >15% o pérdida <-7%, aparezca en VENTAS
-        # ========== FORZAR SEÑALES DE VENTA PARA LA CARTERA (usando precios ya obtenidos) ==========
-    ventas_forzadas = []
-    for simbolo, datos in PRECIO_COMPRA.items():
-        precio_compra = datos if isinstance(datos, (int, float)) else datos.get('precio', 0)
-        if precio_compra <= 0:
-            continue
-        
-        # Usar el precio que ya tenemos en precios_actuales (calculado antes del análisis)
-        if simbolo not in precios_actuales:
-            continue
-        precio_actual_mxn = precios_actuales[simbolo]
-        ganancia = ((precio_actual_mxn / precio_compra) - 1) * 100
-        
-        if ganancia >= 15:
-            ventas_forzadas.append({
-                'Símbolo': simbolo,
-                'Precio (MXN)': round(precio_actual_mxn, 2),
-                'Score': 0,
-                'RSI': 0,
-                'Stop Loss': 0,
-                'Take Profit': 0,
-                'Recomendación': 'VENDER',
-                'Motivo': f'🎯 Take Profit +{ganancia:.1f}%',
-                'Señales': '',
-                'Unidades': 0,
-                'Inversión (MXN)': 0,
-                '% Capital': 0,
-                'Dist EMA50': 0
-            })
-        elif ganancia <= -7:
-            ventas_forzadas.append({
-                'Símbolo': simbolo,
-                'Precio (MXN)': round(precio_actual_mxn, 2),
-                'Score': 0,
-                'RSI': 0,
-                'Stop Loss': 0,
-                'Take Profit': 0,
-                'Recomendación': 'VENDER',
-                'Motivo': f'🛑 Stop Loss {ganancia:.1f}%',
-                'Señales': '',
-                'Unidades': 0,
-                'Inversión (MXN)': 0,
-                '% Capital': 0,
-                'Dist EMA50': 0
-            })
-    
-    # Agregar estas ventas forzadas al DataFrame df (para que aparezcan en pestañas)
-    if ventas_forzadas:
-        df_ventas_forzadas = pd.DataFrame(ventas_forzadas)
-        # Evitar duplicados: si ya existe una señal de venta para el mismo símbolo en df, no la agregamos
-        if 'ventas' in locals() and not ventas.empty:
-            simbolos_ya_venta = ventas['Símbolo'].tolist()
-            ventas_forzadas = [v for v in ventas_forzadas if v['Símbolo'] not in simbolos_ya_venta]
-        if ventas_forzadas:
-            df_ventas_forzadas = pd.DataFrame(ventas_forzadas)
-            df = pd.concat([df, df_ventas_forzadas], ignore_index=True)
-            # Actualizar también la variable ventas (que se usa en pestañas y alertas)
-            ventas = df[df['Recomendación'] == 'VENDER'].copy()
-            st.success(f"✅ Se añadieron {len(ventas_forzadas)} señal(es) de venta forzada (Take Profit / Stop Loss).")
-   
     #Aquí 20 de abril del 26 a las 13:17 hrs
     # ========== GUARDAR SEÑALES EN HISTORIAL ==========
     fecha_actual = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1864,40 +1802,74 @@ if 'df' in st.session_state:
     regime_data = st.session_state['regime']
     capital_total = st.session_state.get('capital', 100000.0)
 
-    # ========== FORZAR VENTAS DESDE LA CARTERA (usando precios ya disponibles) ==========
-    # Recorrer las posiciones abiertas
+    # ========== FORZAR VENTAS DESDE LA CARTERA (usando obtener_precio_actual, igual que la pestaña Cartera) ==========
     posiciones_cartera = st.session_state.get('PRECIO_COMPRA', {})
+    ventas_adicionales = []
     for simbolo, datos in posiciones_cartera.items():
         precio_compra = datos if isinstance(datos, (int, float)) else datos.get('precio', 0)
         if precio_compra <= 0:
             continue
         
-        # Obtener precio actual desde el df si ya fue analizado (mejor opción)
-        if simbolo in df['Símbolo'].values:
-            precio_actual_mxn = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
-            ganancia = ((precio_actual_mxn / precio_compra) - 1) * 100
-            if ganancia >= 15 and simbolo not in ventas['Símbolo'].values:
-                nueva_fila = pd.DataFrame([{
-                    'Símbolo': simbolo,
-                    'Precio (MXN)': precio_actual_mxn,
-                    'Score': 0,
-                    'RSI': 0,
-                    'Stop Loss': 0,
-                    'Take Profit': 0,
-                    'Recomendación': 'VENDER',
-                    'Motivo': f'🎯 Take Profit +{ganancia:.1f}%',
-                    'Señales': '',
-                    'Unidades': 0,
-                    'Inversión (MXN)': 0,
-                    '% Capital': 0,
-                    'Dist EMA50': 0
-                }])
-                df = pd.concat([df, nueva_fila], ignore_index=True)
-                ventas = df[df['Recomendación'] == 'VENDER'].copy()
-                st.success(f"✅ Venta forzada añadida: {simbolo} +{ganancia:.1f}%")
+        # Obtener precio actual usando el mismo método que la cartera (funciona)
+        precio_actual = obtener_precio_actual(simbolo)
+        if precio_actual is None:
+            st.warning(f"No se pudo obtener precio actual para {simbolo} - se omite")
+            continue
+        
+        factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
+        precio_actual_mxn = precio_actual * factor
+        ganancia = ((precio_actual_mxn / precio_compra) - 1) * 100
+        
+        if ganancia >= 15:
+            ventas_adicionales.append({
+                'Símbolo': simbolo,
+                'Precio (MXN)': round(precio_actual_mxn, 2),
+                'Score': 0,
+                'RSI': 0,
+                'ATR': 0,
+                'Stop Loss': 0,
+                'Take Profit': 0,
+                'Unidades': 0,
+                'Inversión (MXN)': 0,
+                '% Capital': 0,
+                'Dist EMA50': 0,
+                'Recomendación': 'VENDER',
+                'Motivo': f'🎯 Take Profit +{ganancia:.1f}%',
+                'Señales': ''
+            })
+        elif ganancia <= -7:
+            ventas_adicionales.append({
+                'Símbolo': simbolo,
+                'Precio (MXN)': round(precio_actual_mxn, 2),
+                'Score': 0,
+                'RSI': 0,
+                'ATR': 0,
+                'Stop Loss': 0,
+                'Take Profit': 0,
+                'Unidades': 0,
+                'Inversión (MXN)': 0,
+                '% Capital': 0,
+                'Dist EMA50': 0,
+                'Recomendación': 'VENDER',
+                'Motivo': f'🛑 Stop Loss {ganancia:.1f}%',
+                'Señales': ''
+            })
     
-    st.markdown(f"**Última actualización:** {st.session_state.get('ultima_actualizacion', 'Nunca')}")
-
+    # Agregar estas ventas al DataFrame df y actualizar la variable ventas
+    if ventas_adicionales:
+        df_ventas_nuevas = pd.DataFrame(ventas_adicionales)
+        # Evitar duplicados con las ventas que ya existieran (por si el análisis ya generó alguna)
+        if not ventas.empty:
+            simbolos_ya_venta = ventas['Símbolo'].tolist()
+            df_ventas_nuevas = df_ventas_nuevas[~df_ventas_nuevas['Símbolo'].isin(simbolos_ya_venta)]
+        if not df_ventas_nuevas.empty:
+            df = pd.concat([df, df_ventas_nuevas], ignore_index=True)
+            ventas = df[df['Recomendación'] == 'VENDER'].copy()
+            st.success(f"✅ Se añadieron {len(df_ventas_nuevas)} señal(es) de venta (Take Profit/Stop Loss) desde la cartera.")
+            # Actualizar también el session state para que otras partes lo usen (ej. alertas)
+            st.session_state['df'] = df
+            st.session_state['ventas'] = ventas
+            
     # ========== PANEL CORE + SATÉLITE ==========
     etf_cap = round(capital_total * 0.65, 2)
     trade_cap = round(capital_total * 0.25, 2)
