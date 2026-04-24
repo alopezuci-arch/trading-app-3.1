@@ -1335,64 +1335,56 @@ def analizar_accion(args: tuple) -> dict | None:
         periodo = "6mo" if incluir_bt else "3mo"
         ticker = yf.Ticker(simbolo)
 
-        # ========== OBTENER PRECIO ACTUAL DE FORMA ROBUSTA ==========
-        # Priorizar método de la cartera (info) y luego safe_history de 2d
-        precio_actual = None
-        try:
-            info = ticker.info
-            precio_info = info.get('regularMarketPrice') or info.get('currentPrice')
-            if precio_info:
-                precio_actual = float(precio_info)
-        except:
-            pass
-
-        if precio_actual is None:
-            hist_2d = safe_history(ticker, period="2d")
-            if not hist_2d.empty:
-                precio_actual = float(hist_2d['Close'].iloc[-1])
-
-        if precio_actual is None:
-            # Último fallback: usar el precio del historial largo (pero puede fallar por bloqueo)
-            hist_temp = safe_history(ticker, period="2d")
-            if hist_temp.empty:
-                return None
-            precio_actual = float(hist_temp['Close'].iloc[-1])
-
+        # ========== OBTENER PRECIO ACTUAL (COMO EN CARTERA) ==========
+        precio_actual = obtener_precio_actual(simbolo)
         factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
+        if precio_actual is None:
+            # Fallback: historial de 2 días
+            hist_fallback = safe_history(ticker, period="2d")
+            if hist_fallback.empty:
+                return None
+            precio_actual = float(hist_fallback['Close'].iloc[-1])
         precio_actual_mxn = precio_actual * factor
 
         # ========== INDICADORES (necesitan historial largo) ==========
+        # Si falla, no pasa nada, podemos seguir con la venta igual
         hist = safe_history(ticker, periodo)
         if hist.empty or len(hist) < 20:
-            return None
+            # No hay suficientes datos para indicadores, pero igual evaluamos venta
+            atr = precio_actual_mxn * 0.02  # estimación
+            score = 0
+            señales = []
+            ultimo = {}
+        else:
+            for col in ['Close','Open','High','Low']:
+                hist[col] = hist[col] * factor
+            hist = calcular_indicadores(hist)
+            hist = hist.dropna(subset=['RSI','MACD','EMA20','EMA50','ATR','STOCH_K','STOCH_D'])
+            if len(hist) < 2:
+                atr = precio_actual_mxn * 0.02
+                score = 0
+                señales = []
+                ultimo = {}
+            else:
+                ultimo = hist.iloc[-1].to_dict()
+                penultimo = hist.iloc[-2].to_dict()
+                atr = ultimo['ATR']
+                score_base, señales = calcular_score(ultimo, penultimo)
+                score = max(0, score_base + regime_bonus)
 
-        for col in ['Close', 'Open', 'High', 'Low']:
-            hist[col] = hist[col] * factor
-
-        hist = calcular_indicadores(hist)
-        hist = hist.dropna(subset=['RSI', 'MACD', 'EMA20', 'EMA50', 'ATR', 'STOCH_K', 'STOCH_D'])
-        if len(hist) < 2:
-            return None
-
-        ultimo = hist.iloc[-1].to_dict()
-        penultimo = hist.iloc[-2].to_dict()
-        # No sobrescribimos precio_actual_mxn con ultimo['Close'], pero lo guardamos por si algo
-        atr = ultimo['ATR']
-        score_base, señales = calcular_score(ultimo, penultimo)
-        score = max(0, score_base + regime_bonus)
-
+        # ========== TAMAÑO DE POSICIÓN ==========
         ps = position_size(precio_actual_mxn, atr, capital, riesgo_pct)
 
+        # ========== LÓGICA DE VENTA ==========
         p_compra = precio_compra_dict.get(simbolo)
         señales_venta = []
         if p_compra:
             ganancia = ((precio_actual_mxn / p_compra) - 1) * 100
-
             # Depuración para INTC
             if simbolo == 'INTC':
-                st.write(f"DEBUG INTC: p_compra={p_compra:.2f}, actual={precio_actual_mxn:.2f}, ganancia={ganancia:.2f}%")
-
-            # === TRAILING STOP DINÁMICO (sin cambios) ===
+                st.write(f"🔍 INTC: compra={p_compra:.2f}, actual={precio_actual_mxn:.2f}, ganancia={ganancia:.2f}%")
+            
+            # Trailing stop (sin cambios)
             if trailing_enabled and ganancia > 0:
                 if 'HIGHEST_PRICE' not in st.session_state:
                     st.session_state['HIGHEST_PRICE'] = {}
@@ -1403,13 +1395,13 @@ def analizar_accion(args: tuple) -> dict | None:
                 trailing_stop_price = highest * (1 - trailing_pct / 100)
                 if precio_actual_mxn <= trailing_stop_price:
                     señales_venta.append(f"📉 Trailing Stop activado (máx {highest:.2f} → stop {trailing_stop_price:.2f})")
-            # ====================================
 
             if ganancia >= 15:
                 señales_venta.append(f"🎯 Take Profit +{ganancia:.1f}%")
             elif ganancia <= -7:
                 señales_venta.append(f"🛑 Stop Loss {ganancia:.1f}%")
 
+        # ========== RECOMENDACIÓN ==========
         if señales_venta:
             recomendacion = "VENDER"
             motivo = señales_venta[0]
@@ -1426,28 +1418,30 @@ def analizar_accion(args: tuple) -> dict | None:
             recomendacion = "EVITAR"
             motivo = f"Score {score}/14"
 
+        # ========== RESULTADO (igual que antes) ==========
         resultado = {
             'Símbolo': simbolo,
             'Precio (MXN)': round(precio_actual_mxn, 2),
             'Score': score,
-            'RSI': round(ultimo['RSI'], 1),
+            'RSI': round(ultimo['RSI'], 1) if ultimo else 50,
             'ATR': round(atr, 2),
             'Stop Loss': round(precio_actual_mxn - 2 * atr, 2),
             'Take Profit': round(precio_actual_mxn + 3 * atr, 2),
             'Unidades': ps['unidades'],
             'Inversión (MXN)': ps['inversion_mxn'],
             '% Capital': ps['pct_capital'],
-            'Dist EMA50': round((precio_actual_mxn / ultimo['EMA50'] - 1) * 100, 2),
+            'Dist EMA50': round((precio_actual_mxn / ultimo['EMA50'] - 1) * 100, 2) if ultimo else 0,
             'Recomendación': recomendacion,
             'Motivo': motivo,
             'Señales': " | ".join(señales),
         }
         if incluir_fund:
             resultado.update(obtener_fundamentales_profundos(simbolo))
-        if incluir_bt and recomendacion.startswith("COMPRAR"):
+        if incluir_bt and recomendacion.startswith("COMPRAR") and ultimo:
             bt = backtest_realista(simbolo, precio_actual_mxn, atr)
             resultado['BT Resultado'] = f"{bt['resultado']:.2f}% ({bt['tipo']})"
         return resultado
+
     except Exception as e:
         print(f"[analizar_accion] {simbolo}: {type(e).__name__}: {e}")
         return None
