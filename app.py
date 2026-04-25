@@ -1952,18 +1952,17 @@ if 'df' in st.session_state:
         else:
             st.info("Sin observaciones.")
 
-    # --- Pestaña 4: Todas las acciones ---
     with tab4:
-        st.subheader("Señales de Venta (Take Profit / Stop Loss)")
-        # Usamos las alertas guardadas en el session_state que generamos arriba
-        alertas = st.session_state.get('alertas_venta', [])
+        st.subheader("Señales de Venta (Cartera Actual)")
+        # Leemos las alertas calculadas arriba
+        alertas = st.session_state.get('alertas_venta_final', [])
         
         if alertas:
-            df_ventas = pd.DataFrame(alertas)
+            df_v = pd.DataFrame(alertas)
             st.warning("⚠️ ACCIONES EN ZONA DE VENTA")
-            st.dataframe(df_ventas, use_container_width=True)
+            st.dataframe(df_v, use_container_width=True)
         else:
-            st.success("✅ No hay señales de venta. Todas las posiciones están dentro de los rangos o en crecimiento.")
+            st.success("✅ No hay señales de venta. Todas las posiciones están en rangos normales.")
         
     # --- Pestaña 5: Cartera actual ---
     with tab5:
