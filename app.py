@@ -1755,49 +1755,47 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.write("DEBUG compras_alerta (primeras 3):", compras_alerta.head(3) if not compras_alerta.empty else "Vacío")
     # =====================================
     # ========== SISTEMA DE ALERTAS DE VENTA INDEPENDIENTE ==========
-# 1. Cargamos tu cartera real desde el archivo JSON
-posiciones_json = repo_cargar_posiciones()
-alertas_vender = []
-
-if posiciones_json:
-    for simbolo, datos in posiciones_json.items():
-        # Extraer precio de compra (manejando si es diccionario o número)
-        p_compra = datos.get('precio', 0) if isinstance(datos, dict) else datos
-        if p_compra <= 0: continue
-
-        # 2. Intentar obtener el precio actual (Prioridad: Escáner -> Yahoo Finance)
-        p_actual = None
-        if 'df' in locals() and not df.empty and simbolo in df['Símbolo'].values:
-            p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
-        
-        # Si no está en el escáner, lo buscamos forzosamente en Yahoo
-        if p_actual is None or pd.isna(p_actual):
-            try:
-                tk = yf.Ticker(simbolo)
-                p_actual = tk.info.get('regularMarketPrice') or tk.info.get('currentPrice')
-                if not p_actual:
-                    p_actual = tk.history(period="1d")['Close'].iloc[-1]
-            except: continue
-
-        # 3. Calcular ganancia y generar alerta
-        if p_actual:
-            ganancia = ((p_actual / p_compra) - 1) * 100
+    # 1. Cargamos tu cartera real desde el archivo JSON
+    posiciones_json = repo_cargar_posiciones()
+    alertas_vender = []
+    
+    if posiciones_json:
+        for simbolo, datos in posiciones_json.items():
+            # Extraer precio de compra (manejando si es diccionario o número)
+            p_compra = datos.get('precio', 0) if isinstance(datos, dict) else datos
+            if p_compra <= 0: continue
+    
+            # 2. Intentar obtener el precio actual (Prioridad: Escáner -> Yahoo Finance)
+            p_actual = None
+            if 'df' in locals() and not df.empty and simbolo in df['Símbolo'].values:
+                p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
             
-            if ganancia >= 15.0 or ganancia <= -7.0:
-                motivo = f"🎯 Take Profit +{ganancia:.2f}%" if ganancia >= 15 else f"🛑 Stop Loss {ganancia:.2f}%"
-                alertas_vender.append({
-                    'Símbolo': simbolo,
-                    'Precio Compra': round(p_compra, 2),
-                    'Precio Actual': round(p_actual, 2),
-                    'Ganancia (%)': round(ganancia, 2),
-                    'Recomendación': 'VENDER',
-                    'Motivo': motivo
-                })
-
-# Guardamos en session_state para que la pestaña lo lea siempre
-st.session_state['alertas_venta_final'] = alertas_vender
-
-     
+            # Si no está en el escáner, lo buscamos forzosamente en Yahoo
+            if p_actual is None or pd.isna(p_actual):
+                try:
+                    tk = yf.Ticker(simbolo)
+                    p_actual = tk.info.get('regularMarketPrice') or tk.info.get('currentPrice')
+                    if not p_actual:
+                        p_actual = tk.history(period="1d")['Close'].iloc[-1]
+                except: continue
+    
+            # 3. Calcular ganancia y generar alerta
+            if p_actual:
+                ganancia = ((p_actual / p_compra) - 1) * 100
+                
+                if ganancia >= 15.0 or ganancia <= -7.0:
+                    motivo = f"🎯 Take Profit +{ganancia:.2f}%" if ganancia >= 15 else f"🛑 Stop Loss {ganancia:.2f}%"
+                    alertas_vender.append({
+                        'Símbolo': simbolo,
+                        'Precio Compra': round(p_compra, 2),
+                        'Precio Actual': round(p_actual, 2),
+                        'Ganancia (%)': round(ganancia, 2),
+                        'Recomendación': 'VENDER',
+                        'Motivo': motivo
+                    })
+    
+    # Guardamos en session_state para que la pestaña lo lea siempre
+    st.session_state['alertas_venta_final'] = alertas_vender
 
     #=================================================================================
     if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
