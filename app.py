@@ -1886,50 +1886,50 @@ if 'df' in st.session_state:
             "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10", "📊 BACKTEST VENTAS"
         ])
         # ========== MOTOR DE ALERTAS INDEPENDIENTE (FIX VENTAS) ==========
-    posiciones_json = repo_cargar_posiciones()
-    todas_las_alertas = []
-    
-    if posiciones_json:
-        with st.spinner("Revisando objetivos de venta en tu cartera..."):
-            for simbolo, datos in posiciones_json.items():
-                p_compra = datos.get('precio', 0)
-                if p_compra <= 0: continue
-    
-                # Intentar obtener precio actual (Escáner o Yahoo Directo)
-                p_actual = None
-                if 'df' in locals() and not df.empty and simbolo in df['Símbolo'].values:
-                    p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
-                
-                if p_actual is None or pd.isna(p_actual):
-                    try:
-                        tk = yf.Ticker(simbolo)
-                        # Forzamos obtención de precio real
-                        p_actual = tk.info.get('regularMarketPrice') or tk.info.get('currentPrice')
-                        if not p_actual:
-                            h_quick = tk.history(period="1d")
-                            p_actual = h_quick['Close'].iloc[-1] if not h_quick.empty else None
-                    except: p_actual = None
-    
-                if p_actual:
-                    ganancia = ((p_actual / p_compra) - 1) * 100
+        posiciones_json = repo_cargar_posiciones()
+        todas_las_alertas = []
+        
+        if posiciones_json:
+            with st.spinner("Revisando objetivos de venta en tu cartera..."):
+                for simbolo, datos in posiciones_json.items():
+                    p_compra = datos.get('precio', 0)
+                    if p_compra <= 0: continue
+        
+                    # Intentar obtener precio actual (Escáner o Yahoo Directo)
+                    p_actual = None
+                    if 'df' in locals() and not df.empty and simbolo in df['Símbolo'].values:
+                        p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
                     
-                    # CONDICIÓN DE VENTA: Take Profit (+15%) o Stop Loss (-7%)
-                    if ganancia >= 15.0 or ganancia <= -7.0:
-                        tipo_alerta = "VENTA"
-                        motivo = f"🎯 Take Profit +{ganancia:.2f}%" if ganancia >= 15 else f"🛑 Stop Loss {ganancia:.2f}%"
+                    if p_actual is None or pd.isna(p_actual):
+                        try:
+                            tk = yf.Ticker(simbolo)
+                            # Forzamos obtención de precio real
+                            p_actual = tk.info.get('regularMarketPrice') or tk.info.get('currentPrice')
+                            if not p_actual:
+                                h_quick = tk.history(period="1d")
+                                p_actual = h_quick['Close'].iloc[-1] if not h_quick.empty else None
+                        except: p_actual = None
+        
+                    if p_actual:
+                        ganancia = ((p_actual / p_compra) - 1) * 100
                         
-                        alerta = {
-                            'Símbolo': simbolo,
-                            'Precio Compra': round(p_compra, 2),
-                            'Precio Actual': round(p_actual, 2),
-                            'Ganancia (%)': round(ganancia, 2),
-                            'Recomendación': 'VENDER',
-                            'Motivo': motivo
-                        }
-                        todas_las_alertas.append(alerta)
-    
-    # Guardamos globalmente para que las pestañas lo vean
-    st.session_state['alertas_venta_final'] = todas_las_alertas
+                        # CONDICIÓN DE VENTA: Take Profit (+15%) o Stop Loss (-7%)
+                        if ganancia >= 15.0 or ganancia <= -7.0:
+                            tipo_alerta = "VENTA"
+                            motivo = f"🎯 Take Profit +{ganancia:.2f}%" if ganancia >= 15 else f"🛑 Stop Loss {ganancia:.2f}%"
+                            
+                            alerta = {
+                                'Símbolo': simbolo,
+                                'Precio Compra': round(p_compra, 2),
+                                'Precio Actual': round(p_actual, 2),
+                                'Ganancia (%)': round(ganancia, 2),
+                                'Recomendación': 'VENDER',
+                                'Motivo': motivo
+                            }
+                            todas_las_alertas.append(alerta)
+        
+        # Guardamos globalmente para que las pestañas lo vean
+        st.session_state['alertas_venta_final'] = todas_las_alertas
 
     # --- Pestaña 1: Compras ---
     with tab1:
