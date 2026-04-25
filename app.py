@@ -1859,32 +1859,77 @@ if 'df' in st.session_state:
     col3.metric("🎯 Alta convicción (10%)", f"${conv_cap:,.0f} MXN")
     st.markdown("---")
 
-    # ========== INDICADOR DE FILTRO ACTIVO ==========
-    if alta_confianza and not compras.empty:
-        total_original = len(df[df['Recomendación'].str.startswith('COMPRAR')])
-        st.info(f"🔍 Filtro de alta confianza activado: {len(compras)} señales de {total_original} totales")
-
-    # ========== MARKET REGIME ==========
-    icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴','DESCONOCIDO':'⚪'}.get(regime_data.get('regime','DESCONOCIDO'),'⚪')
-    with st.expander(f"{icono_regime} Market Regime: {regime_data.get('regime','DESCONOCIDO')} — {regime_data.get('descripcion','')}", expanded=True):
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("S&P 500", f"{regime_data.get('precio',0):,.0f}")
-        c2.metric("EMA 200", f"{regime_data.get('ema200',0):,.0f}")
-        c3.metric("RSI S&P", f"{regime_data.get('rsi_sp500',0)}")
-        c4.metric("Ret. 1 mes", f"{regime_data.get('ret_1m',0):+.1f}%")
+        # ========== INDICADOR DE FILTRO ACTIVO ==========
+        if alta_confianza and not compras.empty:
+            total_original = len(df[df['Recomendación'].str.startswith('COMPRAR')])
+            st.info(f"🔍 Filtro de alta confianza activado: {len(compras)} señales de {total_original} totales")
     
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("✅ Compras", len(compras))
-    col2.metric("🔴 Ventas", len(ventas))
-    col3.metric("👀 Observar", len(observar))
-    col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
+        # ========== MARKET REGIME ==========
+        icono_regime = {'ALCISTA':'🟢','LATERAL':'🟡','BAJISTA':'🔴','DESCONOCIDO':'⚪'}.get(regime_data.get('regime','DESCONOCIDO'),'⚪')
+        with st.expander(f"{icono_regime} Market Regime: {regime_data.get('regime','DESCONOCIDO')} — {regime_data.get('descripcion','')}", expanded=True):
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("S&P 500", f"{regime_data.get('precio',0):,.0f}")
+            c2.metric("EMA 200", f"{regime_data.get('ema200',0):,.0f}")
+            c3.metric("RSI S&P", f"{regime_data.get('rsi_sp500',0)}")
+            c4.metric("Ret. 1 mes", f"{regime_data.get('ret_1m',0):+.1f}%")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("✅ Compras", len(compras))
+        col2.metric("🔴 Ventas", len(ventas))
+        col3.metric("👀 Observar", len(observar))
+        col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
+        
+        # ========== TABLAS Y SECCIONES ORGANIZADAS EN PESTAÑAS ==========
+        st.subheader("📊 Resultados detallados")
+        (tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8) = st.tabs([
+            "🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS",
+            "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10", "📊 BACKTEST VENTAS"
+        ])
+        # ========== MOTOR DE ALERTAS INDEPENDIENTE (FIX VENTAS) ==========
+    posiciones_json = repo_cargar_posiciones()
+    todas_las_alertas = []
     
-    # ========== TABLAS Y SECCIONES ORGANIZADAS EN PESTAÑAS ==========
-    st.subheader("📊 Resultados detallados")
-    (tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8) = st.tabs([
-        "🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS",
-        "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10", "📊 BACKTEST VENTAS"
-    ])
+    if posiciones_json:
+        with st.spinner("Revisando objetivos de venta en tu cartera..."):
+            for simbolo, datos in posiciones_json.items():
+                p_compra = datos.get('precio', 0)
+                if p_compra <= 0: continue
+    
+                # Intentar obtener precio actual (Escáner o Yahoo Directo)
+                p_actual = None
+                if 'df' in locals() and not df.empty and simbolo in df['Símbolo'].values:
+                    p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
+                
+                if p_actual is None or pd.isna(p_actual):
+                    try:
+                        tk = yf.Ticker(simbolo)
+                        # Forzamos obtención de precio real
+                        p_actual = tk.info.get('regularMarketPrice') or tk.info.get('currentPrice')
+                        if not p_actual:
+                            h_quick = tk.history(period="1d")
+                            p_actual = h_quick['Close'].iloc[-1] if not h_quick.empty else None
+                    except: p_actual = None
+    
+                if p_actual:
+                    ganancia = ((p_actual / p_compra) - 1) * 100
+                    
+                    # CONDICIÓN DE VENTA: Take Profit (+15%) o Stop Loss (-7%)
+                    if ganancia >= 15.0 or ganancia <= -7.0:
+                        tipo_alerta = "VENTA"
+                        motivo = f"🎯 Take Profit +{ganancia:.2f}%" if ganancia >= 15 else f"🛑 Stop Loss {ganancia:.2f}%"
+                        
+                        alerta = {
+                            'Símbolo': simbolo,
+                            'Precio Compra': round(p_compra, 2),
+                            'Precio Actual': round(p_actual, 2),
+                            'Ganancia (%)': round(ganancia, 2),
+                            'Recomendación': 'VENDER',
+                            'Motivo': motivo
+                        }
+                        todas_las_alertas.append(alerta)
+    
+    # Guardamos globalmente para que las pestañas lo vean
+    st.session_state['alertas_venta_final'] = todas_las_alertas
 
     # --- Pestaña 1: Compras ---
     with tab1:
@@ -1951,67 +1996,53 @@ if 'df' in st.session_state:
             st.info("Sin observaciones.")
 
     with tab4:
-        st.subheader("Señales de Venta (Cartera Actual)")
-        # Leemos las alertas calculadas arriba
-        alertas = st.session_state.get('alertas_venta_final', [])
+        st.subheader("📢 Alertas de Salida")
+        alertas_activas = st.session_state.get('alertas_venta_final', [])
         
-        if alertas:
-            df_v = pd.DataFrame(alertas)
-            st.warning("⚠️ ACCIONES EN ZONA DE VENTA")
-            st.dataframe(df_v, use_container_width=True)
+        if alertas_activas:
+            df_v = pd.DataFrame(alertas_activas)
+            st.warning(f"⚠️ Se han detectado {len(df_v)} acciones para cerrar posición:")
+            st.dataframe(df_v.style.highlight_max(subset=['Ganancia (%)'], color='#2e7d32'), use_container_width=True)
+            
+            # Botón para limpiar historial de señales si fuera necesario
+            if st.button("Confirmar revisión de alertas"):
+                st.toast("Alertas revisadas")
         else:
-            st.success("✅ No hay señales de venta. Todas las posiciones están en rangos normales.")
+            st.success("✅ No hay acciones en zona de Take Profit (+15%) o Stop Loss (-7%)")
+            st.info("El sistema sigue monitoreando los precios en tiempo real.")
         
-    # --- Pestaña 5: Cartera actual ---
-    with tab5:
-        st.subheader("Posiciones abiertas")
-        posiciones_json = repo_cargar_posiciones() 
+   with tab5:
+        st.subheader("💼 Mi Cartera Actual")
+        pos_cartera = repo_cargar_posiciones()
         
-        if posiciones_json:
-            filas_cartera = []
-            for simb, datos in posiciones_json.items():
-                p_compra = datos.get('precio', 0)
-                cant = datos.get('cantidad', 0)
-
-                # Determinar factor de conversión a MXN según el sufijo del símbolo
-                if simb.endswith('.MX'):
-                    factor = 1.0
-                elif simb.endswith('.MC'):
-                    factor = st.session_state.get('eur_mxn', eur_mxn)
-                else:
-                    factor = st.session_state.get('usd_mxn', usd_mxn)
-
-                # Obtener precio en MXN
-                st.session_state.setdefault('PRECIOS_ACTUALES', {})[simb] = p_actual_mxn
-                if 'df' in locals() and not df.empty and simb in df['Símbolo'].values:
-                    # El precio en df ya está en MXN
-                    p_actual_mxn = df[df['Símbolo'] == simb]['Precio (MXN)'].iloc[0]
-                else:
-                    # Obtener precio original y convertir
-                    p_original = obtener_precio_actual(simb)
-                    if p_original is not None:
-                        p_actual_mxn = p_original * factor
-                    else:
-                        p_actual_mxn = p_compra
-
-                filas_cartera.append({
-                    'Símbolo': simb,
-                    'Títulos': cant,
-                    'Precio Compra': p_compra,
-                    'Precio Actual': p_actual_mxn,
-                    'Ganancia (%)': ((p_actual_mxn / p_compra) - 1) * 100 if p_compra > 0 else 0
+        if pos_cartera:
+            resumen_cartera = []
+            for s, d in pos_cartera.items():
+                # Obtener precio actual de la misma forma segura
+                p_c = d.get('precio', 0)
+                # Reutilizamos el precio si ya lo buscamos en el paso anterior
+                p_a = None
+                for a in st.session_state.get('alertas_venta_final', []):
+                    if a['Símbolo'] == s: p_a = a['Precio Actual']
+                
+                if not p_a: p_a = obtener_precio_actual(s) or p_c
+                
+                resumen_cartera.append({
+                    'Símbolo': s,
+                    'Cantidad': d.get('cantidad', 0),
+                    'Precio Promedio': p_c,
+                    'Precio Actual': p_a,
+                    'Ganancia (%)': ((p_a / p_c) - 1) * 100 if p_c > 0 else 0
                 })
-            df_cartera = pd.DataFrame(filas_cartera)
-            st.dataframe(
-                df_cartera.style.format({
-                    'Precio Compra': '${:,.2f}', 
-                    'Precio Actual': '${:,.2f}', 
-                    'Ganancia (%)': '{:.2f}%'
-                }), 
-                width='stretch'
-            )
+            
+            df_p = pd.DataFrame(resumen_cartera)
+            st.dataframe(df_p.style.format({
+                'Precio Promedio': '${:,.2f}', 
+                'Precio Actual': '${:,.2f}', 
+                'Ganancia (%)': '{:.2f}%'
+            }), use_container_width=True)
         else:
-            st.info("No hay posiciones registradas.")
+            st.info("Tu cartera está vacía.")
             
     # --- Pestaña 6: Historial de transacciones y rendimiento ---
     with tab6:
