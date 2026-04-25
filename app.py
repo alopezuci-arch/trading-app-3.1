@@ -1755,7 +1755,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.write("DEBUG compras_alerta (primeras 3):", compras_alerta.head(3) if not compras_alerta.empty else "Vacío")
     # =====================================
 
-        # ========== FORZAR VENTAS DESDE LA CARTERA PARA LAS ALERTAS ==========
+    # ========== FORZAR VENTAS DESDE LA CARTERA PARA LAS ALERTAS ==========
     # Obtener las posiciones actuales
     posiciones_cartera = st.session_state.get('PRECIO_COMPRA', {})
     ventas_forzadas = []
