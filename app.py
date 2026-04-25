@@ -1753,7 +1753,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.write("DEBUG ventas (primeras 3):", ventas.head(3) if not ventas.empty else "Vacío")
     st.write("DEBUG umbral_score:", umbral_score)
     st.write("DEBUG compras_alerta (primeras 3):", compras_alerta.head(3) if not compras_alerta.empty else "Vacío")
-    # =====================================
+
     # ========== SISTEMA DE ALERTAS DE VENTA INDEPENDIENTE ==========
     # 1. Cargamos tu cartera real desde el archivo JSON
     posiciones_json = repo_cargar_posiciones()
@@ -1878,67 +1878,68 @@ if 'df' in st.session_state:
         col2.metric("🔴 Ventas", len(ventas))
         col3.metric("👀 Observar", len(observar))
         col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
-        # ========== PRE-PROCESAMIENTO DE ALERTAS DE CARTERA ==========
-        posiciones_json = repo_cargar_posiciones()
-        alertas_cartera = []
         
-        if posiciones_json:
-            for simbolo, datos in posiciones_json.items():
-                p_compra = datos.get('precio', 0)
-                if p_compra <= 0: continue
+    # ========== PRE-PROCESAMIENTO DE ALERTAS DE CARTERA ==========
+    posiciones_json = repo_cargar_posiciones()
+    alertas_cartera = []
+    
+    if posiciones_json:
+        for simbolo, datos in posiciones_json.items():
+            p_compra = datos.get('precio', 0)
+            if p_compra <= 0: continue
 
-                # Buscamos precio actual en el DF ya procesado para ir rápido
-                p_actual = None
-                if simbolo in df['Símbolo'].values:
-                    p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
-                
-                if p_actual:
-                    ganancia = ((p_actual / p_compra) - 1) * 100
-                    # Umbrales: Take Profit +15% o Stop Loss -7%
-                    if ganancia >= 15.0 or ganancia <= -7.0:
-                        tipo_salida = "🎯 TP" if ganancia >= 15 else "🛑 SL"
-                        alertas_cartera.append({
-                            'Símbolo': simbolo,
-                            'Precio Compra': round(p_compra, 2),
-                            'Precio Actual': round(p_actual, 2),
-                            'Ganancia (%)': f"{ganancia:.2f}%",
-                            'Acción': 'VENDER',
-                            'Motivo': f"{tipo_salida} alcanzado"
-                        })
+            # Buscamos precio actual en el DF ya procesado para ir rápido
+            p_actual = None
+            if simbolo in df['Símbolo'].values:
+                p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
+            
+            if p_actual:
+                ganancia = ((p_actual / p_compra) - 1) * 100
+                # Umbrales: Take Profit +15% o Stop Loss -7%
+                if ganancia >= 15.0 or ganancia <= -7.0:
+                    tipo_salida = "🎯 TP" if ganancia >= 15 else "🛑 SL"
+                    alertas_cartera.append({
+                        'Símbolo': simbolo,
+                        'Precio Compra': round(p_compra, 2),
+                        'Precio Actual': round(p_actual, 2),
+                        'Ganancia (%)': f"{ganancia:.2f}%",
+                        'Acción': 'VENDER',
+                        'Motivo': f"{tipo_salida} alcanzado"
+                    })
 
-        # ========== RENDERIZADO DE PESTAÑAS ==========
-        st.subheader("📊 Resultados detallados")
-        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-            "🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS",
-            "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10", "📊 RENDIMIENTO"
-        ])
+    # ========== RENDERIZADO DE PESTAÑAS ==========
+    st.subheader("📊 Resultados detallados")
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+        "🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS",
+        "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10", "📊 RENDIMIENTO"
+    ])
 
-        with tab1:
-            st.dataframe(compras, use_container_width=True)
+    with tab1:
+        st.dataframe(compras, use_container_width=True)
 
-        with tab2:
-            # 1. Señales técnicas de venta del Escáner
-            st.subheader("📉 Señales Técnicas de Venta (Mercado)")
-            ventas_mercado = df[df['Recomendación'].str.contains('VENDER|VENTA', na=False)]
-            if not ventas_mercado.empty:
-                st.dataframe(ventas_mercado, use_container_width=True)
-            else:
-                st.info("No hay señales técnicas de venta en los tickers analizados.")
+    with tab2:
+        # 1. Señales técnicas de venta del Escáner
+        st.subheader("📉 Señales Técnicas de Venta (Mercado)")
+        ventas_mercado = df[df['Recomendación'].str.contains('VENDER|VENTA', na=False)]
+        if not ventas_mercado.empty:
+            st.dataframe(ventas_mercado, use_container_width=True)
+        else:
+            st.info("No hay señales técnicas de venta en los tickers analizados.")
 
-            # 2. Alertas críticas de tu cartera real
-            st.divider()
-            st.subheader("📢 Alertas de Salida (Tu Cartera)")
-            if alertas_cartera:
-                st.warning(f"⚠️ ¡Atención! Tienes {len(alertas_cartera)} posiciones para cerrar:")
-                st.table(pd.DataFrame(alertas_cartera))
-            else:
-                st.success("✅ Todas tus posiciones en cartera están en rangos seguros.")
+        # 2. Alertas críticas de tu cartera real
+        st.divider()
+        st.subheader("📢 Alertas de Salida (Tu Cartera)")
+        if alertas_cartera:
+            st.warning(f"⚠️ ¡Atención! Tienes {len(alertas_cartera)} posiciones para cerrar:")
+            st.table(pd.DataFrame(alertas_cartera))
+        else:
+            st.success("✅ Todas tus posiciones en cartera están en rangos seguros.")
 
-        with tab3:
-            st.dataframe(observar, use_container_width=True)
+    with tab3:
+        st.dataframe(observar, use_container_width=True)
 
-        with tab4:
-            st.dataframe(df, use_container_width=True)
+    with tab4:
+        st.dataframe(df, use_container_width=True)
             
    with tab5:
         st.subheader("💼 Mi Cartera Actual")
