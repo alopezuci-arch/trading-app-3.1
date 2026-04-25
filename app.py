@@ -1881,112 +1881,63 @@ if 'df' in st.session_state:
         
         # ========== TABLAS Y SECCIONES ORGANIZADAS EN PESTAÑAS ==========
         st.subheader("📊 Resultados detallados")
-        (tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8) = st.tabs([
+        tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
             "🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS",
-            "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10", "📊 BACKTEST VENTAS"
+            "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10", "📊 RENDIMIENTO"
         ])
-        # ========== MOTOR DE ALERTAS INDEPENDIENTE (FIX VENTAS) ==========
+
+        # 1. MOTOR DE ALERTAS (Calculamos antes de llenar las pestañas)
         posiciones_json = repo_cargar_posiciones()
         todas_las_alertas = []
-        
+
         if posiciones_json:
-            with st.spinner("Revisando objetivos de venta en tu cartera..."):
-                for simbolo, datos in posiciones_json.items():
-                    p_compra = datos.get('precio', 0)
-                    if p_compra <= 0: continue
-        
-                    # Intentar obtener precio actual (Escáner o Yahoo Directo)
-                    p_actual = None
-                    if 'df' in locals() and not df.empty and simbolo in df['Símbolo'].values:
-                        p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
-                    
-                    if p_actual is None or pd.isna(p_actual):
-                        try:
-                            tk = yf.Ticker(simbolo)
-                            # Forzamos obtención de precio real
-                            p_actual = tk.info.get('regularMarketPrice') or tk.info.get('currentPrice')
-                            if not p_actual:
-                                h_quick = tk.history(period="1d")
-                                p_actual = h_quick['Close'].iloc[-1] if not h_quick.empty else None
-                        except: p_actual = None
-        
-                    if p_actual:
-                        ganancia = ((p_actual / p_compra) - 1) * 100
-                        
-                        # CONDICIÓN DE VENTA: Take Profit (+15%) o Stop Loss (-7%)
-                        if ganancia >= 15.0 or ganancia <= -7.0:
-                            tipo_alerta = "VENTA"
-                            motivo = f"🎯 Take Profit +{ganancia:.2f}%" if ganancia >= 15 else f"🛑 Stop Loss {ganancia:.2f}%"
-                            
-                            alerta = {
-                                'Símbolo': simbolo,
-                                'Precio Compra': round(p_compra, 2),
-                                'Precio Actual': round(p_actual, 2),
-                                'Ganancia (%)': round(ganancia, 2),
-                                'Recomendación': 'VENDER',
-                                'Motivo': motivo
-                            }
-                            todas_las_alertas.append(alerta)
-        
-        # Guardamos globalmente para que las pestañas lo vean
+            for simbolo, datos in posiciones_json.items():
+                p_compra = datos.get('precio', 0)
+                if p_compra <= 0: continue
+
+                # Buscar precio actual en el DataFrame del escáner para ahorrar tiempo
+                p_actual = None
+                if 'df' in locals() and not df.empty and simbolo in df['Símbolo'].values:
+                    p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
+                
+                # Si no está en el escáner, lo buscamos rápido en Yahoo
+                if p_actual is None or pd.isna(p_actual):
+                    p_actual = obtener_precio_actual(simbolo)
+
+                if p_actual:
+                    ganancia = ((p_actual / p_compra) - 1) * 100
+                    # Umbrales: Take Profit +15% o Stop Loss -7%
+                    if ganancia >= 15.0 or ganancia <= -7.0:
+                        motivo = f"🎯 TP +{ganancia:.2f}%" if ganancia >= 15 else f"🛑 SL {ganancia:.2f}%"
+                        todas_las_alertas.append({
+                            'Símbolo': simbolo,
+                            'Precio Compra': round(p_compra, 2),
+                            'Precio Actual': round(p_actual, 2),
+                            'Ganancia (%)': round(ganancia, 2),
+                            'Recomendación': 'VENDER',
+                            'Motivo': motivo
+                        })
+
+        # Guardamos en el estado de la sesión para persistencia
         st.session_state['alertas_venta_final'] = todas_las_alertas
+        df_ventas_activas = pd.DataFrame(todas_las_alertas)
 
-    # --- Pestaña 1: Compras ---
-    with tab1:
-        if not compras.empty:
-            cols_compras = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit',
-                            'Unidades','Inversión (MXN)','% Capital','Peso Cartera','Inversión Asignada',
-                            'Unidades Ajustadas','Recomendación','Motivo','Señales']
-            st.dataframe(compras[[c for c in cols_compras if c in compras.columns]], width='stretch')
-        else:
-            st.info("Sin compras.")
+        # 2. LLENADO DE CADA PESTAÑA
+        with tab1:
+            st.dataframe(compras, use_container_width=True)
 
-    # --- Pestaña 2: Ventas ---
         with tab2:
-        # Primero, verificar si hay ventas del análisis normal
-        if not ventas.empty:
-            cols_ventas = ['Símbolo','Precio (MXN)','Score','RSI','Stop Loss','Take Profit','Recomendación','Motivo']
-            st.dataframe(ventas[[c for c in cols_ventas if c in ventas.columns]], width='stretch')
-        else:
-            # Si no, calcular ventas usando los precios guardados por la cartera
-            precios_guardados = st.session_state.get('PRECIOS_ACTUALES', {})
-            posiciones_cartera = st.session_state.get('PRECIO_COMPRA', {})
-            ventas_forzadas = []
-            for simbolo, datos in posiciones_cartera.items():
-                precio_compra = datos if isinstance(datos, (int, float)) else datos.get('precio', 0)
-                if precio_compra <= 0 or simbolo not in precios_guardados:
-                    continue
-                precio_actual_mxn = precios_guardados[simbolo]
-                ganancia = ((precio_actual_mxn / precio_compra) - 1) * 100
-                if ganancia >= 15:
-                    ventas_forzadas.append({
-                        'Símbolo': simbolo,
-                        'Precio (MXN)': round(precio_actual_mxn, 2),
-                        'Score': 0,
-                        'RSI': 0,
-                        'Stop Loss': 0,
-                        'Take Profit': 0,
-                        'Recomendación': 'VENDER',
-                        'Motivo': f'🎯 Take Profit +{ganancia:.1f}%'
-                    })
-                elif ganancia <= -7:
-                    ventas_forzadas.append({
-                        'Símbolo': simbolo,
-                        'Precio (MXN)': round(precio_actual_mxn, 2),
-                        'Score': 0,
-                        'RSI': 0,
-                        'Stop Loss': 0,
-                        'Take Profit': 0,
-                        'Recomendación': 'VENDER',
-                        'Motivo': f'🛑 Stop Loss {ganancia:.1f}%'
-                    })
-            if ventas_forzadas:
-                df_ventas_forzadas = pd.DataFrame(ventas_forzadas)
-                st.dataframe(df_ventas_forzadas[['Símbolo','Precio (MXN)','Recomendación','Motivo']], width='stretch')
-                st.warning("Estas señales se calcularon a partir de los precios de la cartera.")
+            st.subheader("📢 Alertas de Venta Urgentes (Cartera)")
+            if not df_ventas_activas.empty:
+                st.warning(f"Se detectaron {len(df_ventas_activas)} activos listos para salir:")
+                st.dataframe(df_ventas_activas, use_container_width=True)
             else:
-                st.info("Sin ventas. Tus posiciones abiertas no han alcanzado Take Profit (+15%) ni Stop Loss (-7%).")
+                st.success("No hay alertas de Take Profit o Stop Loss en tu cartera actual.")
 
+        with tab3:
+            st.dataframe(observar, use_container_width=True)
+            
+        # ... continua con el resto de tus pestañas (tab4, tab5, etc.)
     # --- Pestaña 3: Observar ---
     with tab3:
         if not observar.empty:
