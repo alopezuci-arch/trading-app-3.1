@@ -1755,57 +1755,68 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.write("DEBUG compras_alerta (primeras 3):", compras_alerta.head(3) if not compras_alerta.empty else "Vacío")
     # =====================================
 
-    # ========== FORZAR VENTAS DESDE LA CARTERA PARA LAS ALERTAS ==========
-        # Obtener precios guardados por la cartera
-    precios_guardados = st.session_state.get('PRECIOS_ACTUALES', {})
-    posiciones_cartera = st.session_state.get('PRECIO_COMPRA', {})
-    ventas_forzadas = []
-    for simbolo, datos in posiciones_cartera.items():
-        precio_compra = datos if isinstance(datos, (int, float)) else datos.get('precio', 0)
-        if precio_compra <= 0 or simbolo not in precios_guardados:
+   # ========== FORZAR VENTAS DESDE LA CARTERA PARA LAS ALERTAS (CORREGIDO) ==========
+posiciones_json = repo_cargar_posiciones() # Leemos directo del archivo para mayor seguridad
+ventas_forzadas = []
+
+if posiciones_json:
+    for simbolo, datos in posiciones_json.items():
+        # Extraer precio de compra manejando ambos formatos de tu JSON
+        precio_compra = datos.get('precio', 0) if isinstance(datos, dict) else datos
+        
+        if precio_compra <= 0:
             continue
-        precio_actual_mxn = precios_guardados[simbolo]
-        ganancia = ((precio_actual_mxn / precio_compra) - 1) * 100
-        if ganancia >= 15:
-            ventas_forzadas.append({
-                'Símbolo': simbolo,
-                'Precio (MXN)': round(precio_actual_mxn, 2),
-                'Score': 0,
-                'RSI': 0,
-                'Stop Loss': 0,
-                'Take Profit': 0,
-                'Recomendación': 'VENDER',
-                'Motivo': f'🎯 Take Profit +{ganancia:.1f}%',
-                'Señales': '',
-                'Unidades': 0,
-                'Inversión (MXN)': 0,
-                '% Capital': 0,
-                'Dist EMA50': 0
-            })
-        elif ganancia <= -7:
-            ventas_forzadas.append({
-                'Símbolo': simbolo,
-                'Precio (MXN)': round(precio_actual_mxn, 2),
-                'Score': 0,
-                'RSI': 0,
-                'Stop Loss': 0,
-                'Take Profit': 0,
-                'Recomendación': 'VENDER',
-                'Motivo': f'🛑 Stop Loss {ganancia:.1f}%',
-                'Señales': '',
-                'Unidades': 0,
-                'Inversión (MXN)': 0,
-                '% Capital': 0,
-                'Dist EMA50': 0
-            })
+
+        # Intentar obtener precio actual de la sesión o descargar de Yahoo
+        precios_guardados = st.session_state.get('PRECIOS_ACTUALES', {})
+        precio_actual = precios_guardados.get(simbolo)
+
+        if precio_actual is None:
+            try:
+                tk = yf.Ticker(simbolo)
+                # Intentamos obtener el precio más reciente
+                precio_actual = tk.info.get('regularMarketPrice') or tk.info.get('currentPrice')
+                if not precio_actual:
+                    h = tk.history(period="1d")
+                    precio_actual = h['Close'].iloc[-1] if not h.empty else None
+            except:
+                precio_actual = None
+
+        if precio_actual:
+            ganancia = ((precio_actual / precio_compra) - 1) * 100
+            
+            # Lógica de alertas (Take Profit +15% o Stop Loss -7%)
+            if ganancia >= 15 or ganancia <= -7:
+                motivo = f'🎯 Take Profit +{ganancia:.1f}%' if ganancia >= 15 else f'🛑 Stop Loss {ganancia:.1f}%'
+                
+                ventas_forzadas.append({
+                    'Símbolo': simbolo,
+                    'Precio (MXN)': round(precio_actual, 2),
+                    'Score': 0,
+                    'RSI': 0,
+                    'Stop Loss': 0,
+                    'Take Profit': 0,
+                    'Recomendación': 'VENDER',
+                    'Motivo': motivo,
+                    'Señales': 'ALERTA DE CARTERA',
+                    'Unidades': datos.get('cantidad', 0) if isinstance(datos, dict) else 0,
+                    'Inversión (MXN)': 0,
+                    '% Capital': 0,
+                    'Dist EMA50': 0
+                })
+
     if ventas_forzadas:
         df_ventas_forzadas = pd.DataFrame(ventas_forzadas)
-        if not ventas.empty:
-            simbolos_ya_venta = ventas['Símbolo'].tolist()
-            df_ventas_forzadas = df_ventas_forzadas[~df_ventas_forzadas['Símbolo'].isin(simbolos_ya_venta)]
-        if not df_ventas_forzadas.empty:
+        # Combinar con las ventas que ya existan en el escáner
+        if 'ventas' in locals() and not ventas.empty:
+            simbolos_ya_en_tabla = ventas['Símbolo'].tolist()
+            df_ventas_forzadas = df_ventas_forzadas[~df_ventas_forzadas['Símbolo'].isin(simbolos_ya_en_tabla)]
             ventas = pd.concat([ventas, df_ventas_forzadas], ignore_index=True)
-            st.session_state['ventas'] = ventas
+        else:
+            ventas = df_ventas_forzadas
+        
+        # Guardar en el estado para que la Pestaña de Ventas lo muestre
+        st.session_state['ventas'] = ventas
 
     #=================================================================================
     if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
@@ -1962,7 +1973,16 @@ if 'df' in st.session_state:
 
     # --- Pestaña 4: Todas las acciones ---
     with tab4:
-        st.dataframe(df, width='stretch')
+        st.subheader("Señales de Venta (Take Profit / Stop Loss)")
+        # Usamos las alertas guardadas en el session_state que generamos arriba
+        alertas = st.session_state.get('alertas_venta', [])
+        
+        if alertas:
+            df_ventas = pd.DataFrame(alertas)
+            st.warning("⚠️ ACCIONES EN ZONA DE VENTA")
+            st.dataframe(df_ventas, use_container_width=True)
+        else:
+            st.success("✅ No hay señales de venta. Todas las posiciones están dentro de los rangos o en crecimiento.")
         
     # --- Pestaña 5: Cartera actual ---
     with tab5:
