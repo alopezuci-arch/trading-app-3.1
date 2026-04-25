@@ -1755,68 +1755,68 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.write("DEBUG compras_alerta (primeras 3):", compras_alerta.head(3) if not compras_alerta.empty else "Vacío")
     # =====================================
 
-   # ========== FORZAR VENTAS DESDE LA CARTERA PARA LAS ALERTAS (CORREGIDO) ==========
-posiciones_json = repo_cargar_posiciones() # Leemos directo del archivo para mayor seguridad
-ventas_forzadas = []
-
-if posiciones_json:
-    for simbolo, datos in posiciones_json.items():
-        # Extraer precio de compra manejando ambos formatos de tu JSON
-        precio_compra = datos.get('precio', 0) if isinstance(datos, dict) else datos
-        
-        if precio_compra <= 0:
-            continue
-
-        # Intentar obtener precio actual de la sesión o descargar de Yahoo
-        precios_guardados = st.session_state.get('PRECIOS_ACTUALES', {})
-        precio_actual = precios_guardados.get(simbolo)
-
-        if precio_actual is None:
-            try:
-                tk = yf.Ticker(simbolo)
-                # Intentamos obtener el precio más reciente
-                precio_actual = tk.info.get('regularMarketPrice') or tk.info.get('currentPrice')
-                if not precio_actual:
-                    h = tk.history(period="1d")
-                    precio_actual = h['Close'].iloc[-1] if not h.empty else None
-            except:
-                precio_actual = None
-
-        if precio_actual:
-            ganancia = ((precio_actual / precio_compra) - 1) * 100
+       # ========== FORZAR VENTAS DESDE LA CARTERA PARA LAS ALERTAS (CORREGIDO) ==========
+    posiciones_json = repo_cargar_posiciones() # Leemos directo del archivo para mayor seguridad
+    ventas_forzadas = []
+    
+    if posiciones_json:
+        for simbolo, datos in posiciones_json.items():
+            # Extraer precio de compra manejando ambos formatos de tu JSON
+            precio_compra = datos.get('precio', 0) if isinstance(datos, dict) else datos
             
-            # Lógica de alertas (Take Profit +15% o Stop Loss -7%)
-            if ganancia >= 15 or ganancia <= -7:
-                motivo = f'🎯 Take Profit +{ganancia:.1f}%' if ganancia >= 15 else f'🛑 Stop Loss {ganancia:.1f}%'
+            if precio_compra <= 0:
+                continue
+    
+            # Intentar obtener precio actual de la sesión o descargar de Yahoo
+            precios_guardados = st.session_state.get('PRECIOS_ACTUALES', {})
+            precio_actual = precios_guardados.get(simbolo)
+    
+            if precio_actual is None:
+                try:
+                    tk = yf.Ticker(simbolo)
+                    # Intentamos obtener el precio más reciente
+                    precio_actual = tk.info.get('regularMarketPrice') or tk.info.get('currentPrice')
+                    if not precio_actual:
+                        h = tk.history(period="1d")
+                        precio_actual = h['Close'].iloc[-1] if not h.empty else None
+                except:
+                    precio_actual = None
+    
+            if precio_actual:
+                ganancia = ((precio_actual / precio_compra) - 1) * 100
                 
-                ventas_forzadas.append({
-                    'Símbolo': simbolo,
-                    'Precio (MXN)': round(precio_actual, 2),
-                    'Score': 0,
-                    'RSI': 0,
-                    'Stop Loss': 0,
-                    'Take Profit': 0,
-                    'Recomendación': 'VENDER',
-                    'Motivo': motivo,
-                    'Señales': 'ALERTA DE CARTERA',
-                    'Unidades': datos.get('cantidad', 0) if isinstance(datos, dict) else 0,
-                    'Inversión (MXN)': 0,
-                    '% Capital': 0,
-                    'Dist EMA50': 0
-                })
-
-    if ventas_forzadas:
-        df_ventas_forzadas = pd.DataFrame(ventas_forzadas)
-        # Combinar con las ventas que ya existan en el escáner
-        if 'ventas' in locals() and not ventas.empty:
-            simbolos_ya_en_tabla = ventas['Símbolo'].tolist()
-            df_ventas_forzadas = df_ventas_forzadas[~df_ventas_forzadas['Símbolo'].isin(simbolos_ya_en_tabla)]
-            ventas = pd.concat([ventas, df_ventas_forzadas], ignore_index=True)
-        else:
-            ventas = df_ventas_forzadas
-        
-        # Guardar en el estado para que la Pestaña de Ventas lo muestre
-        st.session_state['ventas'] = ventas
+                # Lógica de alertas (Take Profit +15% o Stop Loss -7%)
+                if ganancia >= 15 or ganancia <= -7:
+                    motivo = f'🎯 Take Profit +{ganancia:.1f}%' if ganancia >= 15 else f'🛑 Stop Loss {ganancia:.1f}%'
+                    
+                    ventas_forzadas.append({
+                        'Símbolo': simbolo,
+                        'Precio (MXN)': round(precio_actual, 2),
+                        'Score': 0,
+                        'RSI': 0,
+                        'Stop Loss': 0,
+                        'Take Profit': 0,
+                        'Recomendación': 'VENDER',
+                        'Motivo': motivo,
+                        'Señales': 'ALERTA DE CARTERA',
+                        'Unidades': datos.get('cantidad', 0) if isinstance(datos, dict) else 0,
+                        'Inversión (MXN)': 0,
+                        '% Capital': 0,
+                        'Dist EMA50': 0
+                    })
+    
+        if ventas_forzadas:
+            df_ventas_forzadas = pd.DataFrame(ventas_forzadas)
+            # Combinar con las ventas que ya existan en el escáner
+            if 'ventas' in locals() and not ventas.empty:
+                simbolos_ya_en_tabla = ventas['Símbolo'].tolist()
+                df_ventas_forzadas = df_ventas_forzadas[~df_ventas_forzadas['Símbolo'].isin(simbolos_ya_en_tabla)]
+                ventas = pd.concat([ventas, df_ventas_forzadas], ignore_index=True)
+            else:
+                ventas = df_ventas_forzadas
+            
+            # Guardar en el estado para que la Pestaña de Ventas lo muestre
+            st.session_state['ventas'] = ventas
 
     #=================================================================================
     if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
