@@ -415,12 +415,20 @@ def cargar_historial_senales() -> pd.DataFrame:
     return pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
     
 def guardar_senal_en_historial(senal: dict, fecha: str):
+    """
+    Versión CORREGIDA para asegurar la extracción de ganancias (+15%)
+    y evitar que el dashboard de ventas aparezca vacío.
+    """
     import re
-    # Cargar historial existente o crear DataFrame vacío
+    import os
+    import pandas as pd
+    from datetime import datetime, timedelta
+
+    # 1. Cargar historial existente o crear estructura base
     if os.path.exists(HISTORIAL_FILE):
         try:
             df = pd.read_csv(HISTORIAL_FILE, on_bad_lines='skip')
-            # Limpiar fechas
+            # Limpieza de fechas
             if 'fecha' in df.columns:
                 df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
                 df = df.dropna(subset=['fecha'])
@@ -431,23 +439,32 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
     else:
         df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
 
-    # Extraer ganancia porcentual si es señal de venta
+    # 2. Extracción robusta de ganancia porcentual
     ganancia = None
-        # Extraer ganancia porcentual si es señal de venta
-    ganancia = None
-    if senal['Recomendación'] == "VENDER" and 'Motivo' in senal:
+    if senal.get('Recomendación') == "VENDER" and 'Motivo' in senal:
         motivo = senal['Motivo']
-        # Intento 1: patrón estándar con signo y decimales
-        match = re.search(r'([+-]\d+(?:\.\d+)?)%', motivo)
-        if not match:
-            # Intento 2: buscar cualquier número decimal (puede ser sin signo explícito)
-            match = re.search(r'(\d+(?:\.\d+)?)%', motivo)
+        
+        # EXPRESIÓN REGULAR MEJORADA:
+        # - [+-]? : signo opcional
+        # - \d+ : uno o más dígitos
+        # - (?:\.\d+)? : decimales opcionales
+        # - % : símbolo de porcentaje
+        match = re.search(r'([+-]?\d+(?:\.\d+)?)%', motivo)
+        
         if match:
             ganancia = float(match.group(1))
         else:
-            # Depuración: mostrar el motivo que no se pudo parsear
-            st.warning(f"No se pudo extraer ganancia de: {motivo}")
+            # FALLBACK 1: Buscar números cerca de "Take Profit" o "TP"
+            match_tp = re.search(r'(?:Take Profit|TP)\s*([+-]?\d+(?:\.\d+)?)', motivo, re.IGNORECASE)
+            if match_tp:
+                ganancia = float(match_tp.group(1))
+            else:
+                # FALLBACK 2: Buscar números cerca de "Stop Loss" o "SL"
+                match_sl = re.search(r'(?:Stop Loss|SL)\s*([+-]?\d+(?:\.\d+)?)', motivo, re.IGNORECASE)
+                if match_sl:
+                    ganancia = float(match_sl.group(1))
 
+    # 3. Preparar nueva fila
     nueva = pd.DataFrame([{
         'fecha': pd.to_datetime(fecha, errors='coerce'),
         'simbolo': senal['Símbolo'],
@@ -458,51 +475,16 @@ def guardar_senal_en_historial(senal: dict, fecha: str):
         'ganancia_pct': ganancia
     }])
 
+    # 4. Concatenar y mantener ventana de 90 días
     df = pd.concat([df, nueva], ignore_index=True)
-    # Mantener solo últimos 90 días
     cutoff = datetime.now() - timedelta(days=90)
     df = df[df['fecha'] >= cutoff]
-    st.write(f"DEBUG: Guardando señal - simbolo: {senal['Símbolo']}, ganancia: {ganancia}")
+    
+    # 5. Guardar
     df.to_csv(HISTORIAL_FILE, index=False)
-
-def dashboard_rendimiento_real():
-    st.subheader("📊 Rendimiento Real de mi Cartera")
     
-    df_trans = cargar_transacciones() 
-    
-    if df_trans is not None and not df_trans.empty:
-        df_trans['tipo'] = df_trans['tipo'].astype(str).str.strip().str.lower()
-        ventas = df_trans[df_trans['tipo'] == 'venta'].copy()
-        ventas['ganancia_pct'] = pd.to_numeric(ventas['ganancia_pct'], errors='coerce')
-        ventas = ventas.dropna(subset=['ganancia_pct'])
-        
-        if not ventas.empty:
-            # Calcular ganancia en MXN
-            # fórmula: ganancia_mxn = total * (ganancia_pct/100) / (1 + ganancia_pct/100)
-            ventas['ganancia_mxn'] = ventas['total'] * (ventas['ganancia_pct'] / 100) / (1 + ventas['ganancia_pct'] / 100)
-            ventas['ganancia_mxn'] = ventas['ganancia_mxn'].round(2)
-            
-            aciertos = ventas[ventas['ganancia_pct'] > 0]
-            win_rate = (len(aciertos) / len(ventas)) * 100
-            ganancia_total_mxn = ventas['ganancia_mxn'].sum()
-            
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Win Rate Real", f"{win_rate:.1f}%")
-            col2.metric("Ventas", len(ventas))
-            col3.metric("Ganancia Promedio %", f"{ventas['ganancia_pct'].mean():.2f}%")
-            col4.metric("💰 Ganancia Total (MXN)", f"${ganancia_total_mxn:,.2f}")
-            
-            # Gráfico con escala de colores
-            fig = px.bar(ventas, x='fecha', y='ganancia_pct', color='ganancia_pct',
-                         hover_data=['simbolo', 'notas', 'ganancia_mxn'],
-                         title="Historial Real de Trading",
-                         labels={'ganancia_mxn': 'Ganancia (MXN)'},
-                         color_continuous_scale=[(0, "red"), (0.5, "yellow"), (1, "green")])
-            st.plotly_chart(fig, width='stretch', key="dash_real_definitivo")
-        else:
-            st.warning("Se leyó el archivo pero no se detectaron filas de 'venta' con porcentaje de ganancia.")
-    else:
-        st.error("No se pudieron cargar datos desde el repositorio. Revisa la conexión con GitHub.")
+    # Debug opcional para consola de Streamlit
+    # print(f"Historial actualizado: {senal['Símbolo']} | Ganancia: {ganancia}%")
         
 #Analisis de ADN de exito      
 def analizar_adn_exito():
