@@ -1879,7 +1879,12 @@ if 'df' in st.session_state:
         col3.metric("👀 Observar", len(observar))
         col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
         
-    # ========== PRE-PROCESAMIENTO DE ALERTAS DE CARTERA ==========
+    # 1. FILTRADO PREVIO
+    compras = df[df['Recomendación'].str.startswith('COMPRAR', na=False)]
+    observar = df[df['Recomendación'] == 'OBSERVAR']
+    ventas_tecnicas = df[df['Recomendación'].str.contains('VENDER|VENTA', na=False)]
+
+    # 2. MOTOR DE ALERTAS DE CARTERA (Cálculo antes de las pestañas)
     posiciones_json = repo_cargar_posiciones()
     alertas_cartera = []
     
@@ -1887,27 +1892,35 @@ if 'df' in st.session_state:
         for simbolo, datos in posiciones_json.items():
             p_compra = datos.get('precio', 0)
             if p_compra <= 0: continue
-
-            # Buscamos precio actual en el DF ya procesado para ir rápido
+            
             p_actual = None
             if simbolo in df['Símbolo'].values:
                 p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
             
             if p_actual:
                 ganancia = ((p_actual / p_compra) - 1) * 100
-                # Umbrales: Take Profit +15% o Stop Loss -7%
                 if ganancia >= 15.0 or ganancia <= -7.0:
-                    tipo_salida = "🎯 TP" if ganancia >= 15 else "🛑 SL"
+                    motivo = f"🎯 TP +{ganancia:.2f}%" if ganancia >= 15 else f"🛑 SL {ganancia:.2f}%"
                     alertas_cartera.append({
                         'Símbolo': simbolo,
-                        'Precio Compra': round(p_compra, 2),
-                        'Precio Actual': round(p_actual, 2),
+                        'Precio Compra': p_compra,
+                        'Precio Actual': p_actual,
                         'Ganancia (%)': f"{ganancia:.2f}%",
-                        'Acción': 'VENDER',
-                        'Motivo': f"{tipo_salida} alcanzado"
+                        'Motivo': motivo
                     })
 
-    # ========== RENDERIZADO DE PESTAÑAS ==========
+    df_cartera_vender = pd.DataFrame(alertas_cartera)
+
+    # 3. MÉTRICAS (Usa los datos ya calculados)
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("✅ Compras", len(compras))
+    # Suma señales de mercado + alertas de tu cartera personal
+    total_v = len(ventas_tecnicas) + len(df_cartera_vender)
+    col2.metric("🔴 Ventas", total_v) 
+    col3.metric("👀 Observar", len(observar))
+    col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
+
+    # 4. PESTAÑAS (Asegúrate de que el nombre de las variables coincida)
     st.subheader("📊 Resultados detallados")
     tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS",
@@ -1918,22 +1931,18 @@ if 'df' in st.session_state:
         st.dataframe(compras, use_container_width=True)
 
     with tab2:
-        # 1. Señales técnicas de venta del Escáner
-        st.subheader("📉 Señales Técnicas de Venta (Mercado)")
-        ventas_mercado = df[df['Recomendación'].str.contains('VENDER|VENTA', na=False)]
-        if not ventas_mercado.empty:
-            st.dataframe(ventas_mercado, use_container_width=True)
+        # Prioridad 1: Tu dinero real
+        if not df_cartera_vender.empty:
+            st.error("🚨 POSICIONES DE TU CARTERA EN OBJETIVO (VENDER)")
+            st.table(df_cartera_vender)
+            st.divider()
+        
+        # Prioridad 2: Señales generales del mercado
+        st.subheader("📉 Señales Técnicas de Venta")
+        if not ventas_tecnicas.empty:
+            st.dataframe(ventas_tecnicas, use_container_width=True)
         else:
-            st.info("No hay señales técnicas de venta en los tickers analizados.")
-
-        # 2. Alertas críticas de tu cartera real
-        st.divider()
-        st.subheader("📢 Alertas de Salida (Tu Cartera)")
-        if alertas_cartera:
-            st.warning(f"⚠️ ¡Atención! Tienes {len(alertas_cartera)} posiciones para cerrar:")
-            st.table(pd.DataFrame(alertas_cartera))
-        else:
-            st.success("✅ Todas tus posiciones en cartera están en rangos seguros.")
+            st.info("No hay señales técnicas de venta en el escáner.")
 
     with tab3:
         st.dataframe(observar, use_container_width=True)
