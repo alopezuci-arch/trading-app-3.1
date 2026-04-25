@@ -1756,22 +1756,16 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     # =====================================
 
     # ========== FORZAR VENTAS DESDE LA CARTERA PARA LAS ALERTAS ==========
-    # Obtener las posiciones actuales
+        # Obtener precios guardados por la cartera
+    precios_guardados = st.session_state.get('PRECIOS_ACTUALES', {})
     posiciones_cartera = st.session_state.get('PRECIO_COMPRA', {})
     ventas_forzadas = []
-    
     for simbolo, datos in posiciones_cartera.items():
         precio_compra = datos if isinstance(datos, (int, float)) else datos.get('precio', 0)
-        if precio_compra <= 0:
+        if precio_compra <= 0 or simbolo not in precios_guardados:
             continue
-        # Obtener precio actual (mismo método que la cartera)
-        precio_actual = obtener_precio_actual(simbolo)
-        if precio_actual is None:
-            continue
-        factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
-        precio_actual_mxn = precio_actual * factor
+        precio_actual_mxn = precios_guardados[simbolo]
         ganancia = ((precio_actual_mxn / precio_compra) - 1) * 100
-        
         if ganancia >= 15:
             ventas_forzadas.append({
                 'Símbolo': simbolo,
@@ -1804,8 +1798,6 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                 '% Capital': 0,
                 'Dist EMA50': 0
             })
-    
-    # Fusionar las ventas forzadas con las ventas existentes (evitando duplicados)
     if ventas_forzadas:
         df_ventas_forzadas = pd.DataFrame(ventas_forzadas)
         if not ventas.empty:
@@ -1813,9 +1805,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
             df_ventas_forzadas = df_ventas_forzadas[~df_ventas_forzadas['Símbolo'].isin(simbolos_ya_venta)]
         if not df_ventas_forzadas.empty:
             ventas = pd.concat([ventas, df_ventas_forzadas], ignore_index=True)
-            # Actualizar también en session_state (por si se usan después)
             st.session_state['ventas'] = ventas
-            st.success(f"✅ Se añadieron {len(df_ventas_forzadas)} señal(es) de venta forzada para las alertas.")
 
     #=================================================================================
     if (alerta_email or alerta_whatsapp) and (not compras_alerta.empty or not ventas.empty):
@@ -1916,24 +1906,22 @@ if 'df' in st.session_state:
         else:
             st.info("Sin compras.")
 
-        # --- Pestaña 2: Ventas ---
-    with tab2:
+    # --- Pestaña 2: Ventas ---
+        with tab2:
+        # Primero, verificar si hay ventas del análisis normal
         if not ventas.empty:
             cols_ventas = ['Símbolo','Precio (MXN)','Score','RSI','Stop Loss','Take Profit','Recomendación','Motivo']
             st.dataframe(ventas[[c for c in cols_ventas if c in ventas.columns]], width='stretch')
         else:
-            # Intentar calcular ventas forzadas desde la cartera (usando precios actuales)
+            # Si no, calcular ventas usando los precios guardados por la cartera
+            precios_guardados = st.session_state.get('PRECIOS_ACTUALES', {})
             posiciones_cartera = st.session_state.get('PRECIO_COMPRA', {})
             ventas_forzadas = []
             for simbolo, datos in posiciones_cartera.items():
                 precio_compra = datos if isinstance(datos, (int, float)) else datos.get('precio', 0)
-                if precio_compra <= 0:
+                if precio_compra <= 0 or simbolo not in precios_guardados:
                     continue
-                precio_actual = obtener_precio_actual(simbolo)
-                if precio_actual is None:
-                    continue
-                factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
-                precio_actual_mxn = precio_actual * factor
+                precio_actual_mxn = precios_guardados[simbolo]
                 ganancia = ((precio_actual_mxn / precio_compra) - 1) * 100
                 if ganancia >= 15:
                     ventas_forzadas.append({
@@ -1959,11 +1947,8 @@ if 'df' in st.session_state:
                     })
             if ventas_forzadas:
                 df_ventas_forzadas = pd.DataFrame(ventas_forzadas)
-                # Mostrar las ventas forzadas
                 st.dataframe(df_ventas_forzadas[['Símbolo','Precio (MXN)','Recomendación','Motivo']], width='stretch')
-                st.warning("⚠️ Estas señales se calcularon directamente desde tu cartera. Si deseas registrar la venta, usa el formulario en la barra lateral.")
-                # Opcional: actualizar automáticamente la variable 'ventas' para que el correo también las incluya
-                # (pero eso requeriría modificar session_state, lo cual es posible pero más complejo)
+                st.warning("Estas señales se calcularon a partir de los precios de la cartera.")
             else:
                 st.info("Sin ventas. Tus posiciones abiertas no han alcanzado Take Profit (+15%) ni Stop Loss (-7%).")
 
@@ -1999,7 +1984,7 @@ if 'df' in st.session_state:
                     factor = st.session_state.get('usd_mxn', usd_mxn)
 
                 # Obtener precio en MXN
-                p_actual_mxn = None
+                st.session_state.setdefault('PRECIOS_ACTUALES', {})[simb] = p_actual_mxn
                 if 'df' in locals() and not df.empty and simb in df['Símbolo'].values:
                     # El precio en df ya está en MXN
                     p_actual_mxn = df[df['Símbolo'] == simb]['Precio (MXN)'].iloc[0]
