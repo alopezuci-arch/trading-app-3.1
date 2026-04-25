@@ -1878,90 +1878,68 @@ if 'df' in st.session_state:
         col2.metric("🔴 Ventas", len(ventas))
         col3.metric("👀 Observar", len(observar))
         col4.metric("🚫 Evitar", len(df[df['Recomendación'] == 'EVITAR']))
+        # ========== PRE-PROCESAMIENTO DE ALERTAS DE CARTERA ==========
+        posiciones_json = repo_cargar_posiciones()
+        alertas_cartera = []
         
-        # ========== TABLAS Y SECCIONES ORGANIZADAS EN PESTAÑAS ==========
+        if posiciones_json:
+            for simbolo, datos in posiciones_json.items():
+                p_compra = datos.get('precio', 0)
+                if p_compra <= 0: continue
+
+                # Buscamos precio actual en el DF ya procesado para ir rápido
+                p_actual = None
+                if simbolo in df['Símbolo'].values:
+                    p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
+                
+                if p_actual:
+                    ganancia = ((p_actual / p_compra) - 1) * 100
+                    # Umbrales: Take Profit +15% o Stop Loss -7%
+                    if ganancia >= 15.0 or ganancia <= -7.0:
+                        tipo_salida = "🎯 TP" if ganancia >= 15 else "🛑 SL"
+                        alertas_cartera.append({
+                            'Símbolo': simbolo,
+                            'Precio Compra': round(p_compra, 2),
+                            'Precio Actual': round(p_actual, 2),
+                            'Ganancia (%)': f"{ganancia:.2f}%",
+                            'Acción': 'VENDER',
+                            'Motivo': f"{tipo_salida} alcanzado"
+                        })
+
+        # ========== RENDERIZADO DE PESTAÑAS ==========
         st.subheader("📊 Resultados detallados")
         tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
             "🟢 COMPRAS", "🔴 VENTAS", "🟡 OBSERVAR", "🔍 TODAS",
             "💼 CARTERA", "📜 HISTORIAL", "🏆 TOP 10", "📊 RENDIMIENTO"
         ])
 
-        # 1. MOTOR DE ALERTAS (Calculamos antes de llenar las pestañas)
-        posiciones_json = repo_cargar_posiciones()
-        todas_las_alertas = []
-
-        if posiciones_json:
-            for simbolo, datos in posiciones_json.items():
-                p_compra = datos.get('precio', 0)
-                if p_compra <= 0: continue
-
-                # Buscar precio actual en el DataFrame del escáner para ahorrar tiempo
-                p_actual = None
-                if 'df' in locals() and not df.empty and simbolo in df['Símbolo'].values:
-                    p_actual = df[df['Símbolo'] == simbolo]['Precio (MXN)'].iloc[0]
-                
-                # Si no está en el escáner, lo buscamos rápido en Yahoo
-                if p_actual is None or pd.isna(p_actual):
-                    p_actual = obtener_precio_actual(simbolo)
-
-                if p_actual:
-                    ganancia = ((p_actual / p_compra) - 1) * 100
-                    # Umbrales: Take Profit +15% o Stop Loss -7%
-                    if ganancia >= 15.0 or ganancia <= -7.0:
-                        motivo = f"🎯 TP +{ganancia:.2f}%" if ganancia >= 15 else f"🛑 SL {ganancia:.2f}%"
-                        todas_las_alertas.append({
-                            'Símbolo': simbolo,
-                            'Precio Compra': round(p_compra, 2),
-                            'Precio Actual': round(p_actual, 2),
-                            'Ganancia (%)': round(ganancia, 2),
-                            'Recomendación': 'VENDER',
-                            'Motivo': motivo
-                        })
-
-        # Guardamos en el estado de la sesión para persistencia
-        st.session_state['alertas_venta_final'] = todas_las_alertas
-        df_ventas_activas = pd.DataFrame(todas_las_alertas)
-
-        # 2. LLENADO DE CADA PESTAÑA
         with tab1:
             st.dataframe(compras, use_container_width=True)
 
         with tab2:
-            st.subheader("📢 Alertas de Venta Urgentes (Cartera)")
-            if not df_ventas_activas.empty:
-                st.warning(f"Se detectaron {len(df_ventas_activas)} activos listos para salir:")
-                st.dataframe(df_ventas_activas, use_container_width=True)
+            # 1. Señales técnicas de venta del Escáner
+            st.subheader("📉 Señales Técnicas de Venta (Mercado)")
+            ventas_mercado = df[df['Recomendación'].str.contains('VENDER|VENTA', na=False)]
+            if not ventas_mercado.empty:
+                st.dataframe(ventas_mercado, use_container_width=True)
             else:
-                st.success("No hay alertas de Take Profit o Stop Loss en tu cartera actual.")
+                st.info("No hay señales técnicas de venta en los tickers analizados.")
+
+            # 2. Alertas críticas de tu cartera real
+            st.divider()
+            st.subheader("📢 Alertas de Salida (Tu Cartera)")
+            if alertas_cartera:
+                st.warning(f"⚠️ ¡Atención! Tienes {len(alertas_cartera)} posiciones para cerrar:")
+                st.table(pd.DataFrame(alertas_cartera))
+            else:
+                st.success("✅ Todas tus posiciones en cartera están en rangos seguros.")
 
         with tab3:
             st.dataframe(observar, use_container_width=True)
-            
-        # ... continua con el resto de tus pestañas (tab4, tab5, etc.)
-    # --- Pestaña 3: Observar ---
-    with tab3:
-        if not observar.empty:
-            cols_obs = ['Símbolo','Precio (MXN)','Score','RSI','Stop Loss','Take Profit','Motivo']
-            st.dataframe(observar[[c for c in cols_obs if c in observar.columns]], width='stretch')
-        else:
-            st.info("Sin observaciones.")
 
-    with tab4:
-        st.subheader("📢 Alertas de Salida")
-        alertas_activas = st.session_state.get('alertas_venta_final', [])
-        
-        if alertas_activas:
-            df_v = pd.DataFrame(alertas_activas)
-            st.warning(f"⚠️ Se han detectado {len(df_v)} acciones para cerrar posición:")
-            st.dataframe(df_v.style.highlight_max(subset=['Ganancia (%)'], color='#2e7d32'), use_container_width=True)
+        with tab4:
+            st.dataframe(df, use_container_width=True)
             
-            # Botón para limpiar historial de señales si fuera necesario
-            if st.button("Confirmar revisión de alertas"):
-                st.toast("Alertas revisadas")
-        else:
-            st.success("✅ No hay acciones en zona de Take Profit (+15%) o Stop Loss (-7%)")
-            st.info("El sistema sigue monitoreando los precios en tiempo real.")
-        
    with tab5:
         st.subheader("💼 Mi Cartera Actual")
         pos_cartera = repo_cargar_posiciones()
