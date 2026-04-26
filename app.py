@@ -1943,89 +1943,89 @@ if 'df' in st.session_state:
         dashboard_rendimiento_real()
         analizar_adn_exito()
             # ===== SIMULACIÓN DE SEÑALES DE VENTA PENDIENTES =====
-    st.subheader("🚨 ¿Qué pasa si IGNORAS estas señales de venta?")
-    
-    # Obtener señales de venta pendientes
-    alertas_pendientes = st.session_state.get('alertas_venta_final', [])
-    # También las señales técnicas de venta (dataframe ventas)
-    df_ventas_tecnicas = st.session_state.get('ventas', pd.DataFrame())
-    
-    pendientes = []
-    for a in alertas_pendientes:
-        pendientes.append({
-            'Símbolo': a['Símbolo'],
-            'Tipo': 'TP/SL',
-            'Precio Actual': a['Precio Actual'],
-            'Motivo': a['Motivo']
-        })
-    if not df_ventas_tecnicas.empty:
-        for _, row in df_ventas_tecnicas.iterrows():
+        st.subheader("🚨 ¿Qué pasa si IGNORAS estas señales de venta?")
+        
+        # Obtener señales de venta pendientes
+        alertas_pendientes = st.session_state.get('alertas_venta_final', [])
+        # También las señales técnicas de venta (dataframe ventas)
+        df_ventas_tecnicas = st.session_state.get('ventas', pd.DataFrame())
+        
+        pendientes = []
+        for a in alertas_pendientes:
             pendientes.append({
-                'Símbolo': row['Símbolo'],
-                'Tipo': 'Técnica',
-                'Precio Actual': row['Precio (MXN)'],
-                'Motivo': row['Motivo']
+                'Símbolo': a['Símbolo'],
+                'Tipo': 'TP/SL',
+                'Precio Actual': a['Precio Actual'],
+                'Motivo': a['Motivo']
             })
-    
-    if pendientes:
-        # Eliminar duplicados por símbolo (priorizar TP/SL si ambos existen)
-        simbolos_vistos = set()
-        pendientes_unicos = []
-        for p in pendientes:
-            if p['Símbolo'] not in simbolos_vistos:
-                simbolos_vistos.add(p['Símbolo'])
-                pendientes_unicos.append(p)
+        if not df_ventas_tecnicas.empty:
+            for _, row in df_ventas_tecnicas.iterrows():
+                pendientes.append({
+                    'Símbolo': row['Símbolo'],
+                    'Tipo': 'Técnica',
+                    'Precio Actual': row['Precio (MXN)'],
+                    'Motivo': row['Motivo']
+                })
         
-        st.info(f"📊 Analizando {len(pendientes_unicos)} señales de venta activas...")
-        
-        with st.spinner("Ejecutando simulaciones históricas..."):
-            resultados_sim = []
-            for p in pendientes_unicos:
-                # Determinar condición según el motivo
-                motivo = p['Motivo'].lower()
-                if 'take profit' in motivo or 'ganancia' in motivo:
-                    cond = 'TP'
-                elif 'stop loss' in motivo or 'pérdida' in motivo:
-                    cond = 'SL'
-                elif 'rsi' in motivo:
-                    cond = 'RSI_alto'
-                else:
-                    cond = 'Score_bajo'
-                
-                sim = simular_ignorar_senal(p['Símbolo'], p['Precio Actual'], cond, usd_mxn, eur_mxn)
-                if 'error' not in sim:
-                    resultados_sim.append({
-                        'Símbolo': p['Símbolo'],
-                        'Tipo': p['Tipo'],
-                        'Retorno promedio (5d)': f"{sim.get('ret_5d',0):.1f}%",
-                        'Acierto 5d': f"{sim.get('win_rate_5d',0):.0f}%",
-                        'Retorno promedio (10d)': f"{sim.get('ret_10d',0):.1f}%",
-                        'Acierto 10d': f"{sim.get('win_rate_10d',0):.0f}%",
-                    })
-                else:
-                    resultados_sim.append({
-                        'Símbolo': p['Símbolo'],
-                        'Tipo': p['Tipo'],
-                        'Retorno promedio (5d)': 'Sin datos',
-                        'Acierto 5d': '-',
-                        'Retorno promedio (10d)': '-',
-                        'Acierto 10d': '-',
-                    })
-        
-        if resultados_sim:
-            df_sim = pd.DataFrame(resultados_sim)
-            st.dataframe(df_sim, width='stretch')
+        if pendientes:
+            # Eliminar duplicados por símbolo (priorizar TP/SL si ambos existen)
+            simbolos_vistos = set()
+            pendientes_unicos = []
+            for p in pendientes:
+                if p['Símbolo'] not in simbolos_vistos:
+                    simbolos_vistos.add(p['Símbolo'])
+                    pendientes_unicos.append(p)
             
-            st.markdown("""
-            **💡 Interpretación:**
-            - *Retorno promedio (5d)*: Si hubieras ignorado esta señal de venta, en el pasado el precio **subió (positivo) o bajó (negativo)** en promedio después de 5 días.
-            - *Acierto 5d*: Porcentaje de veces que **ignorar la señal habría sido rentable** (precio final > precio actual).
-            - Si el retorno es **negativo** y el acierto **bajo (<50%)**, conviene hacer caso a la señal de venta.
-            """)
+            st.info(f"📊 Analizando {len(pendientes_unicos)} señales de venta activas...")
+            
+            with st.spinner("Ejecutando simulaciones históricas..."):
+                resultados_sim = []
+                for p in pendientes_unicos:
+                    # Determinar condición según el motivo
+                    motivo = p['Motivo'].lower()
+                    if 'take profit' in motivo or 'ganancia' in motivo:
+                        cond = 'TP'
+                    elif 'stop loss' in motivo or 'pérdida' in motivo:
+                        cond = 'SL'
+                    elif 'rsi' in motivo:
+                        cond = 'RSI_alto'
+                    else:
+                        cond = 'Score_bajo'
+                    
+                    sim = simular_ignorar_senal(p['Símbolo'], p['Precio Actual'], cond, usd_mxn, eur_mxn)
+                    if 'error' not in sim:
+                        resultados_sim.append({
+                            'Símbolo': p['Símbolo'],
+                            'Tipo': p['Tipo'],
+                            'Retorno promedio (5d)': f"{sim.get('ret_5d',0):.1f}%",
+                            'Acierto 5d': f"{sim.get('win_rate_5d',0):.0f}%",
+                            'Retorno promedio (10d)': f"{sim.get('ret_10d',0):.1f}%",
+                            'Acierto 10d': f"{sim.get('win_rate_10d',0):.0f}%",
+                        })
+                    else:
+                        resultados_sim.append({
+                            'Símbolo': p['Símbolo'],
+                            'Tipo': p['Tipo'],
+                            'Retorno promedio (5d)': 'Sin datos',
+                            'Acierto 5d': '-',
+                            'Retorno promedio (10d)': '-',
+                            'Acierto 10d': '-',
+                        })
+            
+            if resultados_sim:
+                df_sim = pd.DataFrame(resultados_sim)
+                st.dataframe(df_sim, width='stretch')
+                
+                st.markdown("""
+                **💡 Interpretación:**
+                - *Retorno promedio (5d)*: Si hubieras ignorado esta señal de venta, en el pasado el precio **subió (positivo) o bajó (negativo)** en promedio después de 5 días.
+                - *Acierto 5d*: Porcentaje de veces que **ignorar la señal habría sido rentable** (precio final > precio actual).
+                - Si el retorno es **negativo** y el acierto **bajo (<50%)**, conviene hacer caso a la señal de venta.
+                """)
+            else:
+                st.warning("No se pudo simular ninguna señal.")
         else:
-            st.warning("No se pudo simular ninguna señal.")
-    else:
-        st.info("No hay señales de venta pendientes para simular.")
+            st.info("No hay señales de venta pendientes para simular.")
 
     if 'analisis_ia' in st.session_state and st.session_state['analisis_ia']:
         with st.expander("🤖 Análisis de IA", expanded=True):
