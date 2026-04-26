@@ -458,8 +458,6 @@ def analizar_adn_exito():
     else:
         st.write("Sin datos históricos de señales para analizar.")
 
-   import streamlit as st
-
 # ============================================================
 # LISTAS DE MERCADO (asegúrate de que devuelvan 11 elementos)
 # ============================================================
