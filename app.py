@@ -7,117 +7,133 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from curl_cffi import requests as curl_requests
 import time
+import warnings
 
-# --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="La Abi - chuela | Enterprise Trading System", layout="wide")
+# --- CONFIGURACIÓN DE SEGURIDAD Y ENTORNO ---
+warnings.filterwarnings('ignore')
+st.set_page_config(
+    page_title="La Abi - chuela | Market Intelligence",
+    page_icon="📈",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- PARCHE DE RESILIENCIA PARA YAHOO FINANCE ---
+# Parche de Resiliencia para evitar bloqueos de Yahoo Finance
 def _patched_session():
     return curl_requests.Session(impersonate="chrome124")
-
 yf.shared._requests = _patched_session
 
 # ============================================================
-# CLASE NÚCLEO: INTELIGENCIA DE MERCADO
+# CAPA 1: LÓGICA FINANCIERA ESCALABLE (BACKEND)
 # ============================================================
 class TradingEngine:
-    """Gestiona el escaneo masivo y la lógica de indicadores técnicos."""
+    """Procesamiento multihilo y cálculos vectorizados."""
     
     @staticmethod
     def calcular_indicadores(df):
-        """Cálculos vectorizados de alta velocidad."""
-        if df.empty or len(df) < 14: return df
+        """Cálculos en bloque (Vectorizados) para máxima velocidad."""
+        if df.empty or len(df) < 20: return df
         
-        # RSI
+        # RSI con método de suavizado estándar
         delta = df['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rs = gain / loss.replace(0, np.nan)
         df['RSI'] = 100 - (100 / (1 + rs))
         
-        # Medias Móviles
+        # Medias Móviles Exponenciales
         df['EMA_20'] = df['Close'].ewm(span=20, adjust=False).mean()
         df['EMA_50'] = df['Close'].ewm(span=50, adjust=False).mean()
         
-        # Volatilidad (ATR simplificado)
+        # Volatilidad Relativa
         df['Volatilidad'] = df['Close'].pct_change().rolling(window=10).std()
         
         return df
 
     @staticmethod
-    def generar_score(fila):
-        """Lógica de ADN de éxito del código anterior integrada."""
+    def ADN_exito_score(data):
+        """Lógica de scoring personalizada para 'La Abi - chuela'."""
         score = 0
-        # Puntos por RSI (Zona de valor)
-        if 30 <= fila['RSI'] <= 50: score += 40
-        elif fila['RSI'] < 30: score += 20
+        rsi = data.get('RSI', 50)
+        precio = data.get('Precio', 0)
+        ema20 = data.get('EMA_20', 0)
+        ema50 = data.get('EMA_50', 0)
+
+        # 1. Análisis de Sobreventa (Oportunidad)
+        if rsi <= 35: score += 40  # Muy atractivo
+        elif rsi <= 50: score += 20
         
-        # Puntos por Tendencia
-        if fila['Precio'] > fila['EMA_20']: score += 30
-        if fila['EMA_20'] > fila['EMA_50']: score += 30
+        # 2. Análisis de Tendencia (Confirmación)
+        if precio > ema20: score += 30
+        if ema20 > ema50: score += 30
         
-        return score
+        return min(score, 100)
 
     @classmethod
-    @st.cache_data(ttl=600)
     def procesar_activo(cls, ticker_sym, usd_rate):
-        """Procesa un solo activo con reintentos."""
+        """Unidad de trabajo para los hilos de ejecución."""
         try:
             ticker = yf.Ticker(ticker_sym)
-            hist = ticker.history(period="1y", interval="1d", timeout=10)
-            if hist.empty: return None
+            hist = ticker.history(period="1y", interval="1d", timeout=7)
+            if hist.empty or len(hist) < 20: return None
             
             df = cls.calcular_indicadores(hist)
-            ultimo = df.iloc[-1]
-            penultimo = df.iloc[-2]
+            u = df.iloc[-1]
+            p = df.iloc[-2]
             
-            precio_mxn = ultimo['Close'] * usd_rate
-            
-            data = {
+            row = {
                 "Símbolo": ticker_sym,
-                "Precio (MXN)": round(precio_mxn, 2),
-                "RSI": round(ultimo['RSI'], 2),
-                "EMA_20": ultimo['EMA_20'],
-                "EMA_50": ultimo['EMA_50'],
-                "Precio": ultimo['Close'],
-                "Variación %": round(((ultimo['Close'] / penultimo['Close']) - 1) * 100, 2)
+                "Precio (USD)": u['Close'],
+                "Precio (MXN)": round(u['Close'] * usd_rate, 2),
+                "Variación %": round(((u['Close'] / p['Close']) - 1) * 100, 2),
+                "RSI": round(u['RSI'], 2),
+                "EMA_20": u['EMA_20'],
+                "EMA_50": u['EMA_50'],
+                "Precio": u['Close']
             }
             
-            data["Score"] = cls.generar_score(data)
-            data["Recomendación"] = "COMPRA" if data["Score"] >= 70 else "NEUTRAL"
-            return data
-        except Exception:
+            row["Score"] = cls.ADN_exito_score(row)
+            row["Recomendación"] = "COMPRA" if row["Score"] >= 70 else "MANTENER" if row["Score"] >= 40 else "EVITAR"
+            return row
+        except:
             return None
 
 # ============================================================
-# CAPA DE INTERFAZ (UI MODULAR)
+# CAPA 2: INTERFAZ Y ORQUESTACIÓN (FRONTEND)
 # ============================================================
 def main():
-    st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2422/2422796.png", width=100)
-    st.sidebar.title("La Abi - chuela v4.0")
+    # --- Sidebar de Control ---
+    st.sidebar.markdown(f"## 🥑 La Abi - chuela \n**v4.5 Enterprise**")
+    st.sidebar.divider()
     
-    # 1. Gestión de Divisas (Caché funcional)
+    # Parámetros de Escalabilidad
+    with st.sidebar.expander("⚙️ Configuración de Red", expanded=False):
+        num_threads = st.slider("Hilos en paralelo", 1, 20, 12)
+        timeout_api = st.slider("Timeout API (seg)", 5, 15, 7)
+
+    # Universo de Activos
+    input_tickers = st.sidebar.text_area(
+        "Lista de Tickers", 
+        "AAPL, MSFT, GOOGL, AMZN, TSLA, META, NVDA, NFLX, AMD, PYPL, DIS, BABA",
+        help="Separa los símbolos por comas"
+    )
+    tickers = [t.strip().upper() for t in input_tickers.split(",") if t.strip()]
+
+    # --- Lógica de Tipo de Cambio (Caché optimizada) ---
     @st.cache_data(ttl=3600)
-    def get_usd_mxn():
+    def get_exchange_rate():
         try:
-            d = yf.download("USDMXN=X", period="1d", interval="1m", progress=False)
-            return d['Close'].iloc[-1]
-        except: return 20.0
+            data = yf.download("USDMXN=X", period="1d", interval="1m", progress=False)
+            return data['Close'].iloc[-1]
+        except: return 18.50 # Fallback seguro
 
-    usd_rate = get_usd_mxn()
-    
-    # 2. Selección de Universo
-    universo_input = st.sidebar.text_area("Lista de Tickers (separados por coma)", 
-                                        "AAPL, MSFT, GOOGL, TSLA, AMZN, META, NVDA, AMD, NFLX")
-    tickers = [t.strip().upper() for t in universo_input.split(",")]
-    
-    num_threads = st.sidebar.slider("Hilos de procesamiento (Escalabilidad)", 1, 20, 10)
+    usd_rate = get_exchange_rate()
 
-    # 3. Ejecución del Escáner
-    if st.sidebar.button("🔍 Iniciar Escaneo de Alto Rendimiento"):
+    # --- Ejecución del Escáner ---
+    if st.sidebar.button("🚀 Lanzar Escaneo Masivo", use_container_width=True):
         st.session_state['ejecutado'] = True
-        progress_bar = st.progress(0)
-        status_text = st.empty()
+        progreso = st.progress(0)
+        status = st.empty()
         
         resultados = []
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
@@ -126,44 +142,73 @@ def main():
             for i, future in enumerate(as_completed(futures)):
                 res = future.result()
                 if res: resultados.append(res)
-                progress_bar.progress((i + 1) / len(tickers))
-                status_text.text(f"Procesando: {futures[future]}")
+                progreso.progress((i + 1) / len(tickers))
+                status.caption(f"Analizando: {futures[future]}...")
         
-        st.session_state['df_resultados'] = pd.DataFrame(resultados)
-        st.success(f"Análisis completado: {len(resultados)} activos procesados.")
+        st.session_state['df_master'] = pd.DataFrame(resultados)
+        status.empty()
+        progreso.empty()
 
-    # 4. Visualización de Resultados (Dashboard Integrado)
+    # --- Dashboard de Resultados ---
     if st.session_state.get('ejecutado'):
-        df = st.session_state['df_resultados']
+        df = st.session_state['df_master']
         
-        # Métricas principales
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Tipo de Cambio", f"${usd_rate:.2f} MXN")
-        m2.metric("Oportunidades de Compra", len(df[df['Recomendación'] == 'COMPRA']))
-        m3.metric("RSI Promedio", f"{df['RSI'].mean():.1f}")
+        # 1. KPIs Superiores
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Activos OK", len(df))
+        c2.metric("Oportunidades", len(df[df['Score'] >= 70]))
+        c3.metric("USD/MXN", f"${usd_rate:.2f}")
+        c4.metric("Sentimiento", "Bullish" if df['Score'].mean() > 50 else "Cautela")
 
-        # Tabla Maestra
-        st.subheader("📋 Resultados del Escaneo")
+        # 2. Tabla Maestra Escalable
+        st.subheader("📋 Monitor de Mercado")
+        
+        def color_score(val):
+            color = '#00ff00' if val >= 70 else '#ff9900' if val >= 40 else '#ff4b4b'
+            return f'color: {color}; font-weight: bold'
+
         st.dataframe(
-            df.sort_values(by="Score", ascending=False),
+            df.sort_values(by="Score", ascending=False).style.applymap(color_score, subset=['Score']),
             use_container_width=True,
             column_config={
                 "Score": st.column_config.ProgressColumn("Puntaje ADN", min_value=0, max_value=100),
                 "Variación %": st.column_config.NumberColumn(format="%.2f%%"),
                 "Precio (MXN)": st.column_config.NumberColumn(format="$%.2f")
-            }
+            },
+            hide_index=True
         )
 
-        # Gráfico de Dispersión (Sentiment vs Value)
-        st.subheader("📊 Mapa de Oportunidades")
-        fig = go.Figure(data=go.Scatter(
-            x=df['RSI'], y=df['Score'],
-            mode='markers+text',
-            text=df['Símbolo'],
-            marker=dict(size=df['Variación %'].abs()*5, color=df['Score'], colorscale='Viridis', showscale=True)
-        ))
-        fig.update_layout(xaxis_title="RSI (Sobreventa < 30)", yaxis_title="Score de Éxito")
-        st.plotly_chart(fig, use_container_width=True)
+        # 3. Análisis Visual (Heatmap de Oportunidad)
+        st.divider()
+        col_left, col_right = st.columns(2)
+        
+        with col_left:
+            st.subheader("🎯 Mapa de Valor vs RSI")
+            fig = go.Figure(data=go.Scatter(
+                x=df['RSI'], y=df['Score'],
+                mode='markers+text',
+                text=df['Símbolo'],
+                textposition="top center",
+                marker=dict(
+                    size=15,
+                    color=df['Score'],
+                    colorscale='RdYlGn',
+                    showscale=True,
+                    line=dict(width=1, color='white')
+                )
+            ))
+            fig.update_layout(xaxis_title="RSI (Bajo = Sobreventa)", yaxis_title="Score ADN", height=450)
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col_right:
+            st.subheader("🔥 Top Oportunidades (Score > 70)")
+            top_df = df[df['Score'] >= 70][['Símbolo', 'RSI', 'Recomendación']].reset_index(drop=True)
+            if not top_df.empty:
+                st.table(top_df)
+            else:
+                st.info("Buscando señales fuertes en el mercado...")
 
 if __name__ == "__main__":
+    if 'ejecutado' not in st.session_state:
+        st.session_state['ejecutado'] = False
     main()
