@@ -538,11 +538,12 @@ def analizar_adn_exito():
         ]
         etfs_emergentes = [
             'EWZ','EWJ','FXI','KWEB','EWY','EWT','EWH','EWA','EWC','EWG','EWQ','EWU','VWO','EEM','INDA','EWX'
-        
+
+        ]
         return (sp100, nasdaq100, ibex35, bmv, sp500,
             ia_stocks, commodity_etfs, mining_oil,
             etfs_sectoriales, mid_cap_growth, etfs_emergentes)
-        ]
+        
 # Asignación de las listas (11 variables)
 (sp100, nasdaq100, ibex35, bmv, sp500,
  ia_stocks, commodity_etfs, mining_oil,
