@@ -1,0 +1,1707 @@
+{
+  "PEG": {
+    "accuracy": 74.8,
+    "fecha": "2026-04-17 17:39",
+    "fecha_ultimo_entrenamiento": "2026-04-17 17:39",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 74.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 74.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "PATH": {
+    "accuracy": 68.7,
+    "fecha": "2026-04-17 17:39",
+    "fecha_ultimo_entrenamiento": "2026-04-17 17:39",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 68.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 68.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "RHI": {
+    "accuracy": 61.2,
+    "fecha": "2026-04-17 17:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 17:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 61.2,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 61.2,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "MDT": {
+    "accuracy": 67.3,
+    "fecha": "2026-04-17 17:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 17:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 67.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 67.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "GILD": {
+    "accuracy": 77.6,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 77.6,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 77.6,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "BMY": {
+    "accuracy": 65.3,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 65.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 65.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "TAN": {
+    "accuracy": 71.4,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 71.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 71.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "WMT": {
+    "accuracy": 65.3,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 65.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 65.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "JNJ": {
+    "accuracy": 68.0,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "PEP": {
+    "accuracy": 64.6,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 64.6,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 64.6,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "COST": {
+    "accuracy": 71.4,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 71.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 71.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "MRK": {
+    "accuracy": 69.4,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 69.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 69.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "DUK": {
+    "accuracy": 63.9,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 63.9,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 63.9,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "HON": {
+    "accuracy": 70.1,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 70.1,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 70.1,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "XLE": {
+    "accuracy": 74.8,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 74.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 74.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "KO": {
+    "accuracy": 65.3,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 65.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 65.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "SO": {
+    "accuracy": 74.8,
+    "fecha": "2026-04-17 22:41",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:41",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 74.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 74.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "TGT": {
+    "accuracy": 68.7,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 68.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 68.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "BBAJIOO.MX": {
+    "accuracy": 70.1,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 70.1,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 70.1,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "PFE": {
+    "accuracy": 66.7,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 66.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 66.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "GE": {
+    "accuracy": 61.2,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 61.2,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 61.2,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "MO": {
+    "accuracy": 68.0,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "GS": {
+    "accuracy": 56.5,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 56.5,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 56.5,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "ICLN": {
+    "accuracy": 70.7,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 70.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 70.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "PM": {
+    "accuracy": 67.3,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 67.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 67.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "MCD": {
+    "accuracy": 63.9,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 63.9,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 63.9,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "XLP": {
+    "accuracy": 61.2,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 61.2,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 61.2,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "KRE": {
+    "accuracy": 68.0,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "VZ": {
+    "accuracy": 63.3,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 63.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 63.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "CVX": {
+    "accuracy": 69.4,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 69.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 69.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "NEE": {
+    "accuracy": 66.7,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 66.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 66.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "AMGN": {
+    "accuracy": 74.8,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 74.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 74.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "LMT": {
+    "accuracy": 69.4,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 69.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 69.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "LLY": {
+    "accuracy": 73.5,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 73.5,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 73.5,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "TJX": {
+    "accuracy": 61.2,
+    "fecha": "2026-04-17 22:42",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 61.2,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 61.2,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "IWM": {
+    "accuracy": 70.1,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 70.1,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 70.1,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "KTOS": {
+    "accuracy": 64.6,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 64.6,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 64.6,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "GOOG": {
+    "accuracy": 68.0,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "XLB": {
+    "accuracy": 72.8,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 72.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 72.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "XLRE": {
+    "accuracy": 70.7,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 70.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 70.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "SBUX": {
+    "accuracy": 74.8,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 74.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 74.8,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "INTC": {
+    "accuracy": 68.0,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "ISRG": {
+    "accuracy": 64.6,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 64.6,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 64.6,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "XOM": {
+    "accuracy": 73.5,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 73.5,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 73.5,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "TXN": {
+    "accuracy": 60.5,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 60.5,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 60.5,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "XLU": {
+    "accuracy": 70.7,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 70.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 70.7,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "IBB": {
+    "accuracy": 71.4,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 71.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 71.4,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "PLD": {
+    "accuracy": 63.3,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 63.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 63.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "GOOGL": {
+    "accuracy": 66.0,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 66.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 66.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "MS": {
+    "accuracy": 63.9,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 63.9,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 63.9,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "XLI": {
+    "accuracy": 68.0,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "CAT": {
+    "accuracy": 68.0,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 68.0,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "SOXX": {
+    "accuracy": 75.5,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 75.5,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 75.5,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "GFNORTEO.MX": {
+    "accuracy": 65.3,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 65.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 65.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  },
+  "FEMSAUBD.MX": {
+    "accuracy": 67.3,
+    "fecha": "2026-04-17 22:43",
+    "fecha_ultimo_entrenamiento": "2026-04-17 22:43",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": null,
+      "fin": null,
+      "meses": 6,
+      "observaciones": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 67.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "metricas_in_sample": {
+      "f1": 67.3,
+      "precision": null,
+      "recall": null,
+      "auc_roc": null
+    },
+    "feature_importance": {
+      "top": [],
+      "todas": {},
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    }
+  }
+}
