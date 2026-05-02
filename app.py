@@ -17,22 +17,30 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import requests
 import io
-import urllib3
-import ssl
 import time
 import os
 import hashlib
 import json
 import pickle
 import warnings
+import logging
+import certifi
 warnings.filterwarnings('ignore')
 
 import yfinance as yf
 from curl_cffi import requests as curl_requests
 
+logger = logging.getLogger(__name__)
+SSL_VERIFY_PATH = certifi.where()
+
 # Parche para yfinance: reemplazar la sesión de requests por curl_requests
 def _patched_requests_session():
-    return curl_requests.Session(impersonate="chrome124")
+    session = curl_requests.Session(impersonate="chrome124")
+    try:
+        session.verify = True
+    except Exception:
+        pass
+    return session
 
 yf.shared._requests = _patched_requests_session
 
@@ -40,12 +48,17 @@ yf.shared._requests = _patched_requests_session
 try:
     from curl_cffi import requests as curl_requests
     _YF_SESSION = curl_requests.Session(impersonate="chrome124")
+    try:
+        _YF_SESSION.verify = True
+    except Exception:
+        pass
 except Exception:
     _YF_SESSION = None
 
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.metrics import f1_score, precision_score, recall_score, roc_auc_score
 from textblob import TextBlob
 
 from googleapiclient.discovery import build
@@ -53,9 +66,6 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 import googleapiclient.http
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-ssl._create_default_https_context = ssl._create_unverified_context
 
 st.set_page_config(page_title="Trading System v3.0", layout="wide", page_icon="📈")
 st.title("📈 Sistema de Trading Personal v3.0 (Mejorado)")
@@ -81,6 +91,62 @@ DATA_PATH      = "data"
 TRANSACCIONES_FILE = "transacciones.csv"
 HISTORIAL_FILE     = "historial_senales.csv"
 
+# Parámetros de fiabilidad ML (Fase 2)
+ML_WINDOW_MONTHS = 24          # Ventana deslizante de entrenamiento (evita regímenes demasiado antiguos)
+ML_TEST_MONTHS = 6             # Últimos meses reservados estrictamente para prueba out-of-sample
+WF_TRAIN_MONTHS = 24           # Ventana de entrenamiento en walk-forward
+WF_PREDICT_MONTHS = 1          # Horizonte de predicción por iteración en walk-forward
+WF_MIN_OBS_TEST = 8            # Mínimo de observaciones para aceptar cada bloque de prueba
+FEATURE_IMPORTANCE_ZERO_TH = 0.01
+
+MEXICAN_SYMBOLS_BASE = {
+    'WALMEX', 'GMEXICOB', 'CEMEXCPO', 'FEMSAUBD', 'AMXL', 'KOFUBL', 'GFNORTEO',
+    'BBAJIOO', 'ALFA', 'ALPEKA', 'ASURB', 'GAPB', 'OMAB', 'AC', 'GCC', 'LALA',
+    'MEGA', 'PINFRA', 'TLEVISACPO', 'VESTA', 'GRUMA', 'HERDEZ', 'CUERVO', 'ORBIA',
+    'VOLARA', 'Q', 'LABB', 'NEMAKA', 'FMTY14', 'FUNO11', 'FIBRAPL14', 'TERRA13',
+    'DANHOS13', 'FIBRAHD15', 'FIBRAMQ12'
+}
+
+
+def normalizar_simbolo(simbolo: str) -> str:
+    """Normaliza símbolos bursátiles para evitar inconsistencias entre BMV/USA."""
+    if simbolo is None:
+        return ""
+    s = str(simbolo).upper().replace(" ", "")
+    if not s:
+        return ""
+
+    # Instrumentos especiales (índices, forex) y otros mercados con sufijo explícito.
+    if s.startswith("^") or "=" in s or "/" in s:
+        return s
+    if s.endswith(".MX"):
+        return s
+    if "." in s and not s.endswith("."):
+        return s
+
+    return f"{s}.MX" if s in MEXICAN_SYMBOLS_BASE else s
+
+
+def _crear_ticker(simbolo: str):
+    simbolo_norm = normalizar_simbolo(simbolo)
+    return yf.Ticker(simbolo_norm, session=_YF_SESSION) if _YF_SESSION else yf.Ticker(simbolo_norm)
+
+
+def _normalizar_diccionario_posiciones(posiciones: dict) -> dict:
+    posiciones_norm = {}
+    for k, v in (posiciones or {}).items():
+        simbolo = normalizar_simbolo(k)
+        if not simbolo:
+            continue
+        if isinstance(v, dict):
+            posiciones_norm[simbolo] = {
+                "cantidad": float(v.get("cantidad", 1.0)),
+                "precio": float(v.get("precio", 0.0))
+            }
+        else:
+            posiciones_norm[simbolo] = {"cantidad": 1.0, "precio": float(v)}
+    return posiciones_norm
+
 # ============================================================
 # PERSISTENCIA (mismo código que tenías, sin cambios esenciales)
 # ============================================================
@@ -94,47 +160,69 @@ def _repo_leer(nombre: str) -> str:
     try:
         import base64
         url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{DATA_PATH}/{nombre}"
-        r = requests.get(url, headers=_gh_headers(), timeout=12)
+        r = requests.get(url, headers=_gh_headers(), timeout=12, verify=SSL_VERIFY_PATH)
         if r.status_code == 200:
             return base64.b64decode(r.json()["content"]).decode("utf-8")
-        elif r.status_code == 404:
+        if r.status_code == 404:
             return ""
-    except:
-        pass
+        st.warning(f"No se pudo leer '{nombre}' desde GitHub (HTTP {r.status_code}).")
+    except Exception as e:
+        st.warning(f"Error de conexión al leer '{nombre}' desde GitHub: {e}")
+        logger.exception("Error leyendo archivo del repo: %s", nombre)
     return ""
+
 def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool:
-    if not _repo_disponible() or not contenido:
+    if not _repo_disponible() or contenido is None:
         return False
     import base64
     try:
         url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{DATA_PATH}/{nombre}"
-        r_get = requests.get(url, headers=_gh_headers(), timeout=10)
+        r_get = requests.get(url, headers=_gh_headers(), timeout=10, verify=SSL_VERIFY_PATH)
         sha = r_get.json().get("sha", "") if r_get.status_code == 200 else ""
-        payload = {"message": f"[trading-app] {mensaje}", "content": base64.b64encode(contenido.encode("utf-8")).decode("ascii")}
+        payload = {
+            "message": f"[trading-app] {mensaje}",
+            "content": base64.b64encode(contenido.encode("utf-8")).decode("ascii")
+        }
         if sha:
             payload["sha"] = sha
-        r = requests.put(url, headers=_gh_headers(), json=payload, timeout=15)
-        return r.status_code in (200, 201)
-    except:
+        r = requests.put(url, headers=_gh_headers(), json=payload, timeout=15, verify=SSL_VERIFY_PATH)
+        if r.status_code not in (200, 201):
+            st.warning(f"No se pudo guardar '{nombre}' en GitHub (HTTP {r.status_code}).")
+            return False
+        return True
+    except Exception as e:
+        st.error(f"Error al guardar '{nombre}' en GitHub: {e}")
+        logger.exception("Error escribiendo archivo del repo: %s", nombre)
         return False
+
 
 def repo_cargar_posiciones() -> dict:
     contenido = _repo_leer("posiciones.json")
-    if contenido:
-        try:
-            data = json.loads(contenido)
-            for k, v in data.items():
-                if not isinstance(v, dict):
-                    data[k] = {"cantidad": 1.0, "precio": float(v)}
-            return data
-        except Exception as e:
-            print(f"Error parseando posiciones: {e}")
-    return {}
+    if not contenido:
+        return {}
+
+    try:
+        data = json.loads(contenido)
+        if not isinstance(data, dict):
+            st.warning("El archivo de posiciones tiene un formato inválido. Se usará cartera vacía.")
+            return {}
+        return _normalizar_diccionario_posiciones(data)
+    except Exception as e:
+        st.error(f"Error al leer posiciones: {e}")
+        logger.exception("Error parseando posiciones.json")
+        return {}
+
+
 def repo_guardar_posiciones(posiciones: dict) -> bool:
-    if not posiciones:
-        return repo_guardar_posiciones({})
-    contenido = json.dumps({k.upper(): v for k, v in posiciones.items()}, indent=2, ensure_ascii=False)
-    return _repo_escribir("posiciones.json", contenido, "actualizar posiciones")
+    """Guarda posiciones normalizadas, incluso cuando la cartera está vacía."""
+    try:
+        posiciones_norm = _normalizar_diccionario_posiciones(posiciones)
+        contenido = json.dumps(posiciones_norm, indent=2, ensure_ascii=False)
+        return _repo_escribir("posiciones.json", contenido, "actualizar posiciones")
+    except Exception as e:
+        st.error(f"Error al guardar posiciones: {e}")
+        logger.exception("Error guardando posiciones")
+        return False
 def repo_cargar_transacciones() -> pd.DataFrame:
     cols = ['fecha','simbolo','cantidad','precio','tipo','total','notas','ganancia_pct']
     contenido = _repo_leer("transacciones.csv")
@@ -148,23 +236,29 @@ def repo_cargar_transacciones() -> pd.DataFrame:
             else:
                 df['ganancia_pct'] = pd.to_numeric(df['ganancia_pct'], errors='coerce')
             df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+            if 'simbolo' in df.columns:
+                df['simbolo'] = df['simbolo'].astype(str).apply(normalizar_simbolo)
             df.to_csv(TRANSACCIONES_FILE, index=False)
             return df
         except Exception as e:
             st.error(f"Error procesando transacciones desde GitHub: {e}")
+            logger.exception("Error cargando transacciones desde repo")
     return pd.DataFrame(columns=cols)
 
 def repo_guardar_transacciones() -> bool:
     if not os.path.exists(TRANSACCIONES_FILE):
         return False
     try:
-        with open(TRANSACCIONES_FILE, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+        df = pd.read_csv(TRANSACCIONES_FILE)
+        if 'simbolo' in df.columns:
+            df['simbolo'] = df['simbolo'].astype(str).apply(normalizar_simbolo)
+        contenido = df.to_csv(index=False)
         if not contenido.strip():
             return False
         return _repo_escribir("transacciones.csv", contenido, "sincronizar transacciones")
     except Exception as e:
-        st.error(f"Error al subir a GitHub: {e}")
+        st.error(f"Error al sincronizar transacciones: {e}")
+        logger.exception("Error guardando transacciones")
         return False
         
 def repo_cargar_historial() -> pd.DataFrame:
@@ -174,61 +268,119 @@ def repo_cargar_historial() -> pd.DataFrame:
         try:
             from io import StringIO
             df = pd.read_csv(StringIO(contenido))
-            df['fecha'] = pd.to_datetime(df['fecha'])
+            df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+            if 'simbolo' in df.columns:
+                df['simbolo'] = df['simbolo'].astype(str).apply(normalizar_simbolo)
             df.to_csv("historial_senales.csv", index=False)
             return df
-        except:
-            pass
+        except Exception as e:
+            st.error(f"Error al cargar historial desde GitHub: {e}")
+            logger.exception("Error cargando historial")
     return pd.DataFrame(columns=cols)
+
 def repo_guardar_historial() -> bool:
     ruta = "historial_senales.csv"
     if not os.path.exists(ruta):
         return False
     try:
-        with open(ruta, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+        df = pd.read_csv(ruta)
+        if 'simbolo' in df.columns:
+            df['simbolo'] = df['simbolo'].astype(str).apply(normalizar_simbolo)
+        contenido = df.to_csv(index=False)
         return _repo_escribir("historial_senales.csv", contenido, "sincronizar historial señales")
-    except:
+    except Exception as e:
+        st.error(f"Error al sincronizar historial: {e}")
+        logger.exception("Error guardando historial")
         return False
+
+def _data_file_path(nombre: str) -> str:
+    os.makedirs(DATA_PATH, exist_ok=True)
+    return os.path.join(DATA_PATH, nombre)
+
+
+def _leer_data_local(nombre: str, default: str = "") -> str:
+    ruta = _data_file_path(nombre)
+    if not os.path.exists(ruta):
+        return default
+    try:
+        with open(ruta, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        logger.exception("No se pudo leer archivo local %s", ruta)
+        return default
+
+
+def _escribir_data_local(nombre: str, contenido: str) -> bool:
+    ruta = _data_file_path(nombre)
+    try:
+        with open(ruta, "w", encoding="utf-8") as f:
+            f.write(contenido)
+        return True
+    except Exception:
+        logger.exception("No se pudo escribir archivo local %s", ruta)
+        return False
+
+
+def _parse_fecha_meta(fecha_str: str):
+    if not fecha_str:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(fecha_str, fmt)
+        except Exception:
+            continue
+    return None
+
 
 @st.cache_resource
 def _ml_cache_global() -> dict:
     return {}
-def repo_guardar_modelo_ml(simbolo: str, clf, accuracy: float):
-    if not _repo_disponible():
-        return
+
+
+def repo_guardar_modelo_ml(simbolo: str, clf, meta_entry: dict):
     try:
         import base64
+        simbolo = normalizar_simbolo(simbolo)
         model_b64 = base64.b64encode(pickle.dumps(clf)).decode("ascii")
-        meta = json.loads(_repo_leer("ml_meta.json") or "{}")
-        meta[simbolo] = {"accuracy": accuracy, "fecha": datetime.now().strftime("%Y-%m-%d %H:%M")}
-        _repo_escribir("ml_meta.json", json.dumps(meta, indent=2), "ml meta")
+
+        meta_txt = _repo_leer("ml_meta.json") or _leer_data_local("ml_meta.json", "{}")
+        meta = json.loads(meta_txt or "{}")
+        meta[simbolo] = meta_entry
+
+        meta_str = json.dumps(meta, indent=2, ensure_ascii=False)
+        _escribir_data_local("ml_meta.json", meta_str)
+
         nombre = f"ml_{simbolo.replace('.','_')}.b64"
-        _repo_escribir(nombre, model_b64, f"modelo ML {simbolo}")
-    except:
-        pass
+        _escribir_data_local(nombre, model_b64)
+
+        if _repo_disponible():
+            _repo_escribir("ml_meta.json", meta_str, "ml meta")
+            _repo_escribir(nombre, model_b64, f"modelo ML {simbolo}")
+    except Exception:
+        logger.exception("No se pudo guardar el modelo ML de %s", simbolo)
+
+
 def repo_cargar_modelo_ml(simbolo: str):
+    simbolo = normalizar_simbolo(simbolo)
     try:
-        meta_str = _repo_leer("ml_meta.json")
-        if not meta_str:
-            return None, 0
-        meta = json.loads(meta_str)
+        meta_txt = _repo_leer("ml_meta.json") or _leer_data_local("ml_meta.json", "{}")
+        meta = json.loads(meta_txt or "{}")
         if simbolo not in meta:
-            return None, 0
-        fecha_str = meta[simbolo].get("fecha", "")
-        if fecha_str:
-            fecha = datetime.strptime(fecha_str, "%Y-%m-%d %H:%M")
-            if (datetime.now() - fecha).total_seconds() > 604800:
-                return None, 0
+            return None, None
+
+        fecha = _parse_fecha_meta(meta[simbolo].get("fecha", ""))
+        if fecha and (datetime.now() - fecha).total_seconds() > 604800:
+            return None, meta.get(simbolo)
+
         import base64
         nombre = f"ml_{simbolo.replace('.','_')}.b64"
-        b64 = _repo_leer(nombre)
+        b64 = _repo_leer(nombre) or _leer_data_local(nombre, "")
         if b64:
             clf = pickle.loads(base64.b64decode(b64.encode("ascii")))
-            return clf, meta[simbolo].get("accuracy", 0)
-    except:
-        pass
-    return None, 0
+            return clf, meta.get(simbolo)
+    except Exception:
+        logger.exception("No se pudo cargar el modelo ML de %s", simbolo)
+    return None, None
 
 def generar_backup_zip() -> bytes:
     import zipfile
@@ -250,7 +402,8 @@ def restaurar_desde_zip(uploaded_file) -> dict:
     try:
         with zipfile.ZipFile(io.BytesIO(uploaded_file.read())) as zf:
             if "posiciones.json" in zf.namelist():
-                posiciones = json.loads(zf.read("posiciones.json").decode())
+                posiciones_raw = json.loads(zf.read("posiciones.json").decode())
+                posiciones = _normalizar_diccionario_posiciones(posiciones_raw)
             if "transacciones.csv" in zf.namelist():
                 with open(TRANSACCIONES_FILE, 'wb') as f:
                     f.write(zf.read("transacciones.csv"))
@@ -266,46 +419,73 @@ def restaurar_desde_zip(uploaded_file) -> dict:
 # ============================================================
 def cargar_transacciones() -> pd.DataFrame:
     if os.path.exists(TRANSACCIONES_FILE):
-        df = pd.read_csv(TRANSACCIONES_FILE)
-        df['fecha'] = pd.to_datetime(df['fecha'])
-        if 'ganancia_pct' not in df.columns:
-            df['ganancia_pct'] = np.nan
-        return df
+        try:
+            df = pd.read_csv(TRANSACCIONES_FILE)
+            df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+            if 'simbolo' in df.columns:
+                df['simbolo'] = df['simbolo'].astype(str).apply(normalizar_simbolo)
+            if 'ganancia_pct' not in df.columns:
+                df['ganancia_pct'] = np.nan
+            return df
+        except Exception as e:
+            st.error(f"Error al leer transacciones locales: {e}")
+            logger.exception("Error leyendo transacciones.csv")
     return pd.DataFrame(columns=['fecha','simbolo','cantidad','precio','tipo','total','notas','ganancia_pct'])
+
 def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str, notas: str = "", ganancia_pct: float = None):
-    df = cargar_transacciones()
-    nueva = pd.DataFrame([{
-        'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        'simbolo': simbolo.upper(),
-        'cantidad': cantidad,
-        'precio': precio,
-        'tipo': tipo,
-        'total': round(cantidad * precio, 2),
-        'notas': notas,
-        'ganancia_pct': ganancia_pct if ganancia_pct is not None else np.nan
-    }])
-    df = pd.concat([df, nueva], ignore_index=True)
-    df.to_csv(TRANSACCIONES_FILE, index=False)
+    try:
+        simbolo_norm = normalizar_simbolo(simbolo)
+        if not simbolo_norm:
+            st.error("No se pudo guardar la transacción: símbolo inválido.")
+            return
+        df = cargar_transacciones()
+        nueva = pd.DataFrame([{
+            'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'simbolo': simbolo_norm,
+            'cantidad': cantidad,
+            'precio': precio,
+            'tipo': tipo,
+            'total': round(cantidad * precio, 2),
+            'notas': notas,
+            'ganancia_pct': ganancia_pct if ganancia_pct is not None else np.nan
+        }])
+        df = pd.concat([df, nueva], ignore_index=True)
+        df.to_csv(TRANSACCIONES_FILE, index=False)
+    except Exception as e:
+        st.error(f"Error al guardar transacción: {e}")
+        logger.exception("Error guardando transacción")
 
 def procesar_ventas(input_text: str):
     if not input_text or not input_text.strip():
         st.sidebar.warning("No se ingresaron ventas.")
         return
+
     posiciones = repo_cargar_posiciones()
     ventas_registradas = 0
+
     for linea in input_text.strip().split('\n'):
         partes = linea.split(',')
-        if len(partes) != 3: continue
-        simbolo = partes[0].strip().upper()
+        if len(partes) != 3:
+            st.sidebar.warning(f"Formato inválido en venta: '{linea}'. Usa SIMBOLO,CANTIDAD,PRECIO")
+            continue
+
+        simbolo = normalizar_simbolo(partes[0])
+        if not simbolo:
+            st.sidebar.warning(f"Símbolo inválido en venta: '{partes[0]}'.")
+            continue
+
         try:
             cant_vender = float(partes[1].strip())
             precio_venta = float(partes[2].strip())
-        except: continue
+        except Exception:
+            st.sidebar.warning(f"Cantidad/precio inválidos en venta: '{linea}'.")
+            continue
+
         if simbolo in posiciones:
             pos = posiciones[simbolo]
             precio_compra_promedio = pos['precio']
             ganancia_pct = ((precio_venta / precio_compra_promedio) - 1) * 100
-            guardar_transaccion(simbolo, cant_vender, precio_venta, "venta", 
+            guardar_transaccion(simbolo, cant_vender, precio_venta, "venta",
                                notas="Venta manual (PPP)", ganancia_pct=ganancia_pct)
             nueva_cant = pos['cantidad'] - cant_vender
             if nueva_cant <= 0:
@@ -313,6 +493,7 @@ def procesar_ventas(input_text: str):
             else:
                 posiciones[simbolo]['cantidad'] = nueva_cant
             ventas_registradas += 1
+
     if ventas_registradas:
         repo_guardar_posiciones(posiciones)
         repo_guardar_transacciones()
@@ -327,10 +508,22 @@ def procesar_compras_ppp(input_text: str):
     compras_ok = 0
     for linea in input_text.strip().split('\n'):
         partes = linea.split(',')
-        if len(partes) != 3: continue
-        simbolo = partes[0].strip().upper()
-        cant_nueva = float(partes[1].strip())
-        precio_nuevo = float(partes[2].strip())
+        if len(partes) != 3:
+            st.sidebar.warning(f"Formato inválido en compra: '{linea}'. Usa SIMBOLO,CANTIDAD,PRECIO")
+            continue
+
+        simbolo = normalizar_simbolo(partes[0])
+        if not simbolo:
+            st.sidebar.warning(f"Símbolo inválido en compra: '{partes[0]}'.")
+            continue
+
+        try:
+            cant_nueva = float(partes[1].strip())
+            precio_nuevo = float(partes[2].strip())
+        except Exception:
+            st.sidebar.warning(f"Cantidad/precio inválidos en compra: '{linea}'.")
+            continue
+
         if simbolo in posiciones:
             cant_actual = posiciones[simbolo]['cantidad']
             prec_actual = posiciones[simbolo]['precio']
@@ -341,6 +534,7 @@ def procesar_compras_ppp(input_text: str):
             posiciones[simbolo] = {'cantidad': cant_nueva, 'precio': precio_nuevo}
         guardar_transaccion(simbolo, cant_nueva, precio_nuevo, "compra", notas="Compra manual (PPP)")
         compras_ok += 1
+
     if compras_ok:
         repo_guardar_posiciones(posiciones)
         repo_guardar_transacciones()
@@ -357,6 +551,8 @@ def cargar_historial_senales() -> pd.DataFrame:
                 df = df.dropna(subset=['fecha'])
             else:
                 df['fecha'] = pd.NaT
+            if 'simbolo' in df.columns:
+                df['simbolo'] = df['simbolo'].astype(str).apply(normalizar_simbolo)
             if 'ganancia_pct' not in df.columns:
                 df['ganancia_pct'] = np.nan
             else:
@@ -368,47 +564,51 @@ def cargar_historial_senales() -> pd.DataFrame:
             return df
         except Exception as e:
             st.error(f"Error al cargar historial: {e}")
+            logger.exception("Error leyendo historial de señales")
     return pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
 
 def guardar_senal_en_historial(senal: dict, fecha: str):
     import re
-    if os.path.exists(HISTORIAL_FILE):
-        try:
-            df = pd.read_csv(HISTORIAL_FILE, on_bad_lines='skip')
-            if 'fecha' in df.columns:
-                df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
-                df = df.dropna(subset=['fecha'])
-            else:
+    try:
+        if os.path.exists(HISTORIAL_FILE):
+            try:
+                df = pd.read_csv(HISTORIAL_FILE, on_bad_lines='skip')
+                if 'fecha' in df.columns:
+                    df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+                    df = df.dropna(subset=['fecha'])
+                else:
+                    df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
+            except Exception:
                 df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
-        except:
-            df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
-    else:
-        df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
-
-    ganancia = None
-    if senal['Recomendación'] == "VENDER" and 'Motivo' in senal:
-        motivo = senal['Motivo']
-        match = re.search(r'([+-]?\d+(?:\.\d+)?)%', motivo)
-        if match:
-            ganancia = float(match.group(1))
         else:
-            st.warning(f"No se pudo extraer ganancia de: {motivo}")
+            df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales', 'ganancia_pct'])
 
-    nueva = pd.DataFrame([{
-        'fecha': pd.to_datetime(fecha, errors='coerce'),
-        'simbolo': senal['Símbolo'],
-        'score': senal['Score'],
-        'precio': senal['Precio MXN'],
-        'recomendacion': senal['Recomendación'],
-        'señales': senal.get('Señales', ''),
-        'ganancia_pct': ganancia
-    }])
+        ganancia = None
+        if senal['Recomendación'] == "VENDER" and 'Motivo' in senal:
+            motivo = senal['Motivo']
+            match = re.search(r'([+-]?\d+(?:\.\d+)?)%', motivo)
+            if match:
+                ganancia = float(match.group(1))
+            else:
+                st.warning(f"No se pudo extraer ganancia de: {motivo}")
 
-    df = pd.concat([df, nueva], ignore_index=True)
-    cutoff = datetime.now() - timedelta(days=90)
-    df = df[df['fecha'] >= cutoff]
-    st.write(f"DEBUG: Guardando señal - simbolo: {senal['Símbolo']}, ganancia: {ganancia}")
-    df.to_csv(HISTORIAL_FILE, index=False)
+        nueva = pd.DataFrame([{
+            'fecha': pd.to_datetime(fecha, errors='coerce'),
+            'simbolo': normalizar_simbolo(senal['Símbolo']),
+            'score': senal['Score'],
+            'precio': senal['Precio MXN'],
+            'recomendacion': senal['Recomendación'],
+            'señales': senal.get('Señales', ''),
+            'ganancia_pct': ganancia
+        }])
+
+        df = pd.concat([df, nueva], ignore_index=True)
+        cutoff = datetime.now() - timedelta(days=90)
+        df = df[df['fecha'] >= cutoff]
+        df.to_csv(HISTORIAL_FILE, index=False)
+    except Exception as e:
+        st.error(f"Error al guardar señal en historial: {e}")
+        logger.exception("Error guardando señal en historial")
 
 def dashboard_rendimiento_real():
     st.subheader("📊 Rendimiento Real de mi Cartera")
@@ -573,8 +773,8 @@ mercado_opciones = {
 @st.cache_data(ttl=3600)
 def obtener_tipo_cambio() -> tuple[float, float]:
     try:
-        usd = yf.Ticker("USDMXN=X").history(period="5d")
-        eur = yf.Ticker("EURMXN=X").history(period="5d")
+        usd = _crear_ticker("USDMXN=X").history(period="5d")
+        eur = _crear_ticker("EURMXN=X").history(period="5d")
         return (float(usd['Close'].iloc[-1]) if not usd.empty else 20.0,
                 float(eur['Close'].iloc[-1]) if not eur.empty else 21.5)
     except Exception as e:
@@ -601,22 +801,24 @@ def safe_history(ticker, period="6mo", max_retries=3):
     return pd.DataFrame()
 
 def obtener_precio_actual(simbolo: str) -> float | None:
+    simbolo_norm = normalizar_simbolo(simbolo)
     try:
-        ticker = yf.Ticker(simbolo)
+        ticker = _crear_ticker(simbolo_norm)
         precio = ticker.info.get('regularMarketPrice') or ticker.info.get('currentPrice')
         if precio:
             return float(precio)
         hist = safe_history(ticker, period="2d")
         if not hist.empty:
             return float(hist['Close'].iloc[-1])
-    except:
-        pass
+    except Exception as e:
+        logger.warning("No se pudo obtener precio actual para %s: %s", simbolo_norm, e)
     return None
 
 def convertir_precio_mxn(simbolo: str, precio_original: float, usd_mxn: float, eur_mxn: float) -> float:
-    if simbolo.endswith('.MX'):
+    simbolo_norm = normalizar_simbolo(simbolo)
+    if simbolo_norm.endswith('.MX'):
         return precio_original
-    elif simbolo.endswith('.MC'):
+    elif simbolo_norm.endswith('.MC'):
         return precio_original * eur_mxn
     else:
         return precio_original * usd_mxn
@@ -710,7 +912,7 @@ def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
 def obtener_market_regime() -> dict:
     # ... (tu código original)
     try:
-        sp = yf.Ticker("^GSPC").history(period="1y")
+        sp = _crear_ticker("^GSPC").history(period="1y")
         if sp.empty or len(sp) < 200:
             return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0,
                     'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Sin datos'}
@@ -751,7 +953,7 @@ def position_size(precio: float, atr: float, capital: float, riesgo_pct: float) 
 
 @st.cache_data(ttl=3600)
 def obtener_regimen_diario() -> pd.Series:
-    sp = yf.Ticker("^GSPC").history(period="3y")
+    sp = _crear_ticker("^GSPC").history(period="3y")
     if sp.empty:
         return pd.Series()
     sp['EMA200'] = sp['Close'].ewm(span=200).mean()
@@ -766,7 +968,7 @@ def obtener_regimen_diario() -> pd.Series:
 def obtener_fundamentales_profundos(simbolo: str) -> dict:
     # ... (tu código original)
     try:
-        info = yf.Ticker(simbolo).info
+        info = _crear_ticker(simbolo).info
         dy = info.get('dividendYield')
         roe = info.get('returnOnEquity')
         rg = info.get('revenueGrowth')
@@ -795,7 +997,7 @@ def obtener_fundamentales_profundos(simbolo: str) -> dict:
 
 def backtest_realista(simbolo: str, precio_entrada: float, atr: float, window_dias=30) -> dict:
     try:
-        ticker = yf.Ticker(simbolo)
+        ticker = _crear_ticker(simbolo)
         hist = safe_history(ticker, "6mo")
         if hist.empty:
             return {'resultado': 0, 'tipo': 'error'}
@@ -857,7 +1059,7 @@ def backtest_optimizar_parametros(hist_anual: pd.DataFrame) -> dict:
 
 @st.cache_data(ttl=86400)
 def get_backtest_optimization():
-    sp_hist = yf.Ticker("^GSPC").history(period="2y")
+    sp_hist = _crear_ticker("^GSPC").history(period="2y")
     if sp_hist.empty:
         return None
     sp_hist = calcular_indicadores(sp_hist)
@@ -870,7 +1072,7 @@ def simular_ignorar_senal(simbolo: str, precio_actual: float, condicion: str, us
     condicion: 'TP' (Take Profit), 'SL' (Stop Loss), 'RSI_alto', 'Score_bajo', etc.
     """
     try:
-        ticker = yf.Ticker(simbolo)
+        ticker = _crear_ticker(simbolo)
         hist = safe_history(ticker, "3y")
         if hist.empty or len(hist) < 100:
             return {'error': 'Datos insuficientes'}
@@ -931,74 +1133,310 @@ def simular_ignorar_senal(simbolo: str, precio_actual: float, condicion: str, us
     except Exception as e:
         return {'error': str(e)}
 
+def _construir_dataset_ml(hist: pd.DataFrame, simbolo: str, usd_mxn: float, eur_mxn: float):
+    factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
+    for col in ['Close', 'Open', 'High', 'Low']:
+        hist[col] *= factor
+
+    regime_series = obtener_regimen_diario()
+    hist = hist.join(regime_series.rename('REGIME'), how='left')
+    hist['REGIME'] = hist['REGIME'].ffill().fillna(1)
+
+    hist = calcular_indicadores(hist)
+    hist = hist.dropna().copy()
+    if hist.empty:
+        return None, None
+
+    # Ventana deslizante: se limita el entrenamiento a los últimos X meses
+    # para evitar aprender patrones de regímenes muy antiguos que ya no aplican.
+    fecha_fin = hist.index.max()
+    fecha_inicio_ventana = fecha_fin - pd.DateOffset(months=ML_WINDOW_MONTHS)
+    hist = hist[hist.index >= fecha_inicio_ventana].copy()
+
+    ret_futuro_5d = (hist['Close'].shift(-5) / hist['Close'] - 1) * 100
+    hist['target'] = np.select([ret_futuro_5d > 1.5, ret_futuro_5d < -1.5], [2, 0], default=1)
+    hist['ret_1d'] = hist['Close'].pct_change().shift(-1)
+
+    features = [
+        'EMA20', 'EMA50', 'RSI', 'MACD', 'MACD_sig', 'ATR', 'BB_pct',
+        'STOCH_K', 'STOCH_D', 'Volume', 'Vol_avg', 'ROC', 'WILLR',
+        'OBV', 'ATR_RATIO', 'DOW', 'REGIME'
+    ]
+    for feature in features:
+        if feature not in hist.columns:
+            hist[feature] = 0.0
+
+    hist = hist.dropna(subset=features + ['target', 'ret_1d']).copy()
+    return hist, features
+
+
+def _split_train_test_temporal(df_modelo: pd.DataFrame):
+    fecha_fin = df_modelo.index.max()
+    inicio_test = fecha_fin - pd.DateOffset(months=ML_TEST_MONTHS)
+
+    df_test = df_modelo[df_modelo.index >= inicio_test].copy()
+    df_train = df_modelo[df_modelo.index < inicio_test].copy()
+
+    # Fallback de seguridad cuando el corte por meses deja muy pocas observaciones
+    if len(df_test) < 15:
+        corte = int(len(df_modelo) * 0.2)
+        corte = max(15, corte)
+        df_train = df_modelo.iloc[:-corte].copy()
+        df_test = df_modelo.iloc[-corte:].copy()
+
+    return df_train, df_test
+
+
+def _calcular_metricas_clasificacion(y_true, y_pred, y_proba):
+    metricas = {
+        'f1': round(float(f1_score(y_true, y_pred, average='macro', zero_division=0) * 100), 2),
+        'precision': round(float(precision_score(y_true, y_pred, average='macro', zero_division=0) * 100), 2),
+        'recall': round(float(recall_score(y_true, y_pred, average='macro', zero_division=0) * 100), 2),
+        'auc_roc': None,
+    }
+    try:
+        if y_proba is not None and len(np.unique(y_true)) > 1:
+            metricas['auc_roc'] = round(float(roc_auc_score(y_true, y_proba, multi_class='ovr', average='macro')), 4)
+    except Exception:
+        metricas['auc_roc'] = None
+    return metricas
+
+
+def _guardar_walk_forward(simbolo: str, resultados: dict):
+    try:
+        ruta = _data_file_path("walk_forward_results.json")
+        if os.path.exists(ruta):
+            with open(ruta, "r", encoding="utf-8") as f:
+                contenido = json.load(f)
+        else:
+            contenido = {}
+
+        contenido[simbolo] = {
+            'actualizado_en': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            **resultados,
+        }
+
+        with open(ruta, "w", encoding="utf-8") as f:
+            json.dump(contenido, f, indent=2, ensure_ascii=False)
+    except Exception:
+        logger.exception("No se pudo guardar walk_forward_results.json para %s", simbolo)
+
+
+def _ejecutar_walk_forward(df_modelo: pd.DataFrame, features: list, best_params: dict):
+    df = df_modelo.sort_index().copy()
+    if len(df) < 120:
+        return {'estado': 'insuficiente_data'}
+
+    fecha_actual = df.index.min() + pd.DateOffset(months=WF_TRAIN_MONTHS)
+    fecha_max = df.index.max()
+
+    resultados = []
+    folds = []
+
+    params_rf = {
+        'n_estimators': best_params.get('n_estimators', 100),
+        'max_depth': best_params.get('max_depth', 5),
+        'min_samples_split': best_params.get('min_samples_split', 2),
+        'class_weight': best_params.get('class_weight', 'balanced'),
+        'random_state': 42,
+    }
+
+    while fecha_actual < fecha_max:
+        inicio_train = fecha_actual - pd.DateOffset(months=WF_TRAIN_MONTHS)
+        fin_test = fecha_actual + pd.DateOffset(months=WF_PREDICT_MONTHS)
+
+        train_df = df[(df.index > inicio_train) & (df.index <= fecha_actual)].copy()
+        test_df = df[(df.index > fecha_actual) & (df.index <= fin_test)].copy()
+
+        fecha_actual = fin_test
+
+        if len(train_df) < 60 or len(test_df) < WF_MIN_OBS_TEST:
+            continue
+        if train_df['target'].nunique() < 2:
+            continue
+
+        rf = RandomForestClassifier(**params_rf)
+        rf.fit(train_df[features], train_df['target'])
+        pred = rf.predict(test_df[features])
+
+        señales = np.where(pred == 2, 1, np.where(pred == 0, -1, 0))
+        retorno_estrategia = señales * test_df['ret_1d'].values
+        retorno_bh = test_df['ret_1d'].values
+
+        bloque = pd.DataFrame({
+            'fecha': test_df.index,
+            'ret_estrategia': retorno_estrategia,
+            'ret_buy_hold': retorno_bh,
+        })
+        resultados.append(bloque)
+
+        folds.append({
+            'train_inicio': str(train_df.index.min().date()),
+            'train_fin': str(train_df.index.max().date()),
+            'test_inicio': str(test_df.index.min().date()),
+            'test_fin': str(test_df.index.max().date()),
+            'obs_test': int(len(test_df)),
+            'retorno_estrategia_pct': round(float(((1 + retorno_estrategia).prod() - 1) * 100), 2),
+            'retorno_buy_hold_pct': round(float(((1 + retorno_bh).prod() - 1) * 100), 2),
+        })
+
+    if not resultados:
+        return {'estado': 'sin_folds_validos'}
+
+    total = pd.concat(resultados).sort_values('fecha')
+    total['capital_estrategia'] = (1 + total['ret_estrategia']).cumprod()
+    total['capital_bh'] = (1 + total['ret_buy_hold']).cumprod()
+
+    retorno_total_estrategia = float((total['capital_estrategia'].iloc[-1] - 1) * 100)
+    retorno_total_bh = float((total['capital_bh'].iloc[-1] - 1) * 100)
+
+    return {
+        'estado': 'ok',
+        'parametros': {'ventana_train_meses': WF_TRAIN_MONTHS, 'horizonte_test_meses': WF_PREDICT_MONTHS},
+        'resumen': {
+            'retorno_acumulado_estrategia_pct': round(retorno_total_estrategia, 2),
+            'retorno_acumulado_buy_hold_pct': round(retorno_total_bh, 2),
+            'diferencia_pct': round(retorno_total_estrategia - retorno_total_bh, 2),
+            'folds_validos': len(folds),
+        },
+        'folds': folds,
+    }
+
+
 def entrenar_modelo_ml(simbolo: str, usd_mxn: float, eur_mxn: float) -> dict:
-    # ... (tu código original)
+    simbolo = normalizar_simbolo(simbolo)
     cache = _ml_cache_global()
+
     if simbolo in cache:
         entrada = cache[simbolo]
         if (datetime.now() - entrada['ts']).total_seconds() < 604800:
-            return {'model': entrada['model'], 'accuracy': entrada['acc'], 'fuente': '⚡ memoria'}
-    clf_repo, acc_repo = repo_cargar_modelo_ml(simbolo)
-    if clf_repo is not None:
-        cache[simbolo] = {'model': clf_repo, 'acc': acc_repo, 'ts': datetime.now()}
-        return {'model': clf_repo, 'accuracy': acc_repo, 'fuente': '☁️ repo'}
+            return entrada['payload']
+
+    clf_repo, meta_repo = repo_cargar_modelo_ml(simbolo)
+    if clf_repo is not None and meta_repo:
+        payload_repo = {
+            'model': clf_repo,
+            'accuracy': meta_repo.get('metricas_out_of_sample', {}).get('f1', meta_repo.get('accuracy', 0)),
+            'accuracy_in_sample': meta_repo.get('metricas_in_sample', {}).get('f1', meta_repo.get('accuracy', 0)),
+            'metricas_out_of_sample': meta_repo.get('metricas_out_of_sample', {}),
+            'feature_importance': meta_repo.get('feature_importance', {}),
+            'fuente': '☁️ repo',
+            'fecha_entrenamiento': meta_repo.get('fecha', ''),
+        }
+        cache[simbolo] = {'payload': payload_repo, 'ts': datetime.now()}
+        return payload_repo
+
     try:
-        ticker = yf.Ticker(simbolo)
+        ticker = _crear_ticker(simbolo)
         hist = safe_history(ticker, "3y")
         if hist.empty or len(hist) < 200:
             return None
-        factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
-        for col in ['Close','Open','High','Low']:
-            hist[col] *= factor
-        regime_series = obtener_regimen_diario()
-        hist = hist.join(regime_series.rename('REGIME'), how='left')
-        hist['REGIME'] = hist['REGIME'].fillna(method='ffill').fillna(1)
-        hist = calcular_indicadores(hist)
-        hist = hist.dropna()
-        if len(hist) < 200:
+
+        df_modelo, features = _construir_dataset_ml(hist, simbolo, usd_mxn, eur_mxn)
+        if df_modelo is None or len(df_modelo) < 120:
             return None
-        ret_futuro = (hist['Close'].shift(-5) / hist['Close'] - 1) * 100
-        hist['target'] = np.select([ret_futuro > 1.5, ret_futuro < -1.5], [2, 0], default=1)
-        hist = hist.dropna()
-        features = ['EMA20','EMA50','RSI','MACD','MACD_sig','ATR','BB_pct',
-                    'STOCH_K','STOCH_D','Volume','Vol_avg','ROC','WILLR','OBV','ATR_RATIO','DOW','REGIME']
-        for f in features:
-            if f not in hist.columns:
-                hist[f] = 0
-        X = hist[features]
-        y = hist['target']
-        if len(X) > 504:
-            X = X.tail(504)
-            y = y.tail(504)
-        from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
-        tscv = TimeSeriesSplit(n_splits=3)
-        from sklearn.ensemble import RandomForestClassifier
-        param_grid = {'n_estimators': [50,100], 'max_depth': [3,5,7], 'min_samples_split': [2,5], 'class_weight': ['balanced',None]}
-        grid = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=tscv, scoring='f1_macro', n_jobs=-1)
-        grid.fit(X, y)
+
+        df_train, df_test = _split_train_test_temporal(df_modelo)
+        if len(df_train) < 60 or len(df_test) < 15:
+            return None
+        if df_train['target'].nunique() < 2:
+            return None
+
+        X_train, y_train = df_train[features], df_train['target']
+        X_test, y_test = df_test[features], df_test['target']
+
+        n_splits_cv = min(4, max(2, min(8, len(X_train) // 40)))
+        tscv = TimeSeriesSplit(n_splits=n_splits_cv)
+        param_grid = {
+            'n_estimators': [50, 100],
+            'max_depth': [3, 5, 7],
+            'min_samples_split': [2, 5],
+            'class_weight': ['balanced', None],
+        }
+
+        grid = GridSearchCV(
+            RandomForestClassifier(random_state=42),
+            param_grid,
+            cv=tscv,
+            scoring='f1_macro',
+            n_jobs=-1,
+        )
+        grid.fit(X_train, y_train)
         best_clf = grid.best_estimator_
-        from sklearn.calibration import CalibratedClassifierCV
-        calibrated_clf = CalibratedClassifierCV(best_clf, method='sigmoid', cv=3)
-        calibrated_clf.fit(X, y)
-        from sklearn.metrics import f1_score
-        y_pred = calibrated_clf.predict(X)
-        final_f1 = f1_score(y, y_pred, average='macro') * 100
-        cache[simbolo] = {'model': calibrated_clf, 'acc': round(final_f1, 1), 'ts': datetime.now()}
-        repo_guardar_modelo_ml(simbolo, calibrated_clf, final_f1)
-        return {'model': calibrated_clf, 'accuracy': round(final_f1, 1), 'fuente': '🔄 entrenado'}
-    except Exception as e:
-        print(f"Error entrenando ML para {simbolo}: {e}")
+
+        cv_cal = TimeSeriesSplit(n_splits=min(3, max(2, len(X_train) // 60)))
+        calibrated_clf = CalibratedClassifierCV(best_clf, method='sigmoid', cv=cv_cal)
+        calibrated_clf.fit(X_train, y_train)
+
+        y_pred_train = calibrated_clf.predict(X_train)
+        y_pred_test = calibrated_clf.predict(X_test)
+        y_proba_test = calibrated_clf.predict_proba(X_test) if hasattr(calibrated_clf, 'predict_proba') else None
+
+        metricas_train = _calcular_metricas_clasificacion(y_train, y_pred_train, None)
+        metricas_test = _calcular_metricas_clasificacion(y_test, y_pred_test, y_proba_test)
+
+        importance_values = getattr(best_clf, 'feature_importances_', np.zeros(len(features)))
+        importance_dict = {f: round(float(v), 6) for f, v in zip(features, importance_values)}
+        importance_ordenada = sorted(importance_dict.items(), key=lambda x: x[1], reverse=True)
+        features_casi_cero = [f for f, v in importance_ordenada if v <= FEATURE_IMPORTANCE_ZERO_TH]
+
+        wf_result = _ejecutar_walk_forward(df_modelo, features, grid.best_params_)
+        _guardar_walk_forward(simbolo, wf_result)
+
+        fecha_entreno = datetime.now().strftime("%Y-%m-%d %H:%M")
+        meta_entry = {
+            'accuracy': metricas_test.get('f1', 0),
+            'fecha': fecha_entreno,
+            'fecha_ultimo_entrenamiento': fecha_entreno,
+            'ventana_meses': ML_WINDOW_MONTHS,
+            'validacion': 'TimeSeriesSplit',
+            'periodo_test_out_of_sample': {
+                'inicio': str(df_test.index.min().date()),
+                'fin': str(df_test.index.max().date()),
+                'meses': ML_TEST_MONTHS,
+                'observaciones': int(len(df_test)),
+            },
+            'metricas_in_sample': metricas_train,
+            'metricas_out_of_sample': metricas_test,
+            'feature_importance': {
+                'top': [{'feature': f, 'importancia': v} for f, v in importance_ordenada[:10]],
+                'todas': importance_dict,
+                'cercanas_a_cero': features_casi_cero,
+                'umbral_cero': FEATURE_IMPORTANCE_ZERO_TH,
+            },
+            'parametros_modelo': grid.best_params_,
+            'walk_forward': wf_result.get('resumen', {'estado': wf_result.get('estado', 'nd')}),
+        }
+
+        repo_guardar_modelo_ml(simbolo, calibrated_clf, meta_entry)
+
+        payload = {
+            'model': calibrated_clf,
+            'accuracy': metricas_test.get('f1', 0),
+            'accuracy_in_sample': metricas_train.get('f1', 0),
+            'metricas_out_of_sample': metricas_test,
+            'feature_importance': meta_entry['feature_importance'],
+            'fuente': '🔄 entrenado',
+            'fecha_entrenamiento': fecha_entreno,
+        }
+        cache[simbolo] = {'payload': payload, 'ts': datetime.now()}
+        return payload
+
+    except Exception:
+        logger.exception("Error entrenando ML para %s", simbolo)
+        st.warning(f"No se pudo entrenar el modelo ML para {simbolo}. Se continuará sin ML.")
         return None
 
 def analizar_sentimiento(simbolo: str) -> dict:
     # ... (tu código original)
+    simbolo = normalizar_simbolo(simbolo)
     if not NEWSAPI_KEY:
         return {'sentimiento': 'Sin clave', 'score': 0, 'noticias': []}
     try:
         from_date = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
         url = 'https://newsapi.org/v2/everything'
         params = {'q': simbolo.split('.')[0], 'from': from_date, 'sortBy': 'relevancy', 'language': 'en', 'pageSize': 5, 'apiKey': NEWSAPI_KEY}
-        resp = requests.get(url, params=params, timeout=10)
+        resp = requests.get(url, params=params, timeout=10, verify=SSL_VERIFY_PATH)
         if resp.status_code != 200:
             return {'sentimiento': 'Error API', 'score': 0, 'noticias': []}
         data = resp.json()
@@ -1034,7 +1472,7 @@ def optimizar_cartera(compras_df: pd.DataFrame, capital: float, usd_mxn: float, 
     precios = {}
     for sim in symbols:
         try:
-            ticker = yf.Ticker(sim)
+            ticker = _crear_ticker(sim)
             hist = safe_history(ticker, "6mo")
             if hist.empty:
                 continue
@@ -1094,7 +1532,7 @@ def enviar_whatsapp(mensaje: str) -> bool:
     if not WHATSAPP_NUMERO or not WHATSAPP_APIKEY:
         return False
     try:
-        r = requests.get("https://api.callmebot.com/whatsapp.php", params={"phone": WHATSAPP_NUMERO, "apikey": WHATSAPP_APIKEY, "text": mensaje}, timeout=10)
+        r = requests.get("https://api.callmebot.com/whatsapp.php", params={"phone": WHATSAPP_NUMERO, "apikey": WHATSAPP_APIKEY, "text": mensaje}, timeout=10, verify=SSL_VERIFY_PATH)
         return r.status_code == 200
     except:
         return False
@@ -1127,7 +1565,7 @@ def construir_email_html(compras_df: pd.DataFrame, ventas_df: pd.DataFrame, resu
 
 def grafico_enriquecido(simbolo: str, usd_mxn: float, eur_mxn: float) -> go.Figure:
     # ... (tu código original)
-    hist = safe_history(yf.Ticker(simbolo), "6mo")
+    hist = safe_history(_crear_ticker(simbolo), "6mo")
     if hist.empty:
         return go.Figure()
     factor = 1.0 if simbolo.endswith('.MX') else (eur_mxn if simbolo.endswith('.MC') else usd_mxn)
@@ -1163,7 +1601,7 @@ def dashboard_rendimiento(df_hist: pd.DataFrame) -> None:
     returns = []
     for _, row in df_hist.iterrows():
         try:
-            ticker = yf.Ticker(row['simbolo'])
+            ticker = _crear_ticker(row['simbolo'])
             hist = ticker.history(start=row['fecha'] - timedelta(days=5), end=row['fecha'] + timedelta(days=10))
             if hist.empty:
                 continue
@@ -1272,24 +1710,24 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
     if GEMINI_API_KEY:
         try:
             url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
-            resp = requests.post(url, json={"contents": [{"parts":[{"text":prompt}]}]}, timeout=30)
+            resp = requests.post(url, json={"contents": [{"parts":[{"text":prompt}]}]}, timeout=30, verify=SSL_VERIFY_PATH)
             if resp.status_code == 200:
                 texto = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
                 _guardar_cache_ia(prompt, texto)
                 return texto
-        except:
-            pass
+        except Exception as e:
+            logger.warning("No se pudo consultar Gemini: %s", e)
     if GROQ_API_KEY:
         try:
             resp = requests.post("https://api.groq.com/openai/v1/chat/completions",
                                  headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
-                                 json={"model": "llama-3.3-70b-versatile", "messages": [{"role":"user","content":prompt}], "max_tokens":500}, timeout=30)
+                                 json={"model": "llama-3.3-70b-versatile", "messages": [{"role":"user","content":prompt}], "max_tokens":500}, timeout=30, verify=SSL_VERIFY_PATH)
             if resp.status_code == 200:
                 texto = resp.json()["choices"][0]["message"]["content"]
                 _guardar_cache_ia(prompt, texto)
                 return texto
-        except:
-            pass
+        except Exception as e:
+            logger.warning("No se pudo consultar Groq: %s", e)
     return "IA no disponible."
 
 # ============================================================
@@ -1298,9 +1736,10 @@ def analisis_ia(oportunidades: list[dict], regime: dict, usd_mxn: float) -> str:
 def analizar_accion(args: tuple) -> dict | None:
     (simbolo, precio_compra_dict, precios_actuales, usd_mxn, eur_mxn, incluir_fund, incluir_bt,
      regime_bonus, capital, riesgo_pct, trailing_enabled, trailing_pct) = args
+    simbolo = normalizar_simbolo(simbolo)
     try:
         periodo = "6mo" if incluir_bt else "3mo"
-        ticker = yf.Ticker(simbolo)
+        ticker = _crear_ticker(simbolo)
 
         if simbolo in precios_actuales:
             precio_actual_mxn = precios_actuales[simbolo]
@@ -1337,6 +1776,8 @@ def analizar_accion(args: tuple) -> dict | None:
         ps = position_size(precio_actual_mxn, atr, capital, riesgo_pct)
 
         p_compra = precio_compra_dict.get(simbolo)
+        if p_compra is None and simbolo.endswith('.MX'):
+            p_compra = precio_compra_dict.get(simbolo.replace('.MX', ''))
         señales_venta = []
         if p_compra:
             ganancia = ((precio_actual_mxn / p_compra) - 1) * 100
@@ -1417,7 +1858,10 @@ if not st.session_state['datos_cargados']:
         with st.spinner("🔄 Restaurando datos..."):
             posiciones_repo = repo_cargar_posiciones()
             if posiciones_repo:
-                st.session_state['PRECIO_COMPRA'] = posiciones_repo
+                st.session_state['PRECIO_COMPRA'] = {
+                    normalizar_simbolo(k): (v.get('precio', 0.0) if isinstance(v, dict) else float(v))
+                    for k, v in posiciones_repo.items()
+                }
                 st.sidebar.success(f"✅ {len(posiciones_repo)} posiciones restauradas.")
             else:
                 st.session_state.setdefault('PRECIO_COMPRA', {})
@@ -1501,7 +1945,7 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
                 continue
             partes = linea.split(',')
             if len(partes) == 3:
-                sim = partes[0].strip().upper()
+                sim = normalizar_simbolo(partes[0])
                 try:
                     cantidad = float(partes[1].strip())
                     precio = float(partes[2].strip())
@@ -1606,7 +2050,11 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
         if filtro_rsi:
             filtro = filtro & (compras['RSI'].between(45, 65))
         if filtro_ml and 'ML Predicción' in compras.columns:
-            filtro = filtro & (compras['ML Predicción'].str.contains("Subida", na=False))
+            if 'ML F1 OOS (%)' in compras.columns:
+                f1_oos = pd.to_numeric(compras['ML F1 OOS (%)'], errors='coerce').fillna(0)
+                filtro = filtro & (f1_oos >= 50)
+            else:
+                filtro = filtro & (compras['ML Predicción'].str.contains("F1 OOS", na=False))
         if filtro_sentimiento and 'Sentimiento' in compras.columns:
             filtro = filtro & (compras['Sentimiento'] == 'positivo')
         compras = compras[filtro].copy()
@@ -1646,7 +2094,20 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
             for idx, row in compras.iterrows():
                 model_info = entrenar_modelo_ml(row['Símbolo'], usd_mxn, eur_mxn)
                 if model_info:
-                    compras.at[idx, 'ML Predicción'] = f"{model_info['fuente']} Subida {model_info['accuracy']}%"
+                    metricas_oos = model_info.get('metricas_out_of_sample', {})
+                    f1_oos = metricas_oos.get('f1', model_info.get('accuracy', 0))
+                    auc_oos = metricas_oos.get('auc_roc')
+                    f1_in = model_info.get('accuracy_in_sample')
+
+                    texto_auc = f" | AUC OOS {auc_oos}" if auc_oos is not None else ""
+                    compras.at[idx, 'ML Predicción'] = f"{model_info['fuente']} F1 OOS {f1_oos}%{texto_auc}"
+                    compras.at[idx, 'ML F1 OOS (%)'] = f1_oos
+                    compras.at[idx, 'ML F1 In-Sample (%)'] = f1_in if f1_in is not None else np.nan
+                    compras.at[idx, 'ML AUC OOS'] = auc_oos if auc_oos is not None else np.nan
+
+                    top_features = model_info.get('feature_importance', {}).get('top', [])
+                    if top_features:
+                        compras.at[idx, 'Top Feature ML'] = top_features[0].get('feature', '')
                 else:
                     compras.at[idx, 'ML Predicción'] = "No disponible"
 
@@ -1792,6 +2253,7 @@ if 'df' in st.session_state:
     with tab1:
         if not compras.empty:
             cols_compras = ['Símbolo','Precio (MXN)','Score','RSI','ATR','Stop Loss','Take Profit',
+                            'ML Predicción','ML F1 OOS (%)','ML AUC OOS','ML F1 In-Sample (%)','Top Feature ML',
                             'Unidades','Inversión (MXN)','% Capital','Peso Cartera','Inversión Asignada',
                             'Unidades Ajustadas','Recomendación','Motivo','Señales']
             st.dataframe(compras[[c for c in cols_compras if c in compras.columns]], width='stretch')
