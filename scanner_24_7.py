@@ -12,10 +12,15 @@ import yfinance as yf
 import json
 import hashlib
 import time
+import logging
+import certifi
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+logger = logging.getLogger(__name__)
+SSL_VERIFY_PATH = certifi.where()
 
 # ============================================================
 # CONFIGURACIÓN (variables de entorno)
@@ -153,11 +158,32 @@ UNIVERSO_BASE = list(set(
 ))
 
 # ============================================================
-# CORRECCIÓN: Conjunto de símbolos mexicanos SIN sufijo .MX
+# NORMALIZACIÓN DE SÍMBOLOS
 # ============================================================
 
-mexicanos_con_sufijo = set(fibras_mex + bmv)
-MEXICAN_SYMBOLS = {s.replace('.MX', '') for s in mexicanos_con_sufijo}
+MEXICAN_SYMBOLS_BASE = {s.replace('.MX', '') for s in set(fibras_mex + bmv)}
+
+
+def normalizar_simbolo(simbolo: str) -> str:
+    if simbolo is None:
+        return ""
+
+    s = str(simbolo).upper().replace(" ", "")
+    if not s:
+        return ""
+
+    if s.startswith("^") or "=" in s or "/" in s:
+        return s
+    if s.endswith('.MX'):
+        return s
+    if "." in s and not s.endswith("."):
+        return s
+
+    return f"{s}.MX" if s in MEXICAN_SYMBOLS_BASE else s
+
+
+def _crear_ticker(simbolo: str):
+    return yf.Ticker(normalizar_simbolo(simbolo))
 
 # ============================================================
 # CAPA DE PERSISTENCIA — GitHub Repo
@@ -179,20 +205,23 @@ def _repo_leer(nombre: str) -> str:
     try:
         import base64
         url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{DATA_PATH}/{nombre}"
-        r = requests.get(url, headers=_gh_headers(), timeout=12)
+        r = requests.get(url, headers=_gh_headers(), timeout=12, verify=SSL_VERIFY_PATH)
         if r.status_code == 200:
             return base64.b64decode(r.json()["content"]).decode("utf-8")
+        if r.status_code != 404:
+            print(f"⚠️ No se pudo leer '{nombre}' del repo (HTTP {r.status_code}).")
     except Exception as e:
-        print(f"⚠️ repo leer '{nombre}': {e}")
+        print(f"⚠️ Error al leer '{nombre}' del repo: {e}")
+        logger.exception("Error repo_leer")
     return ""
 
 def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool:
-    if not _repo_disponible() or not contenido:
+    if not _repo_disponible() or contenido is None:
         return False
     import base64
     try:
         url = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/contents/{DATA_PATH}/{nombre}"
-        r_get = requests.get(url, headers=_gh_headers(), timeout=10)
+        r_get = requests.get(url, headers=_gh_headers(), timeout=10, verify=SSL_VERIFY_PATH)
         sha = r_get.json().get("sha", "") if r_get.status_code == 200 else ""
         payload = {
             "message": f"[scanner] {mensaje}",
@@ -200,10 +229,14 @@ def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool
         }
         if sha:
             payload["sha"] = sha
-        r = requests.put(url, headers=_gh_headers(), json=payload, timeout=15)
-        return r.status_code in (200, 201)
+        r = requests.put(url, headers=_gh_headers(), json=payload, timeout=15, verify=SSL_VERIFY_PATH)
+        if r.status_code not in (200, 201):
+            print(f"⚠️ No se pudo guardar '{nombre}' en el repo (HTTP {r.status_code}).")
+            return False
+        return True
     except Exception as e:
-        print(f"⚠️ repo escribir '{nombre}': {e}")
+        print(f"⚠️ Error al escribir '{nombre}' en el repo: {e}")
+        logger.exception("Error repo_escribir")
         return False
 
 # ============================================================
@@ -212,39 +245,45 @@ def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool
 def cargar_posiciones_repo() -> dict:
     posiciones = {}
     ruta_local = os.path.join("data", "posiciones.json")
+
     if os.path.exists(ruta_local):
         try:
             with open(ruta_local, "r", encoding="utf-8") as f:
                 data = json.load(f)
             if isinstance(data, dict):
                 for simbolo, info in data.items():
+                    clave = normalizar_simbolo(simbolo)
+                    if not clave:
+                        continue
                     if isinstance(info, dict) and "precio" in info:
-                        clave = simbolo.upper().replace('.MX', '')
-                        posiciones[clave] = info["precio"]
+                        posiciones[clave] = float(info["precio"])
                     elif isinstance(info, (int, float)):
-                        # Formato antiguo
-                        clave = simbolo.upper().replace('.MX', '')
                         posiciones[clave] = float(info)
                 print(f"✅ Posiciones desde {ruta_local}: {list(posiciones.keys())}")
                 return posiciones
         except Exception as e:
             print(f"⚠️ Error leyendo {ruta_local}: {e}")
+            logger.exception("Error leyendo posiciones locales")
+
     if _repo_disponible():
         contenido = _repo_leer("posiciones.json")
         if contenido:
             try:
                 data = json.loads(contenido)
                 for simbolo, info in data.items():
+                    clave = normalizar_simbolo(simbolo)
+                    if not clave:
+                        continue
                     if isinstance(info, dict) and "precio" in info:
-                        clave = simbolo.upper().replace('.MX', '')
-                        posiciones[clave] = info["precio"]
+                        posiciones[clave] = float(info["precio"])
                     elif isinstance(info, (int, float)):
-                        clave = simbolo.upper().replace('.MX', '')
                         posiciones[clave] = float(info)
                 print(f"📦 Posiciones desde GitHub: {list(posiciones.keys())}")
                 return posiciones
             except Exception as e:
                 print(f"⚠️ Error parseando posiciones.json: {e}")
+                logger.exception("Error parseando posiciones del repo")
+
     print("ℹ️ No se encontraron posiciones abiertas.")
     return posiciones
     
@@ -260,12 +299,15 @@ def cargar_historial_repo() -> pd.DataFrame:
         try:
             from io import StringIO
             df = pd.read_csv(StringIO(contenido))
-            df['fecha'] = pd.to_datetime(df['fecha'])
+            df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+            if 'simbolo' in df.columns:
+                df['simbolo'] = df['simbolo'].astype(str).apply(normalizar_simbolo)
             df.to_csv(HISTORICO_FILE, index=False)
             print(f"📊 Historial cargado: {len(df)} señales")
             return df
         except Exception as e:
             print(f"⚠️ Error cargando historial: {e}")
+            logger.exception("Error cargando historial")
 
     return pd.DataFrame(columns=cols)
 
@@ -273,12 +315,15 @@ def sincronizar_historial_repo():
     if not _repo_disponible() or not os.path.exists(HISTORICO_FILE):
         return
     try:
-        with open(HISTORICO_FILE, 'r', encoding='utf-8') as f:
-            contenido = f.read()
+        df = pd.read_csv(HISTORICO_FILE)
+        if 'simbolo' in df.columns:
+            df['simbolo'] = df['simbolo'].astype(str).apply(normalizar_simbolo)
+        contenido = df.to_csv(index=False)
         _repo_escribir("historial_senales.csv", contenido, "sincronizar historial")
         print("☁️ Historial sincronizado con repo")
     except Exception as e:
         print(f"⚠️ Error sincronizando historial: {e}")
+        logger.exception("Error sincronizando historial")
 
 # ============================================================
 # CARGA Y SINCRONIZACIÓN DE CACHÉ IA
@@ -346,8 +391,8 @@ def safe_history(ticker, period="6mo", max_retries=3):
 
 def obtener_tipo_cambio() -> tuple[float, float]:
     try:
-        usd = yf.Ticker("USDMXN=X").history(period="5d")
-        eur = yf.Ticker("EURMXN=X").history(period="5d")
+        usd = _crear_ticker("USDMXN=X").history(period="5d")
+        eur = _crear_ticker("EURMXN=X").history(period="5d")
         return (float(usd['Close'].iloc[-1]) if not usd.empty else 20.0,
                 float(eur['Close'].iloc[-1]) if not eur.empty else 21.5)
     except Exception as e:
@@ -454,7 +499,7 @@ def calcular_score(r: dict, p: dict | None) -> tuple[int, list[str]]:
 
 def obtener_market_regime() -> dict:
     try:
-        sp = yf.Ticker("^GSPC").history(period="1y")
+        sp = _crear_ticker("^GSPC").history(period="1y")
         if sp.empty or len(sp) < 200:
             return {'regime': 'DESCONOCIDO', 'score_bonus': 0, 'precio': 0, 'ema200': 0,
                     'ret_1m': 0, 'rsi_sp500': 0, 'descripcion': 'Sin datos'}
@@ -509,6 +554,7 @@ def position_size(precio: float, atr: float) -> dict:
 
 def analizar(args) -> dict | None:
     simbolo, usd_mxn, eur_mxn, regime_bonus, posiciones = args
+    simbolo = normalizar_simbolo(simbolo)
     debug = simbolo in ['T', 'AMD', 'TECL', 'INTC']  # añadido INTC para depurar
 
     try:
@@ -525,7 +571,7 @@ def analizar(args) -> dict | None:
         else:
             factor = usd_mxn
 
-        ticker = yf.Ticker(simbolo)
+        ticker = _crear_ticker(simbolo)
         hist = safe_history(ticker, period="6mo")  # usa safe_history con reintentos
         if hist.empty:
             if debug:
@@ -559,10 +605,13 @@ def analizar(args) -> dict | None:
 
         ps = position_size(precio_actual, atr)
 
-        simbolo_limpio = simbolo.replace('.MX', '')
-        precio_compra = posiciones.get(simbolo_limpio)
+        simbolo_norm = normalizar_simbolo(simbolo)
+        precio_compra = posiciones.get(simbolo_norm)
+        if precio_compra is None and simbolo_norm.endswith('.MX'):
+            # Compatibilidad temporal con datos antiguos guardados sin .MX
+            precio_compra = posiciones.get(simbolo_norm.replace('.MX', ''))
         if debug:
-            print(f"   simbolo_limpio = {simbolo_limpio}")
+            print(f"   simbolo_norm = {simbolo_norm}")
             print(f"   precio_compra = {precio_compra}")
 
         recomendacion = "EVITAR"
@@ -573,7 +622,7 @@ def analizar(args) -> dict | None:
         if precio_compra is not None:
             ganancia_pct = ((precio_actual / precio_compra) - 1) * 100
             # DEBUG siempre imprime la ganancia para INTC
-            if simbolo_limpio == 'INTC':
+            if simbolo_norm == 'INTC':
                 print(f"📊 INTC: compra={precio_compra:.2f} actual={precio_actual:.2f} ganancia={ganancia_pct:.2f}%")
             if debug:
                 print(f"   ganancia_pct = {ganancia_pct:.2f}%")
@@ -581,15 +630,15 @@ def analizar(args) -> dict | None:
                 recomendacion = "VENDER"
                 motivo = f"🎯 Take Profit +{ganancia_pct:.1f}%"
                 senales_venta.append(motivo)
-                print(f"🔔 Venta detectada: {simbolo_limpio} - {motivo}")
+                print(f"🔔 Venta detectada: {simbolo_norm} - {motivo}")
             elif ganancia_pct <= -7:
                 recomendacion = "VENDER"
                 motivo = f"🛑 Stop Loss {ganancia_pct:.1f}%"
                 senales_venta.append(motivo)
-                print(f"🔔 Venta detectada: {simbolo_limpio} - {motivo}")
+                print(f"🔔 Venta detectada: {simbolo_norm} - {motivo}")
         else:
             if debug:
-                print(f"   ⚠️ No hay precio de compra para {simbolo_limpio}")
+                print(f"   ⚠️ No hay precio de compra para {simbolo_norm}")
 
         # Lógica de compra solo si no es venta
         if recomendacion != "VENDER":
@@ -607,7 +656,7 @@ def analizar(args) -> dict | None:
                 motivo = f"Score {score}/14"
 
         resultado = {
-            'Símbolo': simbolo_limpio,
+            'Símbolo': simbolo_norm,
             'Precio MXN': round(precio_actual, 2),
             'Score': score,
             'RSI': round(ultimo['RSI'], 1),
@@ -634,28 +683,32 @@ def analizar(args) -> dict | None:
 # ============================================================
 
 def guardar_senal_en_historial(senal: dict, fecha: str):
-    if os.path.exists(HISTORICO_FILE):
-        df = pd.read_csv(HISTORICO_FILE)
-        df['fecha'] = pd.to_datetime(df['fecha'])
-    else:
-        df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales'])
+    try:
+        if os.path.exists(HISTORICO_FILE):
+            df = pd.read_csv(HISTORICO_FILE)
+            df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+        else:
+            df = pd.DataFrame(columns=['fecha', 'simbolo', 'score', 'precio', 'recomendacion', 'señales'])
 
-    nueva = pd.DataFrame([{
-        'fecha': fecha,
-        'simbolo': senal['Símbolo'],
-        'score': senal['Score'],
-        'precio': senal['Precio MXN'],
-        'recomendacion': senal['Recomendación'],
-        'señales': senal.get('Señales', '')
-    }])
+        nueva = pd.DataFrame([{
+            'fecha': fecha,
+            'simbolo': normalizar_simbolo(senal['Símbolo']),
+            'score': senal['Score'],
+            'precio': senal['Precio MXN'],
+            'recomendacion': senal['Recomendación'],
+            'señales': senal.get('Señales', '')
+        }])
 
-    df = pd.concat([df, nueva], ignore_index=True)
-    df['fecha'] = pd.to_datetime(df['fecha'])
+        df = pd.concat([df, nueva], ignore_index=True)
+        df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
 
-    cutoff = datetime.now() - timedelta(days=90)
-    df = df[df['fecha'] >= cutoff]
+        cutoff = datetime.now() - timedelta(days=90)
+        df = df[df['fecha'] >= cutoff]
 
-    df.to_csv(HISTORICO_FILE, index=False)
+        df.to_csv(HISTORICO_FILE, index=False)
+    except Exception as e:
+        print(f"⚠️ Error al guardar historial de señales: {e}")
+        logger.exception("Error guardando señal en historial")
 
 def backtest_historial(df_hist: pd.DataFrame) -> dict:
     if df_hist.empty:
@@ -668,7 +721,7 @@ def backtest_historial(df_hist: pd.DataFrame) -> dict:
 
     for _, row in df_compras.iterrows():
         try:
-            ticker = yf.Ticker(row['simbolo'])
+            ticker = _crear_ticker(row['simbolo'])
             start_date = row['fecha']
             end_date = row['fecha'] + timedelta(days=VENTANA_BT*2)
 
@@ -749,7 +802,7 @@ def _llamar_ia_con_reintentos(proveedor: str, prompt: str, max_retries=3):
 
 def _ia_gemini(prompt: str) -> str:
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
-    resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=30)
+    resp = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=30, verify=SSL_VERIFY_PATH)
 
     if resp.status_code == 200:
         return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
@@ -763,7 +816,8 @@ def _ia_groq(prompt: str) -> str:
         json={"model": "llama-3.3-70b-versatile",
               "messages": [{"role": "user", "content": prompt}],
               "max_tokens": 800},
-        timeout=30
+        timeout=30,
+        verify=SSL_VERIFY_PATH
     )
 
     if resp.status_code == 200:
