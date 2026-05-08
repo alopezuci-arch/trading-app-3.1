@@ -38,5 +38,13 @@
   "ENPH": {
     "cantidad": 1.0,
     "precio": 602.79
+  },
+  "CEMEXCPO.MX": {
+    "cantidad": 1.0,
+    "precio": 23.33
+  },
+  "NVDA": {
+    "cantidad": 1.0,
+    "precio": 3551.73
   }
 }
