@@ -1328,34 +1328,105 @@
     }
   },
   "KRE": {
-    "accuracy": 68.0,
-    "fecha": "2026-04-17 22:42",
-    "fecha_ultimo_entrenamiento": "2026-04-17 22:42",
+    "accuracy": 24.7,
+    "fecha": "2026-05-11 18:27",
+    "fecha_ultimo_entrenamiento": "2026-05-11 18:27",
     "ventana_meses": 24,
     "validacion": "TimeSeriesSplit",
     "periodo_test_out_of_sample": {
-      "inicio": null,
-      "fin": null,
+      "inicio": "2025-11-10",
+      "fin": "2026-05-08",
       "meses": 6,
-      "observaciones": null
-    },
-    "metricas_out_of_sample": {
-      "f1": 68.0,
-      "precision": null,
-      "recall": null,
-      "auc_roc": null
+      "observaciones": 124
     },
     "metricas_in_sample": {
-      "f1": 68.0,
-      "precision": null,
-      "recall": null,
+      "f1": 46.35,
+      "precision": 50.52,
+      "recall": 50.84,
       "auc_roc": null
     },
+    "metricas_out_of_sample": {
+      "f1": 24.7,
+      "precision": 26.08,
+      "recall": 29.34,
+      "auc_roc": 0.5505
+    },
     "feature_importance": {
-      "top": [],
-      "todas": {},
-      "cercanas_a_cero": [],
+      "top": [
+        {
+          "feature": "EMA50",
+          "importancia": 0.129002
+        },
+        {
+          "feature": "MACD_sig",
+          "importancia": 0.127461
+        },
+        {
+          "feature": "EMA20",
+          "importancia": 0.117191
+        },
+        {
+          "feature": "MACD",
+          "importancia": 0.095401
+        },
+        {
+          "feature": "ATR",
+          "importancia": 0.072287
+        },
+        {
+          "feature": "ROC",
+          "importancia": 0.070492
+        },
+        {
+          "feature": "Vol_avg",
+          "importancia": 0.065071
+        },
+        {
+          "feature": "ATR_RATIO",
+          "importancia": 0.060516
+        },
+        {
+          "feature": "OBV",
+          "importancia": 0.056817
+        },
+        {
+          "feature": "Volume",
+          "importancia": 0.044915
+        }
+      ],
+      "todas": {
+        "EMA20": 0.117191,
+        "EMA50": 0.129002,
+        "RSI": 0.027477,
+        "MACD": 0.095401,
+        "MACD_sig": 0.127461,
+        "ATR": 0.072287,
+        "BB_pct": 0.012383,
+        "STOCH_K": 0.029018,
+        "STOCH_D": 0.043555,
+        "Volume": 0.044915,
+        "Vol_avg": 0.065071,
+        "ROC": 0.070492,
+        "WILLR": 0.043885,
+        "OBV": 0.056817,
+        "ATR_RATIO": 0.060516,
+        "DOW": 0.002553,
+        "REGIME": 0.001976
+      },
+      "cercanas_a_cero": [
+        "DOW",
+        "REGIME"
+      ],
       "umbral_cero": 0.01
+    },
+    "parametros_modelo": {
+      "class_weight": "balanced",
+      "max_depth": 3,
+      "min_samples_split": 2,
+      "n_estimators": 50
+    },
+    "walk_forward": {
+      "estado": "sin_folds_validos"
     }
   },
   "VZ": {
