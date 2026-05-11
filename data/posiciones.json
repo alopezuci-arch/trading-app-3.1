@@ -9,7 +9,7 @@
   },
   "FEMSAUBD.MX": {
     "cantidad": 1.0,
-    "precio": 196.83
+    "precio": 209.19
   },
   "FUNO11.MX": {
     "cantidad": 1.0,
@@ -46,5 +46,13 @@
   "NVDA": {
     "cantidad": 1.0,
     "precio": 3551.73
+  },
+  "RKLB": {
+    "cantidad": 1.0,
+    "precio": 1689.5
+  },
+  "MU": {
+    "cantidad": 1.0,
+    "precio": 12655.3
   }
 }
