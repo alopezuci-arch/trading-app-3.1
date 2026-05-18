@@ -5093,3 +5093,569 @@ fecha,simbolo,score,precio,recomendacion,señales
 2026-05-18 04:19:47,MAP.MC,7,84.64,COMPRAR ★★,EMA alcista | RSI 62 óptimo | Cruce MACD | EMA semanal alcista
 2026-05-18 04:19:47,CF,8,2170.91,COMPRAR ★★★,EMA alcista | RSI 52 óptimo | MACD positivo | EMA semanal alcista
 2026-05-18 04:19:47,ELE.MC,9,729.3,COMPRAR ★★★,EMA alcista | RSI 33 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,IAG.MC,6,85.55,COMPRAR ★★,Golden Cross | RSI 48 óptimo | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,VWO,8,1010.84,COMPRAR ★★★,EMA alcista | RSI 48 óptimo | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,AAL,6,212.93,COMPRAR ★★,EMA alcista | RSI 59 óptimo | MACD positivo
+2026-05-18 08:33:41,ZBRA,5,4486.0,OBSERVAR,EMA alcista | MACD positivo | Volumen alto
+2026-05-18 08:33:41,CTVA,8,1421.99,COMPRAR ★★★,EMA alcista | RSI 58 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,MAP.MC,7,84.6,COMPRAR ★★,EMA alcista | RSI 62 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,D,9,1067.75,COMPRAR ★★★,EMA alcista | RSI 46 óptimo | Cruce MACD | BB zona baja | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,FCX,8,1089.89,COMPRAR ★★★,EMA alcista | RSI 55 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,EWZ,8,626.67,COMPRAR ★★★,EMA alcista | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,PHM,6,1904.58,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,PAYC,4,2356.56,OBSERVAR,EMA alcista | MACD positivo
+2026-05-18 08:33:41,AAPL,4,5193.11,OBSERVAR,EMA alcista | MACD positivo
+2026-05-18 08:33:41,SCHW,9,1571.96,COMPRAR ★★★,Golden Cross | RSI 52 óptimo | MACD positivo | Volumen alto | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ADI,6,7221.37,COMPRAR ★★,EMA alcista | RSI 62 óptimo | EMA semanal alcista
+2026-05-18 08:33:41,EWG,10,715.58,COMPRAR ★★★,EMA alcista | RSI 45 óptimo | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,MCD,3,4780.75,EVITAR,Golden Cross | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,LHX,7,5247.77,COMPRAR ★★,Golden Cross | RSI 33 rebote | MACD positivo | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,RJF,5,2665.66,OBSERVAR,EMA alcista | RSI 50 óptimo | Cruce MACD
+2026-05-18 08:33:41,KTOS,5,901.01,OBSERVAR,Golden Cross | RSI 31 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,MO,6,1264.24,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,LULU,4,2060.78,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,GE,8,4869.65,COMPRAR ★★★,Golden Cross | RSI 48 óptimo | MACD positivo | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,HSIC,8,1257.85,COMPRAR ★★★,Golden Cross | RSI 38 rebote | Cruce MACD | Volumen alto | Stoch 45 | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,OTIS,4,1228.27,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,AXON,7,6778.39,COMPRAR ★★,Golden Cross | RSI 46 óptimo | MACD positivo | BB zona baja | Stoch 35
+2026-05-18 08:33:41,MS,7,3329.86,COMPRAR ★★,EMA alcista | RSI 56 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,GNRC,6,4560.9,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,DG,6,1770.88,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,PFG,8,1738.88,COMPRAR ★★★,EMA alcista | RSI 54 óptimo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,FXI,8,626.16,COMPRAR ★★★,EMA alcista | RSI 48 óptimo | Volumen alto | Banda BB inferior | Rebote EMA50
+2026-05-18 08:33:41,LOG.MC,8,646.7,COMPRAR ★★★,EMA alcista | RSI 40 rebote | Cruce MACD | BB zona baja | Stoch 24 | EMA semanal alcista
+2026-05-18 08:33:41,MDLZ,4,1045.44,OBSERVAR,EMA alcista | EMA semanal alcista
+2026-05-18 08:33:41,ZS,4,2785.7,OBSERVAR,Golden Cross | MACD positivo | Volumen alto
+2026-05-18 08:33:41,ANA.MC,7,5113.98,COMPRAR ★★,EMA alcista | RSI 58 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,TLEVISACPO.MX,6,9.94,COMPRAR ★★,Golden Cross | Cruce MACD | BB zona baja | Stoch 27 | EMA semanal alcista
+2026-05-18 08:33:41,AMD,6,7335.7,VENDER,EMA alcista | MACD positivo | EMA semanal alcista | 🎯 Take Profit +30.0%
+2026-05-18 08:33:41,FUNO11.MX,8,29.45,COMPRAR ★★★,EMA alcista | RSI 31 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,RHI,7,434.5,COMPRAR ★★,EMA alcista | RSI 44 rebote | Cruce MACD | Banda BB inferior | Stoch 32
+2026-05-18 08:33:41,AVY,5,2701.98,OBSERVAR,Golden Cross | RSI 34 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,MTB,7,3544.18,COMPRAR ★★,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,XLU,7,758.82,COMPRAR ★★,Golden Cross | RSI 31 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,TCEHY,4,1015.17,OBSERVAR,Golden Cross | RSI 39 rebote | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,EL,5,1388.61,OBSERVAR,Golden Cross | RSI 56 óptimo | MACD positivo
+2026-05-18 08:33:41,VTR,8,1512.63,COMPRAR ★★★,EMA alcista | RSI 62 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,AFRM,5,1138.5,OBSERVAR,EMA alcista | RSI 51 óptimo | Cruce MACD
+2026-05-18 08:33:41,JNJ,9,3921.43,COMPRAR ★★★,Golden Cross | RSI 52 óptimo | MACD positivo | Volumen alto | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,BIO,4,4281.55,OBSERVAR,Golden Cross | Cruce MACD | BB zona baja | Stoch 21
+2026-05-18 08:33:41,MAA,8,2174.42,COMPRAR ★★★,EMA alcista | RSI 51 óptimo | Cruce MACD | Banda BB inferior | Rebote EMA50
+2026-05-18 08:33:41,AMAT,9,7552.26,COMPRAR ★★★,EMA alcista | RSI 60 óptimo | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,CAG,6,232.3,COMPRAR ★★,Golden Cross | RSI 44 rebote | MACD positivo | Banda BB inferior
+2026-05-18 08:33:41,WHR,4,691.71,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,MELI,4,26755.33,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,SNPS,6,8690.41,COMPRAR ★★,EMA alcista | RSI 53 óptimo | EMA semanal alcista
+2026-05-18 08:33:41,NDAQ,5,1575.07,OBSERVAR,EMA alcista | RSI 54 óptimo | Cruce MACD
+2026-05-18 08:33:41,HST,8,369.81,COMPRAR ★★★,EMA alcista | RSI 59 óptimo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,NOW,6,1644.44,COMPRAR ★★,Golden Cross | RSI 58 óptimo | MACD positivo | Volumen alto
+2026-05-18 08:33:41,ORBIA.MX,6,22.54,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,VALE,8,282.29,COMPRAR ★★★,EMA alcista | RSI 42 rebote | Cruce MACD | BB zona baja | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,EXAS,4,1814.64,OBSERVAR,EMA alcista | MACD positivo
+2026-05-18 08:33:41,MET,7,1379.96,COMPRAR ★★,EMA alcista | RSI 63 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,INFY,6,208.78,COMPRAR ★★,Golden Cross | RSI 46 óptimo | Cruce MACD | BB zona baja | Stoch 40
+2026-05-18 08:33:41,HSY,7,3234.21,COMPRAR ★★,Golden Cross | RSI 53 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,ALGN,6,2719.97,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,DOW,7,670.26,COMPRAR ★★,EMA alcista | RSI 53 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,FISV,6,957.05,COMPRAR ★★,Golden Cross | RSI 34 rebote | Cruce MACD | Volumen alto | BB zona baja | Stoch 27
+2026-05-18 08:33:41,ABT,5,1461.09,OBSERVAR,Golden Cross | MACD positivo | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,NSC,8,5465.02,COMPRAR ★★★,EMA alcista | RSI 48 óptimo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,FEMSAUBD.MX,8,210.39,COMPRAR ★★★,EMA alcista | MACD positivo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,VIS.MC,9,1169.77,COMPRAR ★★★,EMA alcista | RSI 42 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,AEE,9,1839.72,COMPRAR ★★★,EMA alcista | RSI 31 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,XLP,6,1464.03,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,CPB,4,346.11,OBSERVAR,Golden Cross | RSI 40 rebote | Banda BB inferior
+2026-05-18 08:33:41,VZ,8,802.07,COMPRAR ★★★,EMA alcista | RSI 44 rebote | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,CINF,7,2878.58,COMPRAR ★★,EMA alcista | RSI 52 óptimo | MACD positivo | Volumen alto
+2026-05-18 08:33:41,ROST,9,3679.96,COMPRAR ★★★,EMA alcista | RSI 33 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,LYV,6,2920.96,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,LYB,10,1298.32,COMPRAR ★★★,EMA alcista | RSI 61 óptimo | MACD positivo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,TSCO,5,528.77,OBSERVAR,Golden Cross | MACD positivo | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,ULTA,6,8549.61,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,IP,4,523.41,OBSERVAR,Golden Cross | RSI 41 rebote | Banda BB inferior
+2026-05-18 08:33:41,VRSN,6,5147.1,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,ITW,6,4284.15,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,HPE,6,572.53,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,IDXX,5,9146.53,OBSERVAR,Golden Cross | RSI 31 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,FIS,6,723.02,COMPRAR ★★,Golden Cross | RSI 33 rebote | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,JCI,7,2474.87,COMPRAR ★★,EMA alcista | RSI 49 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,LOW,7,3778.03,COMPRAR ★★,Golden Cross | RSI 30 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,WDAY,6,2162.31,COMPRAR ★★,Golden Cross | RSI 57 óptimo | MACD positivo | Cruce MACD
+2026-05-18 08:33:41,PM,6,3279.7,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,CRWD,5,10275.86,OBSERVAR,EMA alcista | MACD positivo | Volumen alto
+2026-05-18 08:33:41,FDS,6,3677.02,COMPRAR ★★,Golden Cross | RSI 42 rebote | Cruce MACD | Volumen alto | BB zona baja | Stoch 38
+2026-05-18 08:33:41,QQQ,7,12262.43,COMPRAR ★★,EMA alcista | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,BBY,5,973.48,OBSERVAR,Golden Cross | RSI 39 rebote | Cruce MACD | Volumen alto | BB zona baja
+2026-05-18 08:33:41,ODFL,7,3513.39,COMPRAR ★★,EMA alcista | RSI 38 rebote | Cruce MACD | Stoch 35 | EMA semanal alcista
+2026-05-18 08:33:41,GPN,5,1168.94,OBSERVAR,Golden Cross | RSI 47 óptimo | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,CEMEXCPO.MX,6,21.82,COMPRAR ★★,EMA alcista | RSI 52 óptimo | EMA semanal alcista
+2026-05-18 08:33:41,DD,9,852.92,COMPRAR ★★★,EMA alcista | RSI 59 óptimo | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,UNP,7,4679.9,COMPRAR ★★,EMA alcista | RSI 52 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,RIVN,7,238.53,COMPRAR ★★,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,COST,6,18143.79,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,NVDA,8,3897.38,COMPRAR ★★★,EMA alcista | RSI 56 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,DRI,8,3388.33,COMPRAR ★★★,Golden Cross | RSI 46 óptimo | Cruce MACD | Stoch 46 | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,CAT,6,15365.19,COMPRAR ★★,EMA alcista | RSI 60 óptimo | EMA semanal alcista
+2026-05-18 08:33:41,IBM,5,3793.25,OBSERVAR,Golden Cross | RSI 43 rebote | Cruce MACD | BB zona baja | Stoch 32
+2026-05-18 08:33:41,FIBRAPL14.MX,10,79.88,COMPRAR ★★★,EMA alcista | RSI 35 rebote | Cruce MACD | Volumen alto | BB zona baja | Stoch 34 | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,HBAN,7,266.55,COMPRAR ★★,Golden Cross | RSI 33 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,TMO,5,7582.01,OBSERVAR,Golden Cross | RSI 35 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,VLO,9,4337.07,COMPRAR ★★★,EMA alcista | RSI 59 óptimo | MACD positivo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,MGM,8,639.47,COMPRAR ★★★,EMA alcista | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,AOS,4,968.81,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,DUK,8,2092.08,COMPRAR ★★★,Golden Cross | RSI 34 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,DVN,7,856.03,COMPRAR ★★,EMA alcista | RSI 54 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,POOL,4,3033.05,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,GRF.MC,6,179.11,COMPRAR ★★,Golden Cross | RSI 49 óptimo | MACD positivo | BB zona baja
+2026-05-18 08:33:41,HAL,7,722.33,COMPRAR ★★,EMA alcista | RSI 58 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,NET,8,3417.22,COMPRAR ★★★,EMA alcista | RSI 45 óptimo | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,PG,6,2448.75,COMPRAR ★★,Golden Cross | RSI 34 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50
+2026-05-18 08:33:41,IBN,5,450.59,OBSERVAR,Golden Cross | RSI 31 rebote | Cruce MACD | BB zona baja | Stoch 30
+2026-05-18 08:33:41,CHPT,5,114.68,OBSERVAR,EMA alcista | RSI 46 óptimo | Cruce MACD
+2026-05-18 08:33:41,SYY,8,1255.25,COMPRAR ★★★,Golden Cross | RSI 34 rebote | MACD positivo | Volumen alto | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,STT,7,2643.86,COMPRAR ★★,EMA alcista | RSI 47 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,CHD,8,1626.79,COMPRAR ★★★,Golden Cross | RSI 47 óptimo | MACD positivo | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,INDA,6,830.09,COMPRAR ★★,Golden Cross | RSI 40 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50
+2026-05-18 08:33:41,NRG,4,2210.74,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,COO,4,1031.08,OBSERVAR,Golden Cross | MACD positivo | BB zona baja
+2026-05-18 08:33:41,GMEXICOB.MX,8,202.1,COMPRAR ★★★,EMA alcista | RSI 52 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,PDD,6,1657.58,COMPRAR ★★,Golden Cross | RSI 45 óptimo | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,PSX,8,3047.75,COMPRAR ★★★,EMA alcista | RSI 62 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,PLTR,5,2317.64,OBSERVAR,Golden Cross | RSI 39 rebote | Cruce MACD | BB zona baja | Stoch 25
+2026-05-18 08:33:41,QCOM,4,3485.19,OBSERVAR,EMA alcista | MACD positivo
+2026-05-18 08:33:41,AVGO,7,7354.55,COMPRAR ★★,EMA alcista | RSI 53 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,KWEB,8,487.26,COMPRAR ★★★,Golden Cross | RSI 49 óptimo | MACD positivo | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,NTES,5,1961.15,OBSERVAR,Golden Cross | RSI 54 óptimo | BB zona baja | Rebote EMA50
+2026-05-18 08:33:41,CF,8,2166.29,COMPRAR ★★★,EMA alcista | RSI 52 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,UDR,7,638.61,COMPRAR ★★,EMA alcista | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,EWX,8,1256.98,COMPRAR ★★★,EMA alcista | RSI 55 óptimo | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,VESTA.MX,9,59.23,COMPRAR ★★★,EMA alcista | Cruce MACD | Banda BB inferior | Stoch 33 | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ROBO,8,1470.08,COMPRAR ★★★,EMA alcista | RSI 61 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,SYK,5,5306.06,OBSERVAR,Golden Cross | RSI 37 rebote | MACD positivo | Volumen alto
+2026-05-18 08:33:41,REGN,5,12077.7,OBSERVAR,Golden Cross | RSI 37 rebote | MACD positivo | BB zona baja
+2026-05-18 08:33:41,VTRS,6,285.06,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,BILL,5,693.09,OBSERVAR,Golden Cross | RSI 59 óptimo | MACD positivo
+2026-05-18 08:33:41,LIT,8,1454.34,COMPRAR ★★★,EMA alcista | RSI 48 óptimo | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,J,5,1911.5,OBSERVAR,Golden Cross | RSI 35 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,IVZ,6,469.1,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,EBAY,6,2008.71,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,PCAR,6,1908.22,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,ADP,3,3709.88,EVITAR,Golden Cross | MACD positivo
+2026-05-18 08:33:41,HAS,8,1647.55,COMPRAR ★★★,EMA alcista | RSI 52 óptimo | Cruce MACD | Stoch 41 | EMA semanal alcista
+2026-05-18 08:33:41,USB,9,918.82,COMPRAR ★★★,EMA alcista | RSI 32 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,DANHOS13.MX,8,27.7,COMPRAR ★★★,EMA alcista | RSI 50 óptimo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,KEY,11,363.93,COMPRAR ★★★,EMA alcista | RSI 38 rebote | Cruce MACD | Volumen alto | Banda BB inferior | Stoch 20 | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,EIX,9,1196.27,COMPRAR ★★★,EMA alcista | RSI 53 óptimo | MACD positivo | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,BIIB,8,3337.48,COMPRAR ★★★,EMA alcista | RSI 62 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,RVTY,6,1625.41,COMPRAR ★★,EMA alcista | RSI 60 óptimo | MACD positivo
+2026-05-18 08:33:41,MNST,6,1506.4,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,FTNT,6,2123.74,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,EXR,9,2367.97,COMPRAR ★★★,EMA alcista | RSI 44 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,TFX,6,2243.61,COMPRAR ★★,EMA alcista | RSI 42 rebote | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,EMR,7,2301.38,COMPRAR ★★,Golden Cross | RSI 41 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,PEG,7,1322.19,COMPRAR ★★,Golden Cross | RSI 36 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,ITX.MC,7,984.34,COMPRAR ★★,Golden Cross | RSI 39 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,NEM,9,1886.42,COMPRAR ★★★,EMA alcista | RSI 42 rebote | MACD positivo | Volumen alto | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,COP,7,2117.34,COMPRAR ★★,EMA alcista | RSI 52 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,APA,8,674.24,COMPRAR ★★★,EMA alcista | RSI 52 óptimo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,EWH,8,416.17,COMPRAR ★★★,EMA alcista | RSI 62 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,EOG,9,2426.09,COMPRAR ★★★,EMA alcista | RSI 61 óptimo | MACD positivo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,UNH,6,6812.46,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,CIE.MC,7,566.77,COMPRAR ★★,EMA alcista | RSI 49 óptimo | Cruce MACD | BB zona baja | Rebote EMA50
+2026-05-18 08:33:41,ROP,5,5550.64,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior | Stoch 26
+2026-05-18 08:33:41,GOOG,6,6803.3,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,APD,9,5109.22,COMPRAR ★★★,EMA alcista | RSI 42 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,INVH,5,483.11,OBSERVAR,EMA alcista | RSI 59 óptimo | Cruce MACD
+2026-05-18 08:33:41,VRTX,8,7557.97,COMPRAR ★★★,Golden Cross | RSI 57 óptimo | MACD positivo | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,BKR,7,1109.09,COMPRAR ★★,EMA alcista | RSI 33 rebote | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,PNW,9,1702.03,COMPRAR ★★★,EMA alcista | RSI 36 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,FTV,8,1015.69,COMPRAR ★★★,EMA alcista | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,PATH,6,177.64,COMPRAR ★★,Golden Cross | RSI 48 óptimo | Cruce MACD | Volumen alto | BB zona baja
+2026-05-18 08:33:41,EMN,9,1238.13,COMPRAR ★★★,EMA alcista | RSI 49 óptimo | Cruce MACD | BB zona baja | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,CFG,9,1052.7,COMPRAR ★★★,EMA alcista | RSI 35 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ESS,7,4619.36,COMPRAR ★★,EMA alcista | RSI 64 óptimo | MACD positivo | Volumen alto
+2026-05-18 08:33:41,EXPD,8,2688.83,COMPRAR ★★★,EMA alcista | RSI 59 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,RSG,7,3603.33,COMPRAR ★★,Golden Cross | RSI 54 óptimo | MACD positivo | Volumen alto | Rebote EMA50
+2026-05-18 08:33:41,ALB,10,3120.05,COMPRAR ★★★,EMA alcista | RSI 38 rebote | Cruce MACD | Volumen alto | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,WY,7,392.3,COMPRAR ★★,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,CBRE,5,2247.76,OBSERVAR,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,BWA,6,1093.35,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,CME,5,5169.41,OBSERVAR,Golden Cross | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,ALLE,4,2173.38,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,VTI,6,6274.35,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,INTC,8,1881.41,COMPRAR ★★★,EMA alcista | RSI 65 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,STX,6,13759.32,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,MPC,6,4411.28,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,SLB,7,957.91,COMPRAR ★★,EMA alcista | RSI 51 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,PGR,5,3454.75,OBSERVAR,Golden Cross | RSI 45 rebote | Cruce MACD | Volumen alto | Rebote EMA50
+2026-05-18 08:33:41,PCG,8,279.0,COMPRAR ★★★,Golden Cross | RSI 46 óptimo | MACD positivo | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,EEM,7,1125.52,COMPRAR ★★,EMA alcista | RSI 55 óptimo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,MDT,3,1317.17,EVITAR,Golden Cross | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,BAC,7,860.88,COMPRAR ★★,EMA alcista | RSI 32 rebote | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,WDC,6,8337.55,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,TSN,7,1137.98,COMPRAR ★★,EMA alcista | RSI 59 óptimo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,VNO,5,528.95,OBSERVAR,EMA alcista | RSI 55 óptimo | Cruce MACD
+2026-05-18 08:33:41,AXP,6,5422.3,COMPRAR ★★,Golden Cross | RSI 44 rebote | Cruce MACD | BB zona baja | Stoch 33 | Rebote EMA50
+2026-05-18 08:33:41,GOLD,6,669.92,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,ELE.MC,8,732.67,COMPRAR ★★★,EMA alcista | RSI 37 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,HDB,5,422.91,OBSERVAR,Golden Cross | RSI 38 rebote | Cruce MACD | BB zona baja | Stoch 31
+2026-05-18 08:33:41,UPS,7,1711.2,COMPRAR ★★,Golden Cross | RSI 34 rebote | Cruce MACD | BB zona baja | Stoch 21 | EMA semanal alcista
+2026-05-18 08:33:41,T,8,415.65,VENDER,Golden Cross | RSI 32 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista | 🛑 Stop Loss -9.8%
+2026-05-18 08:33:41,TRMB,4,953.59,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,HRL,4,341.44,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,ZION,9,1031.43,COMPRAR ★★★,EMA alcista | RSI 38 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,MAR,8,6108.82,COMPRAR ★★★,EMA alcista | RSI 43 rebote | Cruce MACD | BB zona baja | Stoch 37 | EMA semanal alcista
+2026-05-18 08:33:41,XLE,9,1028.14,COMPRAR ★★★,EMA alcista | RSI 61 óptimo | MACD positivo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,ICE,8,2669.98,COMPRAR ★★★,Golden Cross | RSI 44 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,REP.MC,6,465.9,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,NFLX,4,1505.19,OBSERVAR,Golden Cross | RSI 35 rebote | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,RKLB,6,2158.16,VENDER,EMA alcista | MACD positivo | EMA semanal alcista | 🎯 Take Profit +27.7%
+2026-05-18 08:33:41,ARKF,7,703.99,COMPRAR ★★,EMA alcista | RSI 40 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50
+2026-05-18 08:33:41,GD,6,5785.88,COMPRAR ★★,Golden Cross | MACD positivo | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,AIZ,6,4404.01,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,SMCI,6,536.9,COMPRAR ★★,EMA alcista | RSI 58 óptimo | MACD positivo
+2026-05-18 08:33:41,ARKW,4,2475.39,OBSERVAR,EMA alcista | RSI 58 óptimo
+2026-05-18 08:33:41,C,8,2134.81,COMPRAR ★★★,EMA alcista | RSI 35 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,IFF,9,1264.42,COMPRAR ★★★,EMA alcista | RSI 53 óptimo | MACD positivo | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ETR,10,1885.9,COMPRAR ★★★,EMA alcista | RSI 40 rebote | Cruce MACD | Volumen alto | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,GLD,9,7217.91,COMPRAR ★★★,Golden Cross | RSI 40 rebote | MACD positivo | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,EWU,9,788.23,COMPRAR ★★★,EMA alcista | RSI 42 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,WFC,4,1269.95,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,MTD,4,17844.38,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,KHC,6,396.45,COMPRAR ★★,EMA alcista | RSI 62 óptimo | MACD positivo
+2026-05-18 08:33:41,CDW,4,1765.51,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,DTE,6,2417.79,COMPRAR ★★,RSI 38 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,ZM,8,1732.48,COMPRAR ★★★,EMA alcista | RSI 62 óptimo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,AENA.MC,7,455.43,COMPRAR ★★,Golden Cross | RSI 39 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,MA,5,8548.23,OBSERVAR,Golden Cross | RSI 44 rebote | Cruce MACD | BB zona baja | Rebote EMA50
+2026-05-18 08:33:41,SAN.MC,10,202.95,COMPRAR ★★★,EMA alcista | RSI 48 óptimo | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,SOFI,4,270.01,OBSERVAR,Golden Cross | RSI 30 rebote | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,MKC,5,801.72,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior | Stoch 22
+2026-05-18 08:33:41,XHB,6,1666.06,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,PEP,7,2579.34,COMPRAR ★★,Golden Cross | RSI 40 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,NVCR,6,304.08,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,APH,6,2162.14,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,NTRS,7,2834.3,COMPRAR ★★,EMA alcista | RSI 40 rebote | Cruce MACD | Stoch 48 | EMA semanal alcista
+2026-05-18 08:33:41,TDG,4,19873.85,OBSERVAR,Golden Cross | RSI 48 óptimo | BB zona baja
+2026-05-18 08:33:41,HOLX,4,1314.75,OBSERVAR,EMA alcista | MACD positivo
+2026-05-18 08:33:41,EWY,9,3093.76,COMPRAR ★★★,EMA alcista | RSI 62 óptimo | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,ECL,7,4283.11,COMPRAR ★★,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,CNP,9,718.35,COMPRAR ★★★,EMA alcista | RSI 38 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,STLD,7,3966.92,COMPRAR ★★,EMA alcista | RSI 54 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,TSLA,4,7303.53,OBSERVAR,EMA alcista | MACD positivo
+2026-05-18 08:33:41,RMD,3,3491.94,EVITAR,Golden Cross | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,XYL,4,1870.16,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,WEC,8,1888.15,COMPRAR ★★★,Golden Cross | RSI 35 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,O,9,1057.2,COMPRAR ★★★,EMA alcista | RSI 42 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,TTWO,5,4193.51,OBSERVAR,EMA alcista | MACD positivo | Volumen alto
+2026-05-18 08:33:41,CLX,5,1564.52,OBSERVAR,Golden Cross | RSI 39 rebote | MACD positivo | BB zona baja
+2026-05-18 08:33:41,INTU,5,6797.76,OBSERVAR,Golden Cross | RSI 51 óptimo | Cruce MACD | Volumen alto
+2026-05-18 08:33:41,WALMEX.MX,7,54.82,COMPRAR ★★,Golden Cross | RSI 52 óptimo | MACD positivo | BB zona baja | Rebote EMA50
+2026-05-18 08:33:41,WST,8,5239.12,COMPRAR ★★★,EMA alcista | RSI 51 óptimo | Cruce MACD | Stoch 31 | EMA semanal alcista
+2026-05-18 08:33:41,MCHP,7,1623.33,COMPRAR ★★,EMA alcista | RSI 61 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,EA,7,3470.49,COMPRAR ★★,Golden Cross | Cruce MACD | BB zona baja | Stoch 28 | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,HWM,8,4503.3,COMPRAR ★★★,EMA alcista | RSI 63 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,PBR,8,344.73,COMPRAR ★★★,EMA alcista | RSI 40 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,TER,8,5844.34,COMPRAR ★★★,EMA alcista | RSI 38 rebote | Cruce MACD | BB zona baja | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,TROW,5,1764.48,OBSERVAR,EMA alcista | RSI 52 óptimo | Cruce MACD
+2026-05-18 08:33:41,YPF,7,755.19,COMPRAR ★★,EMA alcista | RSI 53 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,ACS.MC,6,2653.63,COMPRAR ★★,EMA alcista | RSI 61 óptimo | EMA semanal alcista
+2026-05-18 08:33:41,ORCL,6,3337.48,COMPRAR ★★,EMA alcista | RSI 65 óptimo | MACD positivo
+2026-05-18 08:33:41,OKE,8,1596.87,COMPRAR ★★★,EMA alcista | RSI 63 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,PSA,9,5058.88,COMPRAR ★★★,EMA alcista | RSI 40 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ACHR,7,104.65,COMPRAR ★★,Golden Cross | RSI 53 óptimo | MACD positivo | Volumen alto | Rebote EMA50
+2026-05-18 08:33:41,JKHY,5,2367.45,OBSERVAR,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,EW,4,1407.64,OBSERVAR,Golden Cross | RSI 44 rebote | Cruce MACD | Rebote EMA50
+2026-05-18 08:33:41,GRMN,7,3904.82,COMPRAR ★★,EMA alcista | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,BKNG,4,2666.0,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,MOS,6,376.38,COMPRAR ★★,Golden Cross | RSI 36 rebote | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,ADSK,7,4092.84,COMPRAR ★★,Golden Cross | RSI 51 óptimo | Cruce MACD | BB zona baja | Stoch 38 | Rebote EMA50
+2026-05-18 08:33:41,EQR,8,1104.94,COMPRAR ★★★,EMA alcista | RSI 60 óptimo | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,OMC,7,1225.15,COMPRAR ★★,Golden Cross | RSI 30 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,HERDEZ.MX,6,61.65,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,TDY,9,10665.05,COMPRAR ★★★,EMA alcista | RSI 35 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,AC.MX,7,216.0,COMPRAR ★★,EMA alcista | RSI 47 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,NXPI,4,5042.1,OBSERVAR,EMA alcista | EMA semanal alcista
+2026-05-18 08:33:41,AVB,4,3128.01,OBSERVAR,EMA alcista | RSI 61 óptimo
+2026-05-18 08:33:41,MU,6,12534.52,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,AON,7,5486.99,COMPRAR ★★,Golden Cross | RSI 44 rebote | MACD positivo | Cruce MACD | Volumen alto | Rebote EMA50
+2026-05-18 08:33:41,ATO,9,3052.59,COMPRAR ★★★,EMA alcista | RSI 32 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,KEYS,8,6036.86,COMPRAR ★★★,EMA alcista | RSI 55 óptimo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,RELY,7,390.74,COMPRAR ★★,EMA alcista | RSI 60 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,BA,9,3813.84,COMPRAR ★★★,EMA alcista | RSI 41 rebote | Volumen alto | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,PAYX,5,1583.38,OBSERVAR,Golden Cross | RSI 58 óptimo | Cruce MACD | Rebote EMA50
+2026-05-18 08:33:41,HCA,5,7316.67,OBSERVAR,Golden Cross | RSI 32 rebote | MACD positivo | BB zona baja
+2026-05-18 08:33:41,PRU,4,1763.09,OBSERVAR,EMA alcista | MACD positivo
+2026-05-18 08:33:41,ELV,6,6792.23,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,BBAJIOO.MX,8,54.7,COMPRAR ★★★,EMA alcista | RSI 59 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,MCK,6,13155.66,COMPRAR ★★,Golden Cross | RSI 31 rebote | Cruce MACD | Volumen alto | BB zona baja | Stoch 31
+2026-05-18 08:33:41,ZBH,6,1447.77,COMPRAR ★★,Golden Cross | RSI 33 rebote | MACD positivo | Cruce MACD | Stoch 48
+2026-05-18 08:33:41,HLT,8,5468.82,COMPRAR ★★★,EMA alcista | RSI 38 rebote | Cruce MACD | BB zona baja | Stoch 28 | EMA semanal alcista
+2026-05-18 08:33:41,KR,9,1141.95,COMPRAR ★★★,Golden Cross | RSI 53 óptimo | MACD positivo | BB zona baja | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ASURB.MX,6,513.23,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,META,6,10624.4,COMPRAR ★★,Golden Cross | Cruce MACD | BB zona baja | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,KLAC,6,31209.5,COMPRAR ★★,EMA alcista | RSI 43 rebote | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,AEP,9,2164.73,COMPRAR ★★★,EMA alcista | RSI 32 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,XEL,9,1347.79,COMPRAR ★★★,EMA alcista | RSI 44 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,BK,7,2335.45,COMPRAR ★★,EMA alcista | RSI 52 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,AES,5,250.29,OBSERVAR,Golden Cross | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,HON,7,3688.43,COMPRAR ★★,Golden Cross | RSI 53 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,PPL,6,603.32,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,NU,5,210.85,OBSERVAR,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,USO,7,2563.95,COMPRAR ★★,EMA alcista | RSI 61 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,IRM,5,2163.35,OBSERVAR,EMA alcista | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,NVR,5,96234.49,OBSERVAR,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,CE,8,982.48,COMPRAR ★★★,EMA alcista | RSI 33 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,DOV,8,3645.71,COMPRAR ★★★,EMA alcista | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,BLK,8,18713.73,COMPRAR ★★★,EMA alcista | RSI 58 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,UHS,5,2916.98,OBSERVAR,Golden Cross | RSI 36 rebote | MACD positivo | BB zona baja
+2026-05-18 08:33:41,EFX,5,2739.34,OBSERVAR,Golden Cross | RSI 31 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,PFE,7,438.14,COMPRAR ★★,Golden Cross | RSI 32 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,EWT,6,1578.88,COMPRAR ★★,EMA alcista | RSI 60 óptimo | EMA semanal alcista
+2026-05-18 08:33:41,ROK,6,7761.9,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,XLRE,9,747.75,COMPRAR ★★★,EMA alcista | RSI 47 óptimo | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,RF,10,461.14,COMPRAR ★★★,EMA alcista | RSI 34 rebote | Cruce MACD | Volumen alto | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,GM,9,1294.86,COMPRAR ★★★,Golden Cross | RSI 42 rebote | Cruce MACD | Volumen alto | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,LCID,6,104.47,COMPRAR ★★,Golden Cross | RSI 52 óptimo | MACD positivo | BB zona baja
+2026-05-18 08:33:41,ROL,5,924.01,OBSERVAR,Golden Cross | Cruce MACD | Volumen alto | BB zona baja | Stoch 34
+2026-05-18 08:33:41,DVA,6,3454.92,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,CVX,8,3305.48,COMPRAR ★★★,Golden Cross | RSI 59 óptimo | MACD positivo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,F,7,231.78,COMPRAR ★★,EMA alcista | RSI 59 óptimo | MACD positivo | Volumen alto
+2026-05-18 08:33:41,UAL,7,1606.04,COMPRAR ★★,Golden Cross | RSI 52 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,LW,7,762.11,COMPRAR ★★,Golden Cross | RSI 56 óptimo | MACD positivo | Cruce MACD | Volumen alto
+2026-05-18 08:33:41,SBUX,6,1847.68,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,BMY,9,985.93,COMPRAR ★★★,Golden Cross | RSI 46 óptimo | Cruce MACD | BB zona baja | Stoch 30 | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ADM,6,1390.69,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,KRE,10,1158.39,COMPRAR ★★★,EMA alcista | RSI 34 rebote | Cruce MACD | Volumen alto | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,LKQ,7,425.68,COMPRAR ★★,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,IR,6,1216.85,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,FE,6,757.96,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,DLTR,5,1549.47,OBSERVAR,Golden Cross | RSI 33 rebote | Cruce MACD | BB zona baja | Stoch 27
+2026-05-18 08:33:41,DHI,6,2341.85,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,FMTY14.MX,8,14.44,COMPRAR ★★★,EMA alcista | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,FIBRAMQ12.MX,8,43.29,COMPRAR ★★★,EMA alcista | RSI 41 rebote | Cruce MACD | BB zona baja | Stoch 26 | EMA semanal alcista
+2026-05-18 08:33:41,NEMAKA.MX,6,3.39,COMPRAR ★★,Golden Cross | RSI 57 óptimo | MACD positivo | Rebote EMA50
+2026-05-18 08:33:41,VMC,5,4632.68,OBSERVAR,Golden Cross | RSI 31 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,Q.MX,5,164.38,OBSERVAR,EMA alcista | Cruce MACD | BB zona baja | Rebote EMA50
+2026-05-18 08:33:41,MRNA,9,848.25,COMPRAR ★★★,EMA alcista | RSI 51 óptimo | MACD positivo | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,NUE,7,3926.79,COMPRAR ★★,EMA alcista | RSI 62 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,SPG,10,3459.77,COMPRAR ★★★,EMA alcista | RSI 48 óptimo | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,CIBR,5,1367.34,OBSERVAR,EMA alcista | MACD positivo | Volumen alto
+2026-05-18 08:33:41,CVS,6,1658.62,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,KMB,6,1658.96,COMPRAR ★★,Golden Cross | RSI 44 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50
+2026-05-18 08:33:41,RCL,6,4502.26,COMPRAR ★★,Golden Cross | RSI 51 óptimo | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,IBB,10,2885.68,COMPRAR ★★★,EMA alcista | RSI 46 óptimo | Volumen alto | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,SPGI,4,6973.33,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,NKE,6,724.4,COMPRAR ★★,Golden Cross | MACD positivo | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,SNA,8,6220.9,COMPRAR ★★★,EMA alcista | RSI 33 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,DE,9,9718.03,COMPRAR ★★★,EMA alcista | RSI 48 óptimo | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,EWA,11,496.77,COMPRAR ★★★,EMA alcista | RSI 46 óptimo | Cruce MACD | Volumen alto | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,EQIX,8,18325.24,COMPRAR ★★★,EMA alcista | RSI 38 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,FAST,7,748.27,COMPRAR ★★,Golden Cross | RSI 36 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,MKTX,6,2394.78,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,WMT,9,2273.7,COMPRAR ★★★,EMA alcista | RSI 62 óptimo | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,MEL.MC,6,236.77,COMPRAR ★★,EMA alcista | RSI 61 óptimo | EMA semanal alcista
+2026-05-18 08:33:41,INCY,7,1648.59,COMPRAR ★★,EMA alcista | RSI 49 óptimo | Banda BB inferior | Rebote EMA50
+2026-05-18 08:33:41,IQV,6,2925.29,COMPRAR ★★,Golden Cross | RSI 56 óptimo | MACD positivo | Rebote EMA50
+2026-05-18 08:33:41,FATE,6,30.44,COMPRAR ★★,EMA alcista | RSI 60 óptimo | EMA semanal alcista
+2026-05-18 08:33:41,VFC,7,288.52,COMPRAR ★★,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,MSCI,8,9716.13,COMPRAR ★★★,EMA alcista | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,XLY,9,2015.63,COMPRAR ★★★,EMA alcista | RSI 44 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,TJX,7,2550.11,COMPRAR ★★,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,BRO,4,973.48,OBSERVAR,Golden Cross | Cruce MACD | BB zona baja | Stoch 24
+2026-05-18 08:33:41,AIG,8,1316.48,COMPRAR ★★★,Golden Cross | RSI 59 óptimo | Cruce MACD | Stoch 46 | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ORLY,5,1530.62,OBSERVAR,Golden Cross | RSI 42 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,CTSH,5,815.21,OBSERVAR,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,PCTY,7,1852.87,COMPRAR ★★,Golden Cross | RSI 57 óptimo | MACD positivo | Stoch 42 | Rebote EMA50
+2026-05-18 08:33:41,CELH,5,521.68,OBSERVAR,Golden Cross | RSI 38 rebote | Cruce MACD | BB zona baja | Stoch 31
+2026-05-18 08:33:41,ACX.MC,6,293.15,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,LIN,8,8754.24,COMPRAR ★★★,EMA alcista | RSI 47 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,CL,8,1524.39,COMPRAR ★★★,EMA alcista | RSI 63 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,FSLR,4,4036.62,OBSERVAR,EMA alcista | MACD positivo
+2026-05-18 08:33:41,ANET,6,2455.67,COMPRAR ★★,EMA alcista | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,YUM,7,2594.05,COMPRAR ★★,Golden Cross | RSI 41 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,TEL,5,3547.81,OBSERVAR,Golden Cross | RSI 46 óptimo | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,SOXX,9,8795.92,COMPRAR ★★★,EMA alcista | RSI 63 óptimo | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,BABA,8,2293.42,COMPRAR ★★★,Golden Cross | RSI 50 óptimo | MACD positivo | Volumen alto | BB zona baja | Rebote EMA50
+2026-05-18 08:33:41,BDX,7,2481.61,COMPRAR ★★,Golden Cross | RSI 42 rebote | Cruce MACD | Volumen alto | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,EXC,6,750.35,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,JD,9,553.68,COMPRAR ★★★,EMA alcista | RSI 63 óptimo | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,CSCO,7,2044.69,COMPRAR ★★,EMA alcista | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,LRCX,8,4924.83,COMPRAR ★★★,EMA alcista | RSI 61 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,BBWI,7,295.61,COMPRAR ★★,Golden Cross | RSI 37 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,BSX,4,911.21,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,AI,6,149.62,COMPRAR ★★,Golden Cross | RSI 48 óptimo | Cruce MACD | Volumen alto | BB zona baja
+2026-05-18 08:33:41,ENG.MC,7,336.84,COMPRAR ★★,EMA alcista | RSI 44 rebote | Cruce MACD | Stoch 42 | EMA semanal alcista
+2026-05-18 08:33:41,XLF,7,883.88,COMPRAR ★★,EMA alcista | RSI 39 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50
+2026-05-18 08:33:41,TPR,7,2236.86,COMPRAR ★★,Golden Cross | RSI 33 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,MSFT,6,7297.99,COMPRAR ★★,EMA alcista | RSI 48 óptimo | Cruce MACD | Volumen alto
+2026-05-18 08:33:41,GFNORTEO.MX,8,184.04,COMPRAR ★★★,Golden Cross | RSI 32 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,CMCSA,6,428.28,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,AMGN,8,5644.22,COMPRAR ★★★,Golden Cross | RSI 41 rebote | MACD positivo | Volumen alto | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,DXCM,10,1066.02,COMPRAR ★★★,Golden Cross | RSI 51 óptimo | MACD positivo | Cruce MACD | Volumen alto | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,HOOD,4,1334.3,OBSERVAR,Golden Cross | RSI 41 rebote | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,MPWR,8,26810.85,COMPRAR ★★★,EMA alcista | RSI 47 óptimo | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,KOFUBL.MX,8,180.84,COMPRAR ★★★,EMA alcista | RSI 56 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,BR,7,2518.8,COMPRAR ★★,Golden Cross | RSI 31 rebote | Cruce MACD | Volumen alto | Banda BB inferior | Stoch 27
+2026-05-18 08:33:41,TYL,6,5394.79,COMPRAR ★★,Golden Cross | RSI 38 rebote | Cruce MACD | Volumen alto | BB zona baja | Stoch 24
+2026-05-18 08:33:41,FIBRAHD15.MX,7,2.39,COMPRAR ★★,EMA alcista | RSI 45 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,NEE,9,1614.86,COMPRAR ★★★,EMA alcista | RSI 46 óptimo | Cruce MACD | Volumen alto | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,OMAB.MX,6,222.96,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,PNR,4,1257.15,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,KO,7,1397.95,COMPRAR ★★,EMA alcista | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,XLC,8,2007.85,COMPRAR ★★★,EMA alcista | RSI 51 óptimo | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,CNC,6,1007.9,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,WAB,9,4564.7,COMPRAR ★★★,EMA alcista | RSI 47 óptimo | Cruce MACD | Volumen alto | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,JPM,9,5151.25,COMPRAR ★★★,EMA alcista | RSI 35 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,TXN,6,5236.35,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,ZTS,4,1283.79,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,DDOG,4,3597.45,OBSERVAR,EMA alcista | MACD positivo
+2026-05-18 08:33:41,SAP,4,2931.51,OBSERVAR,Golden Cross | RSI 49 óptimo | Cruce MACD
+2026-05-18 08:33:41,LMT,7,8925.48,COMPRAR ★★,Golden Cross | RSI 52 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,PINFRA.MX,9,278.96,COMPRAR ★★★,EMA alcista | RSI 43 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,HPQ,5,359.95,OBSERVAR,EMA alcista | RSI 58 óptimo | Cruce MACD
+2026-05-18 08:33:41,RXRX,5,50.68,OBSERVAR,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,A,4,1932.09,OBSERVAR,Golden Cross | RSI 43 rebote | Cruce MACD | BB zona baja
+2026-05-18 08:33:41,XLB,9,870.04,COMPRAR ★★★,EMA alcista | RSI 40 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,MSI,7,6802.6,COMPRAR ★★,Golden Cross | RSI 31 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,CHTR,4,2427.3,OBSERVAR,Golden Cross | Cruce MACD | Volumen alto | BB zona baja
+2026-05-18 08:33:41,PLD,8,2430.76,COMPRAR ★★★,EMA alcista | RSI 51 óptimo | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,OXY,10,1031.25,COMPRAR ★★★,EMA alcista | RSI 56 óptimo | MACD positivo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,PANW,5,4200.25,OBSERVAR,EMA alcista | MACD positivo | Volumen alto
+2026-05-18 08:33:41,ISRG,4,7284.15,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,DIA,8,8568.46,COMPRAR ★★★,EMA alcista | RSI 54 óptimo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,TFC,7,812.27,COMPRAR ★★,EMA alcista | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,HUBS,6,3431.4,COMPRAR ★★,Golden Cross | RSI 40 rebote | Cruce MACD | Volumen alto | BB zona baja | Stoch 31
+2026-05-18 08:33:41,IEX,8,3592.43,COMPRAR ★★★,EMA alcista | RSI 50 óptimo | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,CDNS,6,6006.24,COMPRAR ★★,EMA alcista | RSI 58 óptimo | EMA semanal alcista
+2026-05-18 08:33:41,TEF.MC,8,79.45,COMPRAR ★★★,EMA alcista | RSI 62 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,EWQ,9,763.84,COMPRAR ★★★,EMA alcista | RSI 44 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,DLR,9,3260.68,COMPRAR ★★★,EMA alcista | RSI 37 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,TAN,7,1123.62,COMPRAR ★★,EMA alcista | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,CRL,8,2609.27,COMPRAR ★★★,Golden Cross | RSI 35 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,FIVN,4,374.31,OBSERVAR,EMA alcista | MACD positivo
+2026-05-18 08:33:41,DHR,4,2800.57,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,LNT,9,1226.36,COMPRAR ★★★,EMA alcista | RSI 44 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ABBV,3,3639.14,EVITAR,Golden Cross | MACD positivo
+2026-05-18 08:33:41,URI,7,16625.11,COMPRAR ★★,EMA alcista | RSI 51 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,MNDY,6,1244.87,COMPRAR ★★,Golden Cross | RSI 55 óptimo | MACD positivo | Stoch 33
+2026-05-18 08:33:41,MLM,6,9663.2,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,GL,8,2681.74,COMPRAR ★★★,EMA alcista | RSI 59 óptimo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,FITB,9,819.02,COMPRAR ★★★,EMA alcista | RSI 33 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,MHK,5,1670.21,OBSERVAR,Golden Cross | RSI 36 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,LEN,6,1423.55,COMPRAR ★★,Golden Cross | RSI 31 rebote | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,ENPH,8,914.84,VENDER,EMA alcista | Golden Cross | MACD positivo | Volumen alto | EMA semanal alcista | 🎯 Take Profit +51.8%
+2026-05-18 08:33:41,PYPL,4,768.16,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,FICO,4,19002.42,OBSERVAR,Golden Cross | MACD positivo | Rebote EMA50
+2026-05-18 08:33:41,CRM,5,3001.22,OBSERVAR,Golden Cross | RSI 44 rebote | Cruce MACD | BB zona baja | Stoch 35
+2026-05-18 08:33:41,TGT,8,2102.29,COMPRAR ★★★,EMA alcista | RSI 38 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,GILD,8,2241.36,COMPRAR ★★★,Golden Cross | RSI 54 óptimo | MACD positivo | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,AZO,5,57446.26,OBSERVAR,Golden Cross | RSI 34 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,EWC,9,993.55,COMPRAR ★★★,EMA alcista | RSI 46 óptimo | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,EWJ,8,1575.25,COMPRAR ★★★,EMA alcista | RSI 63 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,CB,7,5606.85,COMPRAR ★★,Golden Cross | RSI 49 óptimo | Cruce MACD | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,GAPB.MX,6,413.32,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,SYF,7,1234.67,COMPRAR ★★,EMA alcista | RSI 32 rebote | Cruce MACD | BB zona baja | Stoch 28 | Rebote EMA50
+2026-05-18 08:33:41,ACN,5,2920.1,OBSERVAR,Golden Cross | RSI 41 rebote | Cruce MACD | BB zona baja | Stoch 46
+2026-05-18 08:33:41,NOC,6,9352.37,COMPRAR ★★,Golden Cross | MACD positivo | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,KMI,6,581.7,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,ED,8,1822.42,COMPRAR ★★★,Golden Cross | RSI 40 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,WYNN,5,1650.49,OBSERVAR,Golden Cross | RSI 30 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,XLV,6,2509.81,COMPRAR ★★,Golden Cross | RSI 56 óptimo | MACD positivo | Rebote EMA50
+2026-05-18 08:33:41,AJG,6,3458.56,COMPRAR ★★,Golden Cross | RSI 33 rebote | Cruce MACD | Volumen alto | BB zona baja | Stoch 33
+2026-05-18 08:33:41,AWK,6,2149.86,COMPRAR ★★,Golden Cross | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,DAL,6,1214.78,COMPRAR ★★,EMA alcista | RSI 57 óptimo | EMA semanal alcista
+2026-05-18 08:33:41,BIDU,9,2340.82,COMPRAR ★★★,EMA alcista | RSI 55 óptimo | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,AKAM,6,2609.79,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,CUERVO.MX,4,13.21,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,EXPE,5,3766.1,OBSERVAR,Golden Cross | RSI 30 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,CLNX.MC,8,556.1,COMPRAR ★★★,Golden Cross | RSI 40 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,FMC,7,245.1,COMPRAR ★★,Golden Cross | RSI 39 rebote | Cruce MACD | Volumen alto | Stoch 40 | EMA semanal alcista
+2026-05-18 08:33:41,GCC.MX,8,210.2,COMPRAR ★★★,EMA alcista | RSI 58 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,SLV,10,1194.19,COMPRAR ★★★,EMA alcista | RSI 51 óptimo | MACD positivo | Volumen alto | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,LVS,5,884.92,OBSERVAR,Golden Cross | RSI 35 rebote | Cruce MACD | BB zona baja | Stoch 21
+2026-05-18 08:33:41,AFL,8,2020.47,COMPRAR ★★★,EMA alcista | RSI 58 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,GPC,4,1606.38,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,ARKG,6,486.91,COMPRAR ★★,EMA alcista | RSI 40 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,PWR,6,13318.59,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,XLK,7,3048.79,COMPRAR ★★,EMA alcista | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,L,8,1830.03,COMPRAR ★★★,Golden Cross | RSI 35 rebote | Cruce MACD | BB zona baja | Stoch 27 | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,CMG,7,564.75,COMPRAR ★★,Golden Cross | RSI 44 rebote | Cruce MACD | BB zona baja | Stoch 29 | EMA semanal alcista
+2026-05-18 08:33:41,UNG,5,195.98,OBSERVAR,Golden Cross | RSI 62 óptimo | MACD positivo
+2026-05-18 08:33:41,GS,8,16405.78,COMPRAR ★★★,EMA alcista | RSI 53 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,ILMN,6,2465.53,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,APTV,7,939.92,COMPRAR ★★,Golden Cross | RSI 38 rebote | MACD positivo | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,LDOS,4,2139.48,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,ARE,5,777.85,OBSERVAR,Golden Cross | RSI 48 óptimo | MACD positivo
+2026-05-18 08:33:41,TECL,6,3373.8,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,UPST,5,510.44,OBSERVAR,Golden Cross | RSI 37 rebote | Cruce MACD | BB zona baja | Stoch 44
+2026-05-18 08:33:41,BBVA.MC,8,376.4,COMPRAR ★★★,EMA alcista | RSI 50 óptimo | Cruce MACD | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,GOOGL,6,6863.14,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,XLI,8,2964.72,COMPRAR ★★★,EMA alcista | RSI 48 óptimo | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,BALL,6,954.8,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,XOM,7,2731.56,COMPRAR ★★,EMA alcista | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,AME,9,3942.01,COMPRAR ★★★,EMA alcista | RSI 44 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,FDX,8,6499.9,COMPRAR ★★★,EMA alcista | RSI 45 rebote | Cruce MACD | BB zona baja | Stoch 43 | EMA semanal alcista
+2026-05-18 08:33:41,AMT,8,2951.4,COMPRAR ★★★,Golden Cross | RSI 42 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,SO,9,1600.85,COMPRAR ★★★,Golden Cross | RSI 45 óptimo | Cruce MACD | Volumen alto | BB zona baja | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,SWK,9,1299.7,COMPRAR ★★★,EMA alcista | RSI 40 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ETN,8,6909.15,COMPRAR ★★★,EMA alcista | RSI 44 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,IBE.MC,7,387.07,COMPRAR ★★,RSI 33 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,IWM,9,4801.68,COMPRAR ★★★,EMA alcista | RSI 51 óptimo | Cruce MACD | Volumen alto | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,DPZ,4,5228.74,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,CI,9,4934.34,COMPRAR ★★★,EMA alcista | RSI 52 óptimo | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,TMUS,6,3203.77,COMPRAR ★★,Golden Cross | RSI 53 óptimo | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,MTS.MC,8,1046.55,COMPRAR ★★★,EMA alcista | RSI 55 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,ALPEKA.MX,7,11.73,COMPRAR ★★,EMA alcista | RSI 55 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,TXT,7,1535.46,COMPRAR ★★,Golden Cross | RSI 51 óptimo | BB zona baja | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ICLN,6,376.9,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,ARKK,11,1295.55,COMPRAR ★★★,EMA alcista | RSI 46 óptimo | Cruce MACD | Volumen alto | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,FER.MC,8,1135.14,COMPRAR ★★★,EMA alcista | RSI 44 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,JETS,7,442.11,COMPRAR ★★,Golden Cross | RSI 50 óptimo | BB zona baja | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,SPY,7,12785.5,COMPRAR ★★,EMA alcista | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,CTAS,6,2911.27,COMPRAR ★★,Golden Cross | RSI 40 rebote | Cruce MACD | Volumen alto | BB zona baja | Stoch 48
+2026-05-18 08:33:41,VOLARA.MX,8,11.46,COMPRAR ★★★,Golden Cross | RSI 31 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,CBOE,6,6279.19,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,CMS,7,1239.16,COMPRAR ★★,Golden Cross | RSI 31 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,LUV,8,665.94,COMPRAR ★★★,Golden Cross | RSI 52 óptimo | MACD positivo | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,MMM,7,2529.18,COMPRAR ★★,Golden Cross | RSI 51 óptimo | MACD positivo | Volumen alto | Rebote EMA50
+2026-05-18 08:33:41,HUM,4,5277.69,OBSERVAR,EMA alcista | MACD positivo
+2026-05-18 08:33:41,BAX,6,299.24,COMPRAR ★★,Golden Cross | RSI 41 rebote | MACD positivo | BB zona baja | Rebote EMA50
+2026-05-18 08:33:41,SRE,8,1564.18,COMPRAR ★★★,Golden Cross | RSI 43 rebote | Cruce MACD | Volumen alto | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,ALK,7,638.95,COMPRAR ★★,Golden Cross | RSI 36 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,CSX,7,789.79,COMPRAR ★★,EMA alcista | RSI 51 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,AMZN,7,4568.86,COMPRAR ★★,EMA alcista | RSI 54 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,CABK.MC,5,219.86,OBSERVAR,EMA alcista | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,DUOL,6,1938.31,COMPRAR ★★,Golden Cross | RSI 60 óptimo | MACD positivo | Cruce MACD
+2026-05-18 08:33:41,PLUG,6,65.38,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,STZ,7,2462.24,COMPRAR ★★,Golden Cross | RSI 34 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,APPN,5,337.81,OBSERVAR,Golden Cross | RSI 38 rebote | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,TRV,8,5184.98,COMPRAR ★★★,EMA alcista | RSI 44 rebote | Cruce MACD | BB zona baja | Stoch 40 | EMA semanal alcista
+2026-05-18 08:33:41,LABB.MX,7,15.71,COMPRAR ★★,Golden Cross | RSI 34 rebote | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,SNOW,5,2723.77,OBSERVAR,Golden Cross | RSI 65 óptimo | MACD positivo
+2026-05-18 08:33:41,LH,6,4331.19,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,PH,5,14922.55,OBSERVAR,Golden Cross | Cruce MACD | BB zona baja | EMA semanal alcista
+2026-05-18 08:33:41,GWW,6,22010.04,COMPRAR ★★,EMA alcista | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,MRK,9,1926.55,COMPRAR ★★★,Golden Cross | RSI 54 óptimo | MACD positivo | BB zona baja | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,STE,6,3668.89,COMPRAR ★★,Golden Cross | RSI 40 rebote | MACD positivo | Volumen alto | BB zona baja
+2026-05-18 08:33:41,MCO,4,7418.73,OBSERVAR,Golden Cross | Cruce MACD | Banda BB inferior
+2026-05-18 08:33:41,NI,9,800.86,COMPRAR ★★★,EMA alcista | RSI 33 rebote | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,ADBE,6,4282.76,COMPRAR ★★,Golden Cross | RSI 57 óptimo | Cruce MACD | Volumen alto | Rebote EMA50
+2026-05-18 08:33:41,JBHT,8,4535.47,COMPRAR ★★★,EMA alcista | RSI 58 óptimo | Cruce MACD | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,AMCR,4,634.63,OBSERVAR,Golden Cross | RSI 39 rebote | Banda BB inferior
+2026-05-18 08:33:41,SBAC,7,3452.85,COMPRAR ★★,EMA alcista | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,IT,6,2529.35,COMPRAR ★★,Golden Cross | RSI 47 óptimo | Cruce MACD | BB zona baja | Stoch 28
+2026-05-18 08:33:41,ALL,5,3759.87,OBSERVAR,EMA alcista | RSI 56 óptimo | Cruce MACD
+2026-05-18 08:33:41,MAS,7,1126.73,COMPRAR ★★,EMA alcista | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,KIM,8,397.83,COMPRAR ★★★,EMA alcista | Cruce MACD | Banda BB inferior | Rebote EMA50 | EMA semanal alcista
+2026-05-18 08:33:41,WU,6,144.26,COMPRAR ★★,Golden Cross | Cruce MACD | Banda BB inferior | EMA semanal alcista
+2026-05-18 08:33:41,AMP,6,8136.21,COMPRAR ★★,EMA alcista | RSI 45 rebote | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,WMB,7,1344.33,COMPRAR ★★,EMA alcista | MACD positivo | Volumen alto | EMA semanal alcista
+2026-05-18 08:33:41,NTAP,5,2074.44,OBSERVAR,EMA alcista | MACD positivo | Volumen alto
+2026-05-18 08:33:41,HD,5,5146.06,OBSERVAR,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,DBC,7,539.5,COMPRAR ★★,EMA alcista | RSI 61 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,GIS,6,570.63,COMPRAR ★★,Golden Cross | RSI 37 rebote | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,FANG,7,3521.0,COMPRAR ★★,EMA alcista | RSI 57 óptimo | Cruce MACD | EMA semanal alcista
+2026-05-18 08:33:41,ASML,8,25976.96,COMPRAR ★★★,EMA alcista | RSI 55 óptimo | MACD positivo | EMA semanal alcista
+2026-05-18 08:33:41,SHW,5,5190.86,OBSERVAR,Golden Cross | Cruce MACD | Volumen alto | Banda BB inferior
+2026-05-18 08:33:41,RTX,9,2960.92,COMPRAR ★★★,Golden Cross | RSI 46 óptimo | MACD positivo | Volumen alto | BB zona baja | EMA semanal alcista
