@@ -37,7 +37,7 @@
   },
   "ENPH": {
     "cantidad": 1.0,
-    "precio": 1237.44
+    "precio": 1249.92
   },
   "CEMEXCPO.MX": {
     "cantidad": 1.0,
@@ -94,9 +94,5 @@
   "APP": {
     "cantidad": 1.0,
     "precio": 10643.61
-  },
-  "PLTR": {
-    "cantidad": 1.0,
-    "precio": 2708.39
   }
 }
