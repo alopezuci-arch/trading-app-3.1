@@ -824,22 +824,52 @@ def obtener_tipo_cambio() -> tuple[float, float]:
     return 18.50, 20.10
 
 def safe_history(ticker, period="6mo", max_retries=3):
-    last_err = None
+    simbolo = ticker.ticker if hasattr(ticker, "ticker") else ""
+
     for intento in range(max_retries):
         try:
             hist = ticker.history(period=period, auto_adjust=True)
-            if not hist.empty and len(hist) >= 20:
+            if hist is not None and not hist.empty and len(hist) >= 20:
                 return hist
             time.sleep(1 + intento)
         except Exception as e:
-            last_err = e
             msg = str(e)
             if "Rate limit" in msg or "429" in msg or "Too Many Requests" in msg:
                 time.sleep(2 ** intento)
             else:
                 time.sleep(1)
-    if last_err:
-        print(f"[safe_history] {ticker.ticker if hasattr(ticker,'ticker') else '?'}: {last_err}")
+
+    # Fallback Stooq para tickers USA
+    try:
+        simbolo_stooq = simbolo.replace(".MX", "").replace(".MC", "").lower() + ".us"
+        url = f"https://stooq.com/q/d/l/?s={simbolo_stooq}&i=d"
+        df = pd.read_csv(url)
+
+        if df is not None and not df.empty:
+            df["Date"] = pd.to_datetime(df["Date"])
+            df = df.set_index("Date")
+            df = df.rename(columns={
+                "Open": "Open",
+                "High": "High",
+                "Low": "Low",
+                "Close": "Close",
+                "Volume": "Volume"
+            })
+
+            if period == "6mo":
+                df = df[df.index >= datetime.now() - timedelta(days=190)]
+            elif period == "1y":
+                df = df[df.index >= datetime.now() - timedelta(days=370)]
+            elif period == "2y":
+                df = df[df.index >= datetime.now() - timedelta(days=740)]
+            elif period == "3y":
+                df = df[df.index >= datetime.now() - timedelta(days=1110)]
+
+            return df
+
+    except Exception as e:
+        print(f"[safe_history Stooq] {simbolo}: {e}")
+
     return pd.DataFrame()
 
 def obtener_precio_actual(simbolo: str) -> float | None:
