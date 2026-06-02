@@ -34,15 +34,21 @@ logger = logging.getLogger(__name__)
 SSL_VERIFY_PATH = certifi.where()
 
 # Parche para yfinance: reemplazar la sesión de requests por curl_requests
-def _patched_requests_session():
-    session = curl_requests.Session(impersonate="chrome124")
+import yfinance as yf
+from curl_cffi import requests as curl_requests
+
+logger = logging.getLogger(__name__)
+SSL_VERIFY_PATH = certifi.where()
+
+# --- Sesión con impersonación de navegador para evitar bloqueos de Yahoo en Streamlit Cloud ---
+try:
+    _YF_SESSION = curl_requests.Session(impersonate="chrome124")
     try:
-        session.verify = True
+        _YF_SESSION.verify = True
     except Exception:
         pass
-    return session
-
-yf.shared._requests = _patched_requests_session
+except Exception:
+    _YF_SESSION = None
 
 # --- Sesión con impersonación de navegador para evitar bloqueos de Yahoo en Streamlit Cloud ---
 try:
