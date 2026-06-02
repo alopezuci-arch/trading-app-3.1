@@ -9,11 +9,11 @@
   },
   "FEMSAUBD.MX": {
     "cantidad": 1.0,
-    "precio": 209.19
+    "precio": 209.93
   },
   "FUNO11.MX": {
     "cantidad": 1.0,
-    "precio": 29.01
+    "precio": 30.14
   },
   "PINFRA.MX": {
     "cantidad": 1.0,
@@ -33,11 +33,11 @@
   },
   "AMD": {
     "cantidad": 1.0,
-    "precio": 5643.0
+    "precio": 8098.44
   },
   "ENPH": {
     "cantidad": 1.0,
-    "precio": 602.79
+    "precio": 1249.92
   },
   "CEMEXCPO.MX": {
     "cantidad": 1.0,
@@ -49,10 +49,50 @@
   },
   "RKLB": {
     "cantidad": 1.0,
-    "precio": 1689.5
+    "precio": 2335.0
   },
   "MU": {
     "cantidad": 1.0,
     "precio": 12655.3
+  },
+  "CSCO": {
+    "cantidad": 1.0,
+    "precio": 2042.16
+  },
+  "GCC.MX": {
+    "cantidad": 1.0,
+    "precio": 204.87
+  },
+  "SMSN ": {
+    "cantidad": 1.0,
+    "precio": 82347.71
+  },
+  "INTC": {
+    "cantidad": 1.0,
+    "precio": 1893.99
+  },
+  "TSM": {
+    "cantidad": 1.0,
+    "precio": 7040.16
+  },
+  "ASTS": {
+    "cantidad": 1.0,
+    "precio": 2218.99
+  },
+  "BE": {
+    "cantidad": 1.0,
+    "precio": 5275.21
+  },
+  "NOK": {
+    "cantidad": 1.0,
+    "precio": 282.67
+  },
+  "ARM": {
+    "cantidad": 1.0,
+    "precio": 6014.4
+  },
+  "APP": {
+    "cantidad": 1.0,
+    "precio": 10643.61
   }
 }
