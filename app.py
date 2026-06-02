@@ -42,18 +42,8 @@ SSL_VERIFY_PATH = certifi.where()
 
 # --- Sesión con impersonación de navegador para evitar bloqueos de Yahoo en Streamlit Cloud ---
 try:
-    _YF_SESSION = curl_requests.Session(impersonate="chrome124")
-    try:
-        _YF_SESSION.verify = True
-    except Exception:
-        pass
-except Exception:
-    _YF_SESSION = None
-
-# --- Sesión con impersonación de navegador para evitar bloqueos de Yahoo en Streamlit Cloud ---
-try:
     from curl_cffi import requests as curl_requests
-    _YF_SESSION = curl_requests.Session(impersonate="chrome124")
+    _YF_SESSION = curl_requests.Session(impersonate="chrome")
     try:
         _YF_SESSION.verify = True
     except Exception:
