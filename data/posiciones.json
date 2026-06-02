@@ -1,12 +1,4 @@
 {
-  "BBAJIOO.MX": {
-    "cantidad": 1.0,
-    "precio": 55.7
-  },
-  "GFNORTEO.MX": {
-    "cantidad": 1.0,
-    "precio": 190.02
-  },
   "FEMSAUBD.MX": {
     "cantidad": 1.0,
     "precio": 209.93
@@ -19,22 +11,6 @@
     "cantidad": 1.0,
     "precio": 294.782
   },
-  "WMT": {
-    "cantidad": 1.0,
-    "precio": 2224.79
-  },
-  "T": {
-    "cantidad": 1.0,
-    "precio": 461.0
-  },
-  "XLE": {
-    "cantidad": 1.0,
-    "precio": 1002.51
-  },
-  "AMD": {
-    "cantidad": 1.0,
-    "precio": 8098.44
-  },
   "ENPH": {
     "cantidad": 1.0,
     "precio": 1249.92
@@ -43,45 +19,13 @@
     "cantidad": 1.0,
     "precio": 23.33
   },
-  "NVDA": {
-    "cantidad": 1.0,
-    "precio": 3551.73
-  },
-  "RKLB": {
-    "cantidad": 1.0,
-    "precio": 2335.0
-  },
-  "MU": {
-    "cantidad": 1.0,
-    "precio": 12655.3
-  },
-  "CSCO": {
-    "cantidad": 1.0,
-    "precio": 2042.16
-  },
-  "GCC.MX": {
-    "cantidad": 1.0,
-    "precio": 204.87
-  },
   "SMSN ": {
     "cantidad": 1.0,
     "precio": 82347.71
   },
-  "INTC": {
-    "cantidad": 1.0,
-    "precio": 1893.99
-  },
   "TSM": {
     "cantidad": 1.0,
     "precio": 7040.16
-  },
-  "ASTS": {
-    "cantidad": 1.0,
-    "precio": 2218.99
-  },
-  "BE": {
-    "cantidad": 1.0,
-    "precio": 5275.21
   },
   "NOK": {
     "cantidad": 1.0,
