@@ -776,16 +776,52 @@ mercado_opciones = {
 # ============================================================
 # FUNCIONES AUXILIARES (TIPO CAMBIO, INDICADORES, ETC.)
 # ============================================================
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=1800)
 def obtener_tipo_cambio() -> tuple[float, float]:
     try:
         usd = _crear_ticker("USDMXN=X").history(period="5d")
         eur = _crear_ticker("EURMXN=X").history(period="5d")
-        return (float(usd['Close'].iloc[-1]) if not usd.empty else 20.0,
-                float(eur['Close'].iloc[-1]) if not eur.empty else 21.5)
+
+        usd_mxn = None
+        eur_mxn = None
+
+        if usd is not None and not usd.empty:
+            usd_mxn = float(usd["Close"].dropna().iloc[-1])
+
+        if eur is not None and not eur.empty:
+            eur_mxn = float(eur["Close"].dropna().iloc[-1])
+
+        if usd_mxn and eur_mxn:
+            return usd_mxn, eur_mxn
+
     except Exception as e:
-        print(f"[tipo_cambio] Error: {e}")
-        return 20.0, 21.5
+        print(f"[tipo_cambio Yahoo] Error: {e}")
+
+    # Fallback alternativo usando exchangerate.host
+    try:
+        r = requests.get(
+            "https://api.frankfurter.app/latest?from=USD&to=MXN",
+            timeout=10,
+            verify=SSL_VERIFY_PATH
+        )
+        data = r.json()
+        usd_mxn = float(data["rates"]["MXN"])
+
+        r2 = requests.get(
+            "https://api.frankfurter.app/latest?from=EUR&to=MXN",
+            timeout=10,
+            verify=SSL_VERIFY_PATH
+        )
+        data2 = r2.json()
+        eur_mxn = float(data2["rates"]["MXN"])
+
+        return usd_mxn, eur_mxn
+
+    except Exception as e:
+        print(f"[tipo_cambio fallback] Error: {e}")
+
+    # Último recurso, pero ya no debería usarse casi nunca
+    return 18.50, 20.10
 
 def safe_history(ticker, period="6mo", max_retries=3):
     last_err = None
