@@ -30,6 +30,7 @@ warnings.filterwarnings('ignore')
 import yfinance as yf
 from curl_cffi import requests as curl_requests
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 SSL_VERIFY_PATH = certifi.where()
 
@@ -69,16 +70,23 @@ st.title("📈 Sistema de Trading Personal v3.0 (Mejorado)")
 # ============================================================
 # CONSTANTES
 # ============================================================
-EMAIL_DESTINO   = "alopez.uci@gmail.com"
-GEMINI_API_KEY    = os.environ.get("GEMINI_API_KEY",    "")
-GROQ_API_KEY      = os.environ.get("GROQ_API_KEY",      "")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-WHATSAPP_NUMERO   = os.environ.get("WHATSAPP_NUMERO", "")
-WHATSAPP_APIKEY   = os.environ.get("WHATSAPP_APIKEY", "")
-EMAIL_REMITENTE   = os.environ.get("EMAIL_REMITENTE", "")
-EMAIL_PASSWORD    = os.environ.get("EMAIL_PASSWORD",  "")
-NEWSAPI_KEY       = os.environ.get("NEWSAPI_KEY", "")
-GHU_GIST_TOKEN = os.environ.get("GHU_GIST_TOKEN", "")
+EMAIL_DESTINO = "alopez.uci@gmail.com"
+
+def get_secret(nombre, default=""):
+    try:
+        return st.secrets.get(nombre, default)
+    except Exception:
+        return os.environ.get(nombre, default)
+
+GEMINI_API_KEY    = get_secret("GEMINI_API_KEY")
+GROQ_API_KEY      = get_secret("GROQ_API_KEY")
+ANTHROPIC_API_KEY = get_secret("ANTHROPIC_API_KEY")
+WHATSAPP_NUMERO   = get_secret("WHATSAPP_NUMERO")
+WHATSAPP_APIKEY   = get_secret("WHATSAPP_APIKEY")
+EMAIL_REMITENTE   = get_secret("EMAIL_REMITENTE")
+EMAIL_PASSWORD    = get_secret("EMAIL_PASSWORD")
+NEWSAPI_KEY       = get_secret("NEWSAPI_KEY")
+GHU_GIST_TOKEN    = get_secret("GHU_GIST_TOKEN")
 REPO_OWNER     = "alopezuci-arch"
 REPO_NAME      = "trading-app-3.1"
 DATA_PATH      = "data"
@@ -105,14 +113,30 @@ MEXICAN_SYMBOLS_BASE = {
 
 
 def normalizar_simbolo(simbolo: str) -> str:
-    """Normaliza símbolos bursátiles para evitar inconsistencias entre BMV/USA."""
+    """Normaliza símbolos bursátiles y corrige alias frecuentes.
+
+    Evita errores por espacios invisibles, símbolos BMV sin sufijo y
+    tickers capturados manualmente con variantes incorrectas.
+    """
     if simbolo is None:
         return ""
-    s = str(simbolo).upper().replace(" ", "")
-    if not s:
+
+    # Elimina espacios normales y espacios Unicode como NBSP.
+    s = str(simbolo).upper()
+    s = "".join(ch for ch in s if not ch.isspace())
+
+    if not s or s in {"NAN", "NONE"}:
         return ""
 
-    # Instrumentos especiales (índices, forex) y otros mercados con sufijo explícito.
+    alias = {
+        "SMSN": "SMSN.L",
+        "SMSNN": "SMSN.L",
+        "SAMSUNG": "SMSN.L",
+    }
+    if s in alias:
+        return alias[s]
+
+    # Instrumentos especiales e instrumentos con sufijo explícito.
     if s.startswith("^") or "=" in s or "/" in s:
         return s
     if s.endswith(".MX"):
@@ -121,7 +145,6 @@ def normalizar_simbolo(simbolo: str) -> str:
         return s
 
     return f"{s}.MX" if s in MEXICAN_SYMBOLS_BASE else s
-
 
 def _crear_ticker(simbolo: str):
     simbolo_norm = normalizar_simbolo(simbolo)
@@ -240,6 +263,73 @@ def repo_cargar_transacciones() -> pd.DataFrame:
             st.error(f"Error procesando transacciones desde GitHub: {e}")
             logger.exception("Error cargando transacciones desde repo")
     return pd.DataFrame(columns=cols)
+def reconstruir_posiciones_desde_transacciones() -> dict:
+    df = repo_cargar_transacciones()
+
+    if df is None or df.empty:
+        return {}
+
+    df['fecha'] = pd.to_datetime(df['fecha'], errors='coerce')
+    df['simbolo'] = df['simbolo'].astype(str).apply(normalizar_simbolo)
+    df['tipo'] = df['tipo'].astype(str).str.lower().str.strip()
+    df['cantidad'] = pd.to_numeric(df['cantidad'], errors='coerce').fillna(0)
+    df['precio'] = pd.to_numeric(df['precio'], errors='coerce').fillna(0)
+
+    df = df.dropna(subset=['fecha'])
+    df = df[df['tipo'].isin(['compra', 'venta'])]
+    df = df.sort_values('fecha')
+
+    posiciones = {}
+
+    for _, row in df.iterrows():
+        simbolo = row['simbolo']
+        tipo = row['tipo']
+        cantidad = float(row['cantidad'])
+        precio = float(row['precio'])
+
+        if not simbolo or cantidad <= 0:
+            continue
+
+        if tipo == 'compra':
+            if simbolo not in posiciones:
+                posiciones[simbolo] = {
+                    'cantidad': 0.0,
+                    'precio': 0.0,
+                    'costo_total': 0.0
+                }
+
+            posiciones[simbolo]['costo_total'] += cantidad * precio
+            posiciones[simbolo]['cantidad'] += cantidad
+            posiciones[simbolo]['precio'] = (
+                posiciones[simbolo]['costo_total'] / posiciones[simbolo]['cantidad']
+            )
+
+        elif tipo == 'venta':
+            if simbolo not in posiciones:
+                continue
+
+            cant_actual = posiciones[simbolo]['cantidad']
+            precio_promedio = posiciones[simbolo]['precio']
+
+            nueva_cantidad = cant_actual - cantidad
+
+            if nueva_cantidad <= 0:
+                del posiciones[simbolo]
+            else:
+                posiciones[simbolo]['cantidad'] = nueva_cantidad
+                posiciones[simbolo]['costo_total'] = nueva_cantidad * precio_promedio
+                posiciones[simbolo]['precio'] = precio_promedio
+
+    posiciones_limpias = {}
+
+    for simbolo, datos in posiciones.items():
+        if datos['cantidad'] > 0:
+            posiciones_limpias[simbolo] = {
+                'cantidad': round(datos['cantidad'], 6),
+                'precio': round(datos['precio'], 2)
+            }
+
+    return posiciones_limpias
 
 def repo_guardar_transacciones() -> bool:
     if not os.path.exists(TRANSACCIONES_FILE):
@@ -379,15 +469,22 @@ def repo_cargar_modelo_ml(simbolo: str):
     return None, None
 
 def generar_backup_zip() -> bytes:
+    """Genera un ZIP con posiciones completas, no solo precios.
+
+    Antes guardaba st.session_state['PRECIO_COMPRA'], lo cual destruye
+    cantidades porque ese diccionario solo contiene precios.
+    """
     import zipfile
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-        posiciones = st.session_state.get('PRECIO_COMPRA', {})
+        posiciones = repo_cargar_posiciones() or st.session_state.get('POSICIONES', {})
         zf.writestr("posiciones.json", json.dumps(posiciones, indent=2, ensure_ascii=False))
+
         if os.path.exists(TRANSACCIONES_FILE):
             zf.write(TRANSACCIONES_FILE, "transacciones.csv")
         if os.path.exists("historial_senales.csv"):
             zf.write("historial_senales.csv", "historial_senales.csv")
+
         zf.writestr("LEEME.txt", f"Backup Trading App — {datetime.now().strftime('%Y-%m-%d %H:%M')}\n")
     buf.seek(0)
     return buf.read()
@@ -429,27 +526,68 @@ def cargar_transacciones() -> pd.DataFrame:
     return pd.DataFrame(columns=['fecha','simbolo','cantidad','precio','tipo','total','notas','ganancia_pct'])
 
 def guardar_transaccion(simbolo: str, cantidad: float, precio: float, tipo: str, notas: str = "", ganancia_pct: float = None):
+    """Guarda una transacción con validación anti-duplicados.
+
+    Evita que Streamlit registre la misma compra/venta varias veces por rerun
+    o doble clic. Considera duplicado si símbolo, cantidad, precio y tipo
+    coinciden dentro de una ventana de 90 segundos.
+    """
     try:
         simbolo_norm = normalizar_simbolo(simbolo)
+        tipo_norm = str(tipo).lower().strip()
+        cantidad = float(cantidad)
+        precio = float(precio)
+
         if not simbolo_norm:
             st.error("No se pudo guardar la transacción: símbolo inválido.")
-            return
+            return False
+        if tipo_norm not in {"compra", "venta"}:
+            st.error("No se pudo guardar la transacción: tipo inválido.")
+            return False
+        if cantidad <= 0 or precio <= 0:
+            st.error("No se pudo guardar la transacción: cantidad/precio deben ser mayores a cero.")
+            return False
+
         df = cargar_transacciones()
+        ahora = datetime.now()
+
+        if df is not None and not df.empty:
+            df_check = df.copy()
+            df_check['fecha'] = pd.to_datetime(df_check['fecha'], errors='coerce')
+            df_check['simbolo'] = df_check['simbolo'].astype(str).apply(normalizar_simbolo)
+            df_check['tipo'] = df_check['tipo'].astype(str).str.lower().str.strip()
+            df_check['cantidad'] = pd.to_numeric(df_check['cantidad'], errors='coerce')
+            df_check['precio'] = pd.to_numeric(df_check['precio'], errors='coerce')
+
+            ventana = ahora - timedelta(seconds=90)
+            duplicado = df_check[
+                (df_check['fecha'] >= ventana) &
+                (df_check['simbolo'] == simbolo_norm) &
+                (df_check['tipo'] == tipo_norm) &
+                (df_check['cantidad'].round(6) == round(cantidad, 6)) &
+                (df_check['precio'].round(4) == round(precio, 4))
+            ]
+            if not duplicado.empty:
+                st.warning(f"Transacción duplicada ignorada: {simbolo_norm} {cantidad} @ {precio}")
+                return False
+
         nueva = pd.DataFrame([{
-            'fecha': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'fecha': ahora.strftime("%Y-%m-%d %H:%M:%S"),
             'simbolo': simbolo_norm,
             'cantidad': cantidad,
             'precio': precio,
-            'tipo': tipo,
+            'tipo': tipo_norm,
             'total': round(cantidad * precio, 2),
             'notas': notas,
             'ganancia_pct': ganancia_pct if ganancia_pct is not None else np.nan
         }])
         df = pd.concat([df, nueva], ignore_index=True)
         df.to_csv(TRANSACCIONES_FILE, index=False)
+        return True
     except Exception as e:
         st.error(f"Error al guardar transacción: {e}")
         logger.exception("Error guardando transacción")
+        return False
 
 def procesar_ventas(input_text: str):
     if not input_text or not input_text.strip():
@@ -481,8 +619,9 @@ def procesar_ventas(input_text: str):
             pos = posiciones[simbolo]
             precio_compra_promedio = pos['precio']
             ganancia_pct = ((precio_venta / precio_compra_promedio) - 1) * 100
-            guardar_transaccion(simbolo, cant_vender, precio_venta, "venta",
-                               notas="Venta manual (PPP)", ganancia_pct=ganancia_pct)
+            if not guardar_transaccion(simbolo, cant_vender, precio_venta, "venta",
+                               notas="Venta manual (PPP)", ganancia_pct=ganancia_pct):
+                continue
             nueva_cant = pos['cantidad'] - cant_vender
             if nueva_cant <= 0:
                 del posiciones[simbolo]
@@ -528,8 +667,8 @@ def procesar_compras_ppp(input_text: str):
             posiciones[simbolo] = {'cantidad': nueva_cantidad_total, 'precio': nuevo_ppp}
         else:
             posiciones[simbolo] = {'cantidad': cant_nueva, 'precio': precio_nuevo}
-        guardar_transaccion(simbolo, cant_nueva, precio_nuevo, "compra", notas="Compra manual (PPP)")
-        compras_ok += 1
+        if guardar_transaccion(simbolo, cant_nueva, precio_nuevo, "compra", notas="Compra manual (PPP)"):
+            compras_ok += 1
 
     if compras_ok:
         repo_guardar_posiciones(posiciones)
@@ -637,22 +776,64 @@ def dashboard_rendimiento_real():
         st.error("No se pudieron cargar datos desde el repositorio. Revisa la conexión con GitHub.")
         
 def analizar_adn_exito():
-    st.subheader("🧬 ADN de tus Aciertos (Aprendizaje LM)")
+    st.subheader("🧬 ADN de tus Aciertos (Aprendizaje ML)")
+
     df_hist = cargar_historial_senales()
-    if not df_hist.empty and 'ganancia_pct' in df_hist.columns:
-        df_hist['ganancia_pct'] = pd.to_numeric(df_hist['ganancia_pct'], errors='coerce')
-        aciertos = df_hist[df_hist['ganancia_pct'] > 0].copy()
-        if not aciertos.empty:
-            todas_senales = ",".join(aciertos['señales'].astype(str)).split(',')
-            from collections import Counter
-            conteo = Counter([s.strip() for s in todas_senales if s.strip() and s.strip() != 'nan'])
-            st.write("Factores técnicos detectados en tus operaciones ganadoras:")
-            for factor, count in conteo.most_common(5):
-                st.success(f"✔️ {factor}: Identificado en {count} aciertos")
-        else:
-            st.write("El modelo está esperando más cierres de ventas para identificar patrones de éxito.")
-    else:
+
+    if df_hist.empty or 'ganancia_pct' not in df_hist.columns:
         st.write("Sin datos históricos de señales para analizar.")
+        return
+
+    df_hist['ganancia_pct'] = pd.to_numeric(
+        df_hist['ganancia_pct'],
+        errors='coerce'
+    )
+
+    aciertos = df_hist[df_hist['ganancia_pct'] > 0].copy()
+
+    if aciertos.empty:
+        st.write(
+            "El modelo está esperando más cierres de ventas para identificar patrones de éxito."
+        )
+        return
+
+    if 'señales' not in aciertos.columns:
+        st.write("No hay columna de señales para analizar.")
+        return
+
+    señales_limpias = (
+        aciertos['señales']
+        .fillna('')
+        .astype(str)
+        .tolist()
+    )
+
+    todas_senales = ",".join(señales_limpias).split(',')
+
+    from collections import Counter
+
+    conteo = Counter([
+        s.strip()
+        for s in todas_senales
+        if s
+        and s.strip()
+        and s.strip().lower() not in ['nan', 'none']
+    ])
+
+    if not conteo:
+        st.write(
+            "No se detectaron señales técnicas suficientes en operaciones ganadoras."
+        )
+        return
+
+    st.write(
+        "Factores técnicos detectados en tus operaciones ganadoras:"
+    )
+
+    for factor, count in conteo.most_common(5):
+        st.success(
+            f"✔️ {factor}: Identificado en {count} aciertos"
+        )
 
 # ============================================================
 # LISTAS DE MERCADO (asegúrate de que devuelvan 11 elementos)
@@ -690,6 +871,25 @@ def cargar_listas():
         'TRV','TRMB','TFC','TYL','TSN','UDR','ULTA','USB','UHS','UNP','UAL','UNH','UPS','URI',
         'VTR','VLO','VTRS','VRSN','VZ','VRTX','VFC','VNO','VMC','WAB','WBA','WMT','WDC','WU',
         'WRK','WY','WHR','WMB','WEC','WFC','WST','WYNN','XEL','XYL','YUM','ZBRA','ZBH','ZION','ZTS'
+        'TSM',   # Semiconductores / foundry IA
+        'ARM',
+        'MRVL',  # Networking / chips IA
+        'ON',    # Semiconductores industriales
+        'SMH',   # ETF semiconductores
+        'VRT',   # Infraestructura data centers
+        'CEG',   # Energía nuclear / data centers
+        'GEV',   # Energía / grid / data centers
+        'OKLO',  # Nuclear especulativa
+        'SMR',   # Nuclear especulativa
+        'APP',   # Software / publicidad IA
+        'MDB',
+        'TECL2',
+        'CCJ',   # Uranio
+        'BWXT',  # Nuclear/defensa
+        'EME',   # Infraestructura eléctrica
+        'BOTZ',  # ETF robótica/IA
+        'URA',   # ETF uranio
+        
     ]
     sp100 = [
         'AAPL','MSFT','AMZN','NVDA','META','GOOGL','GOOG','JPM','V','JNJ','WMT','PG','UNH','HD',
@@ -1121,12 +1321,28 @@ def backtest_optimizar_parametros(hist_anual: pd.DataFrame) -> dict:
 
 @st.cache_data(ttl=86400)
 def get_backtest_optimization():
-    sp_hist = _crear_ticker("^GSPC").history(period="2y")
-    if sp_hist.empty:
-        return None
-    sp_hist = calcular_indicadores(sp_hist)
-    opt = backtest_optimizar_parametros(sp_hist)
-    return opt
+    try:
+        sp_ticker = _crear_ticker("^GSPC")
+        sp_hist = safe_history(sp_ticker, period="2y", max_retries=2)
+
+        if sp_hist is None or sp_hist.empty or len(sp_hist) < 200:
+            return {
+                'best_score_thresh': 5,
+                'best_atr_mult': 2,
+                'best_win_rate': 0
+            }
+
+        sp_hist = calcular_indicadores(sp_hist)
+        opt = backtest_optimizar_parametros(sp_hist)
+        return opt
+
+    except Exception as e:
+        print(f"[get_backtest_optimization] Error: {e}")
+        return {
+            'best_score_thresh': 5,
+            'best_atr_mult': 2,
+            'best_win_rate': 0
+        }
 
 def simular_ignorar_senal(simbolo: str, precio_actual: float, condicion: str, usd_mxn: float, eur_mxn: float) -> dict:
     """
@@ -1943,7 +2159,9 @@ with st.sidebar.expander("💾 Backup", expanded=False):
     if uploaded_bk and st.button("Restaurar"):
         pos_restauradas = restaurar_desde_zip(uploaded_bk)
         if pos_restauradas:
-            st.session_state['PRECIO_COMPRA'] = pos_restauradas
+            repo_guardar_posiciones(pos_restauradas)
+            st.session_state['POSICIONES'] = pos_restauradas
+            st.session_state['PRECIO_COMPRA'] = {k: v['precio'] for k, v in pos_restauradas.items()}
             st.rerun()
 
 if _repo_disponible():
@@ -1986,44 +2204,45 @@ alerta_whatsapp = st.sidebar.checkbox("💬 Alertas WhatsApp", value=False)
 umbral_score = st.sidebar.slider("Umbral score para alertar", 4, 10, 7)
 
 st.sidebar.markdown("### 💰 Registrar compra")
-compra_input = st.sidebar.text_area("Compra", placeholder="AAPL,10,4465.53\nWALMEX.MX,5,56.13", height=120)
+compra_input = st.sidebar.text_area("Compra", placeholder="AAPL,10,4465.53\nWALMEX.MX,5,56.13", height=120, key="compra_input")
+if st.sidebar.button("🛒 REGISTRAR COMPRA", key="btn_registrar_compra"):
+    if compra_input and compra_input.strip():
+        procesar_compras_ppp(compra_input)
+    else:
+        st.sidebar.warning("Ingresa compras con formato: SIMBOLO,CANTIDAD,PRECIO")
 
 st.sidebar.markdown("### 💰 Registrar venta")
 venta_input = st.sidebar.text_area("Venta", placeholder="AAPL,10,4750.00", height=120)
 if st.sidebar.button("📉 REGISTRAR VENTA"):
     procesar_ventas(venta_input)
 
+if st.sidebar.button("♻️ RECONSTRUIR CARTERA"):
+    posiciones = reconstruir_posiciones_desde_transacciones()
+
+    if posiciones:
+        repo_guardar_posiciones(posiciones)
+        st.session_state['POSICIONES'] = posiciones
+        st.session_state['PRECIO_COMPRA'] = {
+            k: v['precio'] for k, v in posiciones.items()
+        }
+        st.sidebar.success("✅ Cartera reconstruida desde transacciones.csv")
+        st.rerun()
+    else:
+        st.sidebar.warning("No se pudo reconstruir. Revisa transacciones.csv.")
+
 st.sidebar.markdown("### 📂 Google Drive")
 drive_upload = st.sidebar.checkbox("💾 Guardar en Drive", value=False)
 
 if st.sidebar.button("🔍 ANALIZAR", type="primary"):
-    PRECIO_COMPRA = dict(st.session_state.get('PRECIO_COMPRA', {}))
+    posiciones_actuales = repo_cargar_posiciones()
+    st.session_state['POSICIONES'] = posiciones_actuales
+    st.session_state['PRECIO_COMPRA'] = {k: v['precio'] for k, v in posiciones_actuales.items()}
+    PRECIO_COMPRA = st.session_state['PRECIO_COMPRA']
     st.session_state['HIGHEST_PRICE'] = {}
 
-    if compra_input and compra_input.strip():
-        nuevas_compras = 0
-        for linea in compra_input.strip().split('\n'):
-            if not linea.strip():
-                continue
-            partes = linea.split(',')
-            if len(partes) == 3:
-                sim = normalizar_simbolo(partes[0])
-                try:
-                    cantidad = float(partes[1].strip())
-                    precio = float(partes[2].strip())
-                    guardar_transaccion(sim, cantidad, precio, "compra")
-                    if sim not in PRECIO_COMPRA:
-                        nuevas_compras += 1
-                    PRECIO_COMPRA[sim] = precio
-                except:
-                    pass
-        if nuevas_compras > 0:
-            st.sidebar.success(f"✅ {nuevas_compras} compra(s) nueva(s) registrada(s).")
-        elif compra_input.strip():
-            st.sidebar.warning("No se detectaron compras nuevas (los símbolos ya existían o hubo errores de formato).")
-        repo_guardar_posiciones(PRECIO_COMPRA)
-        repo_guardar_transacciones()
-    
+    # Las compras se registran exclusivamente con el botón "REGISTRAR COMPRA"
+    # para evitar duplicados al presionar ANALIZAR.
+
     usd_mxn, eur_mxn = obtener_tipo_cambio()
     regime_data = obtener_market_regime()
     regime_bonus = regime_data['score_bonus'] if market_regime_check else 0
@@ -2186,13 +2405,22 @@ if st.sidebar.button("🔍 ANALIZAR", type="primary"):
     st.session_state['regime'] = regime_data
     st.session_state['capital'] = capital_total
     st.session_state['ultima_actualizacion'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    if PRECIO_COMPRA:
-        repo_guardar_posiciones(PRECIO_COMPRA)
+
+    # IMPORTANTE:
+    # No guardar PRECIO_COMPRA aquí porque solo contiene precios,
+    # no cantidades. Si lo guardamos, posiciones.json queda con cantidad = 1.
     repo_guardar_transacciones()
+
     if ia_check and not compras.empty:
         with st.spinner("🤖 Analizando con IA..."):
-            texto_ia = analisis_ia(compras.head(8).to_dict('records'), regime_data, usd_mxn)
+            texto_ia = analisis_ia(
+                compras.head(8).to_dict('records'),
+                regime_data,
+                usd_mxn
+            )
             st.session_state['analisis_ia'] = texto_ia
+    else:
+        st.session_state['analisis_ia'] = ""
 
     # ========== MOTOR DE ALERTAS DE VENTA (CORREGIDO CON CONVERSIÓN) ==========
     posiciones_json = repo_cargar_posiciones()
