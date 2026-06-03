@@ -1,39 +1,39 @@
 {
-  "FEMSAUBD.MX": {
-    "cantidad": 43.0,
-    "precio": 200.69
-  },
   "FUNO11.MX": {
     "cantidad": 137.0,
     "precio": 29.32
   },
-  "AMD": {
-    "cantidad": 21.0,
-    "precio": 5641.39
+  "FEMSAUBD.MX": {
+    "cantidad": 43.0,
+    "precio": 200.69
   },
   "TECL": {
-    "cantidad": 10.0,
-    "precio": 2492.65
-  },
-  "T": {
-    "cantidad": 15.0,
-    "precio": 461.0
+    "cantidad": 1.0,
+    "precio": 2320.96
   },
   "ENPH": {
     "cantidad": 26.0,
     "precio": 875.89
   },
   "CEMEXCPO.MX": {
-    "cantidad": 180.0,
-    "precio": 23.33
+    "cantidad": 360.0,
+    "precio": 22.49
   },
   "RKLB": {
     "cantidad": 5.0,
     "precio": 1850.88
   },
+  "SMSN ": {
+    "cantidad": 1.0,
+    "precio": 82347.71
+  },
   "ARM": {
     "cantidad": 3.0,
     "precio": 6014.4
+  },
+  "TSM": {
+    "cantidad": 2.0,
+    "precio": 7040.16
   },
   "APP": {
     "cantidad": 2.0,
@@ -43,16 +43,12 @@
     "cantidad": 17.0,
     "precio": 282.67
   },
-  "TSM": {
-    "cantidad": 2.0,
-    "precio": 7040.16
-  },
-  "SMSN ": {
+  "AMD": {
     "cantidad": 1.0,
-    "precio": 82347.71
+    "precio": 8098.44
   },
   "PLTR": {
-    "cantidad": 8.0,
+    "cantidad": 4.0,
     "precio": 2708.39
   }
 }
