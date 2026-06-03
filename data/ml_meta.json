@@ -2020,93 +2020,92 @@
     }
   },
   "XLB": {
-    "accuracy": 20.4,
-    "fecha": "2026-05-08 02:39",
-    "fecha_ultimo_entrenamiento": "2026-05-08 02:39",
+    "accuracy": 17.72,
+    "fecha": "2026-06-03 02:13",
+    "fecha_ultimo_entrenamiento": "2026-06-03 02:13",
     "ventana_meses": 24,
     "validacion": "TimeSeriesSplit",
     "periodo_test_out_of_sample": {
-      "inicio": "2025-11-06",
-      "fin": "2026-05-06",
+      "inicio": "2025-12-01",
+      "fin": "2026-06-01",
       "meses": 6,
-      "observaciones": 124
+      "observaciones": 125
     },
     "metricas_in_sample": {
-      "f1": 70.26,
-      "precision": 87.86,
-      "recall": 65.37,
+      "f1": 61.3,
+      "precision": 87.45,
+      "recall": 57.71,
       "auc_roc": null
     },
     "metricas_out_of_sample": {
-      "f1": 20.4,
-      "precision": 16.41,
-      "recall": 26.97,
-      "auc_roc": 0.4289
+      "f1": 17.72,
+      "precision": 13.59,
+      "recall": 25.45,
+      "auc_roc": 0.4143
     },
     "feature_importance": {
       "top": [
         {
-          "feature": "EMA50",
-          "importancia": 0.094572
+          "feature": "MACD",
+          "importancia": 0.097066
         },
         {
           "feature": "MACD_sig",
-          "importancia": 0.091138
-        },
-        {
-          "feature": "MACD",
-          "importancia": 0.08943
+          "importancia": 0.093587
         },
         {
           "feature": "OBV",
-          "importancia": 0.075043
+          "importancia": 0.076967
         },
         {
-          "feature": "ATR_RATIO",
-          "importancia": 0.075024
+          "feature": "Volume",
+          "importancia": 0.074536
         },
         {
           "feature": "Vol_avg",
-          "importancia": 0.065372
+          "importancia": 0.07088
         },
         {
-          "feature": "EMA20",
-          "importancia": 0.063433
+          "feature": "EMA50",
+          "importancia": 0.070436
         },
         {
-          "feature": "RSI",
-          "importancia": 0.060484
+          "feature": "ATR_RATIO",
+          "importancia": 0.069301
         },
         {
           "feature": "ATR",
-          "importancia": 0.059948
+          "importancia": 0.068201
+        },
+        {
+          "feature": "STOCH_D",
+          "importancia": 0.059558
         },
         {
           "feature": "BB_pct",
-          "importancia": 0.059495
+          "importancia": 0.057119
         }
       ],
       "todas": {
-        "EMA20": 0.063433,
-        "EMA50": 0.094572,
-        "RSI": 0.060484,
-        "MACD": 0.08943,
-        "MACD_sig": 0.091138,
-        "ATR": 0.059948,
-        "BB_pct": 0.059495,
-        "STOCH_K": 0.041476,
-        "STOCH_D": 0.054297,
-        "Volume": 0.056898,
-        "Vol_avg": 0.065372,
-        "ROC": 0.054346,
-        "WILLR": 0.040753,
-        "OBV": 0.075043,
-        "ATR_RATIO": 0.075024,
-        "DOW": 0.00999,
-        "REGIME": 0.0083
+        "EMA20": 0.056757,
+        "EMA50": 0.070436,
+        "RSI": 0.054521,
+        "MACD": 0.097066,
+        "MACD_sig": 0.093587,
+        "ATR": 0.068201,
+        "BB_pct": 0.057119,
+        "STOCH_K": 0.033919,
+        "STOCH_D": 0.059558,
+        "Volume": 0.074536,
+        "Vol_avg": 0.07088,
+        "ROC": 0.056718,
+        "WILLR": 0.041029,
+        "OBV": 0.076967,
+        "ATR_RATIO": 0.069301,
+        "DOW": 0.013046,
+        "REGIME": 0.006361
       },
       "cercanas_a_cero": [
-        "DOW",
         "REGIME"
       ],
       "umbral_cero": 0.01
