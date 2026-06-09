@@ -15,6 +15,7 @@ import time
 import logging
 import certifi
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -59,6 +60,25 @@ FILTRO_SCORE_MIN = int(os.environ.get("FILTRO_SCORE_MIN", "8"))
 FILTRO_RSI = os.environ.get("FILTRO_RSI", "True").lower() == "true"
 FILTRO_ML = os.environ.get("FILTRO_ML", "False").lower() == "true"  # opcional
 FILTRO_SENTIMIENTO = os.environ.get("FILTRO_SENTIMIENTO", "False").lower() == "true"
+
+# ============================================================
+# CONTROL DE HORARIO DE ALERTAS
+# ============================================================
+# La bolsa de EE.UU. opera de lunes a viernes, 09:30–16:00 hora Nueva York.
+# Usamos America/New_York para respetar cambios de horario de verano automáticamente.
+MARKET_TZ = ZoneInfo(os.environ.get("MARKET_TZ", "America/New_York"))
+ALERT_STATE_FILE = "scanner_alert_state.json"
+
+# Máximo 3 updates por día:
+# - apertura: 09:30–10:15 NY
+# - medio día: 12:00–12:45 NY
+# - cierre: 15:30–16:10 NY
+ALERT_WINDOWS = {
+    "apertura": ((9, 30), (10, 15)),
+    "medio_dia": ((12, 0), (12, 45)),
+    "cierre": ((15, 30), (16, 10)),
+}
+
 # ============================================================
 # UNIVERSO DE ACTIVOS (incluye TECL)
 # ============================================================
@@ -239,6 +259,117 @@ def _repo_escribir(nombre: str, contenido: str, mensaje: str = "update") -> bool
         print(f"⚠️ Error al escribir '{nombre}' en el repo: {e}")
         logger.exception("Error repo_escribir")
         return False
+
+
+# ============================================================
+# CONTROL DE HORARIO Y LÍMITE DE ALERTAS
+# ============================================================
+
+def _hora_mercado_actual() -> datetime:
+    """Devuelve la hora actual en la zona horaria del mercado de EE.UU."""
+    return datetime.now(MARKET_TZ)
+
+
+def _minutos_del_dia(dt: datetime) -> int:
+    return dt.hour * 60 + dt.minute
+
+
+def obtener_slot_alerta(dt: datetime | None = None) -> str | None:
+    """Regresa apertura/medio_dia/cierre si estamos dentro de una ventana válida.
+
+    Fuera de lunes-viernes o fuera de las ventanas configuradas regresa None.
+    """
+    ahora = dt or _hora_mercado_actual()
+
+    # weekday: lunes=0, domingo=6
+    if ahora.weekday() >= 5:
+        return None
+
+    minuto_actual = _minutos_del_dia(ahora)
+
+    for nombre_slot, ((h_ini, m_ini), (h_fin, m_fin)) in ALERT_WINDOWS.items():
+        inicio = h_ini * 60 + m_ini
+        fin = h_fin * 60 + m_fin
+        if inicio <= minuto_actual <= fin:
+            return nombre_slot
+
+    return None
+
+
+def _cargar_estado_alertas() -> dict:
+    """Carga estado de alertas desde local y luego repo si está disponible."""
+    try:
+        if os.path.exists(ALERT_STATE_FILE):
+            with open(ALERT_STATE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        logger.exception("No se pudo leer estado local de alertas")
+
+    contenido = _repo_leer(ALERT_STATE_FILE)
+    if contenido:
+        try:
+            return json.loads(contenido)
+        except Exception:
+            logger.exception("No se pudo parsear estado de alertas desde repo")
+
+    return {}
+
+
+def _guardar_estado_alertas(estado: dict) -> None:
+    try:
+        with open(ALERT_STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(estado, f, ensure_ascii=False, indent=2)
+    except Exception:
+        logger.exception("No se pudo guardar estado local de alertas")
+
+    if _repo_disponible():
+        _repo_escribir(ALERT_STATE_FILE, json.dumps(estado, ensure_ascii=False, indent=2), "estado alertas")
+
+
+def puede_enviar_update() -> tuple[bool, str | None, str]:
+    """Aplica regla: solo lunes-viernes, máximo un envío por slot y máximo 3 al día."""
+    ahora = _hora_mercado_actual()
+    fecha = ahora.strftime("%Y-%m-%d")
+    slot = obtener_slot_alerta(ahora)
+
+    if slot is None:
+        return False, None, f"Fuera de horario de alertas. Hora mercado: {ahora.strftime('%Y-%m-%d %H:%M %Z')}"
+
+    estado = _cargar_estado_alertas()
+    estado_hoy = estado.get(fecha, {"slots": []})
+    slots_enviados = estado_hoy.get("slots", [])
+
+    if slot in slots_enviados:
+        return False, slot, f"Update '{slot}' ya enviado hoy ({fecha})."
+
+    if len(slots_enviados) >= 3:
+        return False, slot, f"Límite diario de 3 updates alcanzado para {fecha}."
+
+    return True, slot, f"Update permitido: {slot} ({ahora.strftime('%Y-%m-%d %H:%M %Z')})."
+
+
+def registrar_update_enviado(slot: str) -> None:
+    ahora = _hora_mercado_actual()
+    fecha = ahora.strftime("%Y-%m-%d")
+    estado = _cargar_estado_alertas()
+
+    estado_hoy = estado.get(fecha, {"slots": []})
+    slots = estado_hoy.get("slots", [])
+
+    if slot not in slots:
+        slots.append(slot)
+
+    estado[fecha] = {
+        "slots": slots,
+        "ultimo_envio": ahora.isoformat(),
+    }
+
+    # Mantener solo los últimos 15 días para evitar crecimiento innecesario.
+    fechas = sorted(estado.keys())
+    for f in fechas[:-15]:
+        estado.pop(f, None)
+
+    _guardar_estado_alertas(estado)
 
 # ============================================================
 # CARGA DE POSICIONES (normalización de claves)
@@ -1017,7 +1148,12 @@ def construir_email(ops_compras: list[dict], ops_ventas: list[dict],
 
 def ejecutar_scanner():
 
-    print("🚀 Iniciando scanner 24/7...")
+    print("🚀 Iniciando scanner controlado por horario...")
+
+    puede_enviar, slot_alerta, motivo_horario = puede_enviar_update()
+    print(f"⏱️ {motivo_horario}")
+    if not puede_enviar:
+        return
 
     # 1. Cargar posiciones reales
     posiciones = cargar_posiciones_repo()
@@ -1106,10 +1242,12 @@ def ejecutar_scanner():
 
     print(f"📧 ANTES DE ENVIAR: ops_compras tiene {len(ops_compras)} elementos")
     # 12. Enviar email
-    enviar_email("📈 Scanner Trading — Actualización", html)
+    asunto_slot = slot_alerta.replace("_", " ").title() if slot_alerta else "Actualización"
+    email_ok = enviar_email(f"📈 Scanner Trading — {asunto_slot}", html)
 
     # 13. Enviar WhatsApp (formato completo, similar al antiguo de app.py)
 
+    whatsapp_ok = False
     if ops_compras or ops_ventas:
         # Calcular top 3 compras (por score)
         top_compras = sorted(ops_compras, key=lambda x: x['Score'], reverse=True)[:3]
@@ -1139,7 +1277,13 @@ def ejecutar_scanner():
         mensaje += f"\n🎯 Confianza: {confianza}\n"
         mensaje += "📧 Ver detalles en tu email"
         
-        enviar_whatsapp(mensaje)
+        whatsapp_ok = enviar_whatsapp(mensaje)
+
+    if email_ok or whatsapp_ok:
+        registrar_update_enviado(slot_alerta)
+        print(f"✅ Update registrado para slot: {slot_alerta}")
+    else:
+        print("⚠️ No se registró update porque no se confirmó ningún envío.")
 
 # ============================================================
 # EJECUCIÓN DIRECTA
