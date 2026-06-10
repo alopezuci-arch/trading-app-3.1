@@ -12839,5 +12839,104 @@
     "walk_forward": {
       "estado": "sin_folds_validos"
     }
+  },
+  "EIX": {
+    "accuracy": 31.51,
+    "fecha": "2026-06-10 18:06",
+    "fecha_ultimo_entrenamiento": "2026-06-10 18:06",
+    "ventana_meses": 24,
+    "validacion": "TimeSeriesSplit",
+    "periodo_test_out_of_sample": {
+      "inicio": "2025-12-09",
+      "fin": "2026-06-09",
+      "meses": 6,
+      "observaciones": 125
+    },
+    "metricas_in_sample": {
+      "f1": 36.9,
+      "precision": 52.33,
+      "recall": 40.67,
+      "auc_roc": null
+    },
+    "metricas_out_of_sample": {
+      "f1": 31.51,
+      "precision": 31.57,
+      "recall": 36.79,
+      "auc_roc": 0.5715
+    },
+    "feature_importance": {
+      "top": [
+        {
+          "feature": "OBV",
+          "importancia": 0.128136
+        },
+        {
+          "feature": "EMA50",
+          "importancia": 0.111363
+        },
+        {
+          "feature": "EMA20",
+          "importancia": 0.090422
+        },
+        {
+          "feature": "ATR",
+          "importancia": 0.088915
+        },
+        {
+          "feature": "Vol_avg",
+          "importancia": 0.065251
+        },
+        {
+          "feature": "ATR_RATIO",
+          "importancia": 0.063282
+        },
+        {
+          "feature": "MACD",
+          "importancia": 0.060821
+        },
+        {
+          "feature": "ROC",
+          "importancia": 0.054827
+        },
+        {
+          "feature": "MACD_sig",
+          "importancia": 0.051838
+        },
+        {
+          "feature": "BB_pct",
+          "importancia": 0.048283
+        }
+      ],
+      "todas": {
+        "EMA20": 0.090422,
+        "EMA50": 0.111363,
+        "RSI": 0.047651,
+        "MACD": 0.060821,
+        "MACD_sig": 0.051838,
+        "ATR": 0.088915,
+        "BB_pct": 0.048283,
+        "STOCH_K": 0.0371,
+        "STOCH_D": 0.046378,
+        "Volume": 0.035132,
+        "Vol_avg": 0.065251,
+        "ROC": 0.054827,
+        "WILLR": 0.039621,
+        "OBV": 0.128136,
+        "ATR_RATIO": 0.063282,
+        "DOW": 0.01921,
+        "REGIME": 0.01177
+      },
+      "cercanas_a_cero": [],
+      "umbral_cero": 0.01
+    },
+    "parametros_modelo": {
+      "class_weight": "balanced",
+      "max_depth": 7,
+      "min_samples_split": 5,
+      "n_estimators": 50
+    },
+    "walk_forward": {
+      "estado": "sin_folds_validos"
+    }
   }
 }
