@@ -871,24 +871,8 @@ def cargar_listas():
         'TRV','TRMB','TFC','TYL','TSN','UDR','ULTA','USB','UHS','UNP','UAL','UNH','UPS','URI',
         'VTR','VLO','VTRS','VRSN','VZ','VRTX','VFC','VNO','VMC','WAB','WBA','WMT','WDC','WU',
         'WRK','WY','WHR','WMB','WEC','WFC','WST','WYNN','XEL','XYL','YUM','ZBRA','ZBH','ZION','ZTS'
-        'TSM',   # Semiconductores / foundry IA
-        'ARM',
-        'MRVL',  # Networking / chips IA
-        'ON',    # Semiconductores industriales
-        'SMH',   # ETF semiconductores
-        'VRT',   # Infraestructura data centers
-        'CEG',   # Energía nuclear / data centers
-        'GEV',   # Energía / grid / data centers
-        'OKLO',  # Nuclear especulativa
-        'SMR',   # Nuclear especulativa
-        'APP',   # Software / publicidad IA
-        'MDB',
-        'TECL2',
-        'CCJ',   # Uranio
-        'BWXT',  # Nuclear/defensa
-        'EME',   # Infraestructura eléctrica
-        'BOTZ',  # ETF robótica/IA
-        'URA',   # ETF uranio
+        'TSM','ARM','MRVL','ON','SMH','VRT','CEG','GEV','OKLO','SMR','APP','MDB','TECL','CCJ','BWXT','EME','BOTZ',
+        'URA'
         
     ]
     sp100 = [
