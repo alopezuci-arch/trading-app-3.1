@@ -76,3 +76,5 @@ fecha,simbolo,cantidad,precio,tipo,total,notas,ganancia_pct
 2026-05-02 04:22:44,ZM,4.0,1656.41,venta,6625.64,Venta manual (PPP),-1.38068587758989
 2026-06-10 08:04:55,PLTR,4.0,2708.39,compra,10833.56,Compra manual (PPP),
 2026-06-10 08:04:56,APP,2.0,10643.61,compra,21287.22,Compra manual (PPP),
+2026-06-10 08:05:07,APP,2.0,10643.61,venta,21287.22,Venta manual (PPP),0.0
+2026-06-10 08:05:07,PLTR,4.0,2708.39,venta,10833.56,Venta manual (PPP),0.0
