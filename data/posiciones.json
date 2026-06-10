@@ -8,8 +8,8 @@
     "precio": 200.69
   },
   "ENPH": {
-    "cantidad": 26.0,
-    "precio": 875.89
+    "cantidad": 28.0,
+    "precio": 887.29
   },
   "SMSNN.MX": {
     "cantidad": 1.0,
@@ -38,5 +38,17 @@
   "MVRL": {
     "cantidad": 5.0,
     "precio": 5398.86
+  },
+  "ACHC": {
+    "cantidad": 21.0,
+    "precio": 445.0
+  },
+  "PLTR": {
+    "cantidad": 5.0,
+    "precio": 2282.45
+  },
+  "FLR": {
+    "cantidad": 10.0,
+    "precio": 874.01
   }
 }
