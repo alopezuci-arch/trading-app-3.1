@@ -2511,7 +2511,12 @@ if 'df' in st.session_state:
     
     col1, col2, col3, col4 = st.columns(4)
     alertas_vender = st.session_state.get('alertas_venta_final', [])
-    total_ventas_combined = len(ventas) + len(alertas_vender)
+    # Crear un conjunto (lista sin duplicados) con los símbolos que tienes en cartera
+    simbolos_cartera = {a['Símbolo'] for a in alertas_vender}
+    # Filtrar las señales técnicas de venta para que solo incluyan esos símbolos
+    ventas_filtradas = ventas[ventas['Símbolo'].isin(simbolos_cartera)]
+    # Sumar las alertas de cartera + las técnicas filtradas
+    total_ventas_combined = len(alertas_vender) + len(ventas_filtradas)
     col1.metric("✅ Compras", len(compras))
     col2.metric("🔴 Ventas", total_ventas_combined)
     col3.metric("👀 Observar", len(observar))
@@ -2539,12 +2544,13 @@ if 'df' in st.session_state:
             df_alertas = pd.DataFrame(alertas_vender)
             st.dataframe(df_alertas[['Símbolo','Precio Compra','Precio Actual','Ganancia (%)','Motivo']], width='stretch')
             st.divider()
-        st.subheader("📉 Señales Técnicas de Venta")
-        if not ventas.empty:
+        st.subheader("📉 Señales Técnicas de Venta (solo tus posiciones)")
+        if not ventas_filtradas.empty:
             cols_ventas = ['Símbolo','Precio (MXN)','Score','RSI','Stop Loss','Take Profit','Recomendación','Motivo']
-            st.dataframe(ventas[[c for c in cols_ventas if c in ventas.columns]], width='stretch')
+            st.dataframe(ventas_filtradas[[c for c in cols_ventas if c in ventas_filtradas.columns]], width='stretch')
         else:
-            st.info("No hay señales técnicas de venta en el escáner.")
+            st.info("No hay señales técnicas de venta para tus posiciones actuales.")
+        
         if not alertas_vender and ventas.empty:
             st.info("Sin ventas. Tus posiciones abiertas no han alcanzado Take Profit (+15%) ni Stop Loss (-7%).")
     with tab3:
