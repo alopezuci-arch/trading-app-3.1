@@ -23,10 +23,6 @@
     "cantidad": 2.0,
     "precio": 7040.16
   },
-  "APP": {
-    "cantidad": 2.0,
-    "precio": 10643.61
-  },
   "NOK": {
     "cantidad": 17.0,
     "precio": 282.67
@@ -34,9 +30,5 @@
   "AMD": {
     "cantidad": 1.0,
     "precio": 8098.44
-  },
-  "PLTR": {
-    "cantidad": 4.0,
-    "precio": 2708.39
   }
 }
