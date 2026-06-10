@@ -30,5 +30,13 @@
   "AMD": {
     "cantidad": 1.0,
     "precio": 8098.44
+  },
+  "PLUG": {
+    "cantidad": 26.0,
+    "precio": 68.0
+  },
+  "MVRL1": {
+    "cantidad": 5.0,
+    "precio": 5398.86
   }
 }
